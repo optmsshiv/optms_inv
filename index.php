@@ -3540,7 +3540,7 @@ function printCurrentInvoice() {
 function printInvoiceData(inv) {
   // Restore formItems from invoice data temporarily
   const savedItems = [...formItems];
-  formItems = inv.items.map(i => ({ id: Date.now() + Math.random(), desc: i.desc, qty: i.qty, gst: i.gstRate || i.gst || 18, rate: i.rate }));
+  formItems = inv.items.map(i => ({ id: Date.now() + Math.random(), desc: i.desc||i.description||'', qty: parseFloat(i.qty||i.quantity)||1, gst: (i.gst!==undefined&&i.gst!==null&&i.gst!==''?parseFloat(i.gst):i.gstRate!==undefined&&i.gstRate!==null&&i.gstRate!==''?parseFloat(i.gstRate):i.gst_rate!==undefined&&i.gst_rate!==''?parseFloat(i.gst_rate):18), rate: parseFloat(i.rate)||0 }));
   loadInvoiceIntoForm(inv);
   const d = getFormData();
   openPrintWindow(d, formItems);
@@ -3604,7 +3604,7 @@ function printInvoiceById(inv) {
     ? items.map(i=>{
         const qty  = parseFloat(i.qty||i.quantity||1);
         const rate = parseFloat(i.rate||0);
-        const gst  = parseFloat(i.gst ?? i.gst_rate ?? 18);
+        const gst  = (i.gst!==undefined&&i.gst!==null&&i.gst!==''?parseFloat(i.gst):i.gst_rate!==undefined&&i.gst_rate!==''?parseFloat(i.gst_rate):18);
         const line = qty*rate;
         return `<tr>
           <td style="padding:10px 12px;border-bottom:1px solid #eee">${i.desc||i.description||'—'}</td>
@@ -3743,7 +3743,7 @@ function openPreviewModal(id) {
   // Recalculate totals from items if available
   if (inv.items && inv.items.length) {
     let sub=0, gstAmt=0;
-    inv.items.forEach(it => { const line=((it.qty||it.quantity)||1)*(it.rate||0); sub+=line; gstAmt+=line*((it.gstRate!==undefined?parseFloat(it.gstRate):it.gst!==undefined?parseFloat(it.gst):18)/100); });
+    inv.items.forEach(it => { const line=((it.qty||it.quantity)||1)*(it.rate||0); sub+=line; gstAmt+=line*((it.gstRate!==undefined?parseFloat(it.gstRate):it.gst!==undefined&&it.gst!==null&&it.gst!==''?parseFloat(it.gst):it.gstRate!==undefined&&it.gstRate!==''?parseFloat(it.gstRate):18)/100); });
     const disc=inv.disc||0; const discAmt=sub*disc/100; const discF=sub>0?(1-disc/100):1;
     d.sub=sub; d.discAmt=discAmt; d.gstAmt=gstAmt*discF; d.grand=sub-discAmt+gstAmt*discF;
   }
@@ -3753,7 +3753,7 @@ function openPreviewModal(id) {
     ? invItems.map(i => {
         const qty  = parseFloat(i.qty||i.quantity||1);
         const rate = parseFloat(i.rate||0);
-        const gstR = parseFloat(i.gst ?? i.gstRate ?? i.gst_rate ?? 18);
+        const gstR = (i.gst!==undefined&&i.gst!==null&&i.gst!==''?parseFloat(i.gst):i.gstRate!==undefined&&i.gstRate!==''?parseFloat(i.gstRate):i.gst_rate!==undefined&&i.gst_rate!==''?parseFloat(i.gst_rate):18);
         const desc = i.desc||i.description||'—';
         const line = qty*rate;
         return `<tr>
@@ -3799,7 +3799,7 @@ function loadInvoiceIntoForm(inv) {
   document.getElementById('f-caddr').value    = c ? c.addr : '';
   const sr = document.querySelectorAll('input[name="inv-status"]');
   sr.forEach(r => r.checked = r.value === inv.status);
-  formItems = inv.items.map(i => ({ id: Date.now() + Math.random(), desc: i.desc, qty: i.qty, gst: i.gstRate || i.gst || 18, rate: i.rate }));
+  formItems = inv.items.map(i => ({ id: Date.now() + Math.random(), desc: i.desc||i.description||'', qty: parseFloat(i.qty||i.quantity)||1, gst: (i.gst!==undefined&&i.gst!==null&&i.gst!==''?parseFloat(i.gst):i.gstRate!==undefined&&i.gstRate!==null&&i.gstRate!==''?parseFloat(i.gstRate):i.gst_rate!==undefined&&i.gst_rate!==''?parseFloat(i.gst_rate):18), rate: parseFloat(i.rate)||0 }));
   renderFormItems();
   livePreview();
 }
@@ -4096,7 +4096,7 @@ function editProduct(id){
 function saveEditProd(id){
   const i=STATE.products.findIndex(x=>x.id===id); if(i<0) return;
   const n=document.getElementById('ep-name')?.value?.trim(); if(!n){toast('Name required','warning');return;}
-  STATE.products[i]={...STATE.products[i],name:n,category:document.getElementById('ep-cat')?.value||'Other',rate:parseFloat(document.getElementById('ep-rate')?.value)||0,hsn:document.getElementById('ep-hsn')?.value||'998314',gst:parseInt(document.getElementById('ep-gst')?.value)||18};
+  STATE.products[i]={...STATE.products[i],name:n,category:document.getElementById('ep-cat')?.value||'Other',rate:parseFloat(document.getElementById('ep-rate')?.value)||0,hsn:document.getElementById('ep-hsn')?.value||'998314',gst:(document.getElementById('ep-gst')?.value!==''?parseInt(document.getElementById('ep-gst').value):18)};
   renderProducts(); toast('✅ Updated!','success');
 }
 
@@ -4139,7 +4139,7 @@ function saveNewProduct() {
     category: document.getElementById('np-cat')?.value || 'Other',
     rate: parseFloat(document.getElementById('np-rate')?.value) || 0,
     hsn: document.getElementById('np-hsn')?.value || '998314',
-    gst: parseInt(document.getElementById('np-gst')?.value) || 18
+    gst: (document.getElementById('np-gst')?.value !== '' && document.getElementById('np-gst')?.value !== undefined ? parseInt(document.getElementById('np-gst').value) : 18)
   });
   document.getElementById('add-product-row')?.remove();
   renderProducts();
@@ -4151,7 +4151,7 @@ function addProductToInvoice(id) {
   if (!p) return;
   showPage('create', null);
   setTimeout(() => {
-    formItems.push({ id:Date.now(), desc:p.name, qty:1, gst:p.gst||18, rate:p.rate });
+    formItems.push({ id:Date.now(), desc:p.name, qty:1, gst:(p.gst!==undefined&&p.gst!==null&&p.gst!==''?parseFloat(p.gst):18), rate:p.rate });
     renderFormItems();
     livePreview();
     toast(`✅ "${p.name}" added to invoice`, 'success');
@@ -4187,7 +4187,7 @@ function filterProductPicker(val) {
 function pickProduct(id) {
   const p = STATE.products.find(x=>x.id===id);
   if (!p) return;
-  formItems.push({ id:Date.now(), desc:p.name, qty:1, gst:p.gst||18, rate:p.rate });
+  formItems.push({ id:Date.now(), desc:p.name, qty:1, gst:(p.gst!==undefined&&p.gst!==null&&p.gst!==''?parseFloat(p.gst):18), rate:p.rate });
   renderFormItems();
   livePreview();
   closeModal('modal-products');
@@ -5048,7 +5048,7 @@ window.saveEditProd = async function(id) {
   const payload = { name:n, category:document.getElementById('ep-cat')?.value||'Other',
     rate:parseFloat(document.getElementById('ep-rate')?.value)||0,
     hsn:document.getElementById('ep-hsn')?.value||'998314',
-    gst:parseInt(document.getElementById('ep-gst')?.value)||18 };
+    gst:(document.getElementById('ep-gst')?.value!==undefined&&document.getElementById('ep-gst')?.value!==''?parseInt(document.getElementById('ep-gst').value):18) };
   try {
     await api('api/products.php?id=' + (parseInt(id.replace('p',''))||0), 'PUT', payload);
     STATE.products[idx] = { ...STATE.products[idx], ...payload };
@@ -5063,7 +5063,7 @@ window.saveNewProduct = async function() {
   const payload = { name:n, category:document.getElementById('np-cat')?.value||'Other',
     rate:parseFloat(document.getElementById('np-rate')?.value)||0,
     hsn:document.getElementById('np-hsn')?.value||'998314',
-    gst:parseInt(document.getElementById('np-gst')?.value)||18 };
+    gst:(document.getElementById('np-gst')?.value!==undefined&&document.getElementById('np-gst')?.value!==''?parseInt(document.getElementById('np-gst').value):18) };
   try {
     await api('api/products.php', 'POST', payload);
     const r = await api('api/products.php');
