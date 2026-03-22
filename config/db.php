@@ -13,7 +13,11 @@ define('DB_CHARSET', 'utf8mb4');
 
 define('APP_NAME',    'OPTMS Tech Invoice Manager');
 define('APP_VERSION', '1.0.0');
+<<<<<<< HEAD
 define('APP_URL',     'http://inv.optms.co.in');  // ← your domain (no trailing slash)
+=======
+define('APP_URL',     'http://invs.optms.co.in');  // ← your domain (no trailing slash)
+>>>>>>> 65d81060aba3ad141b4769224e1dbd79391655a2
 
 define('SESSION_LIFETIME', 7200);
 define('UPLOAD_MAX_SIZE',  3145728);
