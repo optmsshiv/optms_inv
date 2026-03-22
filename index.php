@@ -4031,6 +4031,20 @@ function confirmPaid() {
       if (pr.data)   STATE.payments=pr.data;
       renderInvoicesTable(); renderDonutChart(); renderDashRecent(); renderPayments(); updateDashStats();
       toast('✅ Invoice marked paid & payment recorded!','success');
+      // Auto-send WA receipt if toggle ON
+      const waP = STATE.settings.wa || {};
+      if (waP.auto_paid !== '0' && waP.token && waP.pid) {
+        const paidInv = STATE.invoices.find(i => String(i.id) === String(mid));
+        if (paidInv) {
+          const cP = STATE.clients.find(x => String(x.id) === String(paidInv.client)) || {};
+          const phoneP = (cP.wa || cP.whatsapp || cP.phone || '').replace(/\D/g,'');
+          if (phoneP) {
+            const tplP = waP.tpl_paid || getDefaultWATpl('paid');
+            const msgP = formatWAMsg(tplP, paidInv, cP, STATE.settings);
+            sendWA(phoneP, msgP, 'payment_received', paidInv, cP).catch(e => console.warn('WA paid failed:', e.message));
+          }
+        }
+      }
     })
     .catch(e => toast('❌ '+e.message,'error'));
   closeModal('modal-paid');
@@ -5096,6 +5110,20 @@ window.saveInvoice = async function() {
     renderInvoicesTable(); renderDashRecent(); renderDonutChart(); updateDashStats();
     const badge = document.getElementById('badge-invoices');
     if (badge) badge.textContent = STATE.invoices.length;
+    // Auto-send WA if automation toggle is ON
+    const wa = STATE.settings.wa || {};
+    if (wa.auto_inv === '1' && wa.token && wa.pid) {
+      const saved = STATE.invoices.find(i => (i.num||i.invoice_number) === d.num);
+      if (saved) {
+        const c = STATE.clients.find(x => String(x.id) === String(saved.client)) || {};
+        const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g,'');
+        if (phone) {
+          const tpl = wa.tpl_inv || getDefaultWATpl('inv');
+          const msg = formatWAMsg(tpl, saved, c, STATE.settings);
+          sendWA(phone, msg, 'invoice_created', saved, c).catch(e => console.warn('WA send failed:', e.message));
+        }
+      }
+    }
   } catch(e) { toast('❌ ' + e.message, 'error'); }
 };
 
@@ -5130,7 +5158,7 @@ window.saveNewClient = async function() {
     }
     const r = await api('api/clients.php');
     STATE.clients = Array.isArray(r.data) ? r.data : STATE.clients;
-    updateClientDropdown(); renderClients(); populateWADropdown();
+    updateClientDropdown(); renderClients(); populateWAClientDropdown();
     closeModal('modal-addclient');
     ['nc-name','nc-person','nc-wa','nc-email','nc-gst','nc-addr'].forEach(id => {
       const e = document.getElementById(id); if (e) e.value = '';
@@ -5531,6 +5559,8 @@ function populateWAPage() {
 }
 
 
+
+function populateWADropdown() { populateWAClientDropdown(); }
 function populateWAClientDropdown() {
   const sel = document.getElementById('wa-manual-client');
   if (!sel) return;
