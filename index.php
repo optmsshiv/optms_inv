@@ -4458,7 +4458,7 @@ function saveCompanySettings() {
   toast('✅ Company settings saved!', 'success');
 }
 
-// saveWASettings: see window.saveWASettings = async function() below
+// saveWASettings: see // saveWASettings is defined below as window.saveWASettings = async function()
 function saveEmailSettings() {
   toast('✅ Email settings saved!', 'success');
 }
