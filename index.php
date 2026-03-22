@@ -5494,21 +5494,19 @@ Thank you for your continued trust and support. We are grateful for your partner
 
 // ── Send via Meta WhatsApp Business API ──────────────────────
 async function sendWABusinessMsg(toPhone, message, token, pid) {
-  const phone = String(toPhone).replace(/\D/g, '');
-  const to    = phone.length === 10 ? '91' + phone : phone;
-  const res   = await fetch('https://graph.facebook.com/v19.0/' + pid + '/messages', {
+  // All Meta API calls go through our PHP proxy to avoid CORS
+  const res  = await fetch('api/wa_send.php', {
     method:  'POST',
-    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      recipient_type:    'individual',
-      to,
-      type: 'text',
-      text: { preview_url: false, body: message }
-    })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, pid, to: toPhone, message }),
   });
-  const data = await res.json();
-  if (!res.ok || data.error) throw new Error(data.error?.message || 'HTTP ' + res.status);
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); }
+  catch(e) { throw new Error('Server returned non-JSON: ' + text.substring(0, 200)); }
+  if (!res.ok || data.error) {
+    throw new Error(data.error || 'API error ' + res.status);
+  }
   return data;
 }
 
