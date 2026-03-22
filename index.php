@@ -648,6 +648,7 @@ select { cursor: pointer; }
   position: relative; cursor: pointer; transition: .3s; flex-shrink: 0;
 }
 .tog.on { background: var(--teal); }
+.tog.saving { box-shadow: 0 0 0 3px rgba(0,137,123,.35); transition: box-shadow .2s; }
 .tog::after {
   content: ''; position: absolute; width: 18px; height: 18px; background: #fff;
   border-radius: 50%; top: 3px; left: 3px; transition: .3s;
@@ -828,7 +829,27 @@ const SERVER = {
   settings: <?= json_encode($settings) ?>,
   prefix:   <?= json_encode($prefix) ?>,
   appUrl:   '<?= rtrim(APP_URL, '/') ?>',
-  year:     <?= date('Y') ?>
+  year:     <?= date('Y') ?>,
+  // WA settings pre-loaded from DB for instant toggle restore
+  wa: {
+    token:         <?= json_encode($settings['wa_token']        ?? '') ?>,
+    pid:           <?= json_encode($settings['wa_pid']          ?? '') ?>,
+    bid:           <?= json_encode($settings['wa_bid']          ?? '') ?>,
+    test_phone:    <?= json_encode($settings['wa_test_phone']   ?? '') ?>,
+    remind_days:   <?= json_encode($settings['wa_remind_days']  ?? '3') ?>,
+    max_followup:  <?= json_encode($settings['wa_max_followup'] ?? '3') ?>,
+    tpl_inv:       <?= json_encode($settings['wa_tpl_inv']      ?? '') ?>,
+    tpl_paid:      <?= json_encode($settings['wa_tpl_paid']     ?? '') ?>,
+    tpl_remind:    <?= json_encode($settings['wa_tpl_remind']   ?? '') ?>,
+    tpl_overdue:   <?= json_encode($settings['wa_tpl_overdue']  ?? '') ?>,
+    tpl_followup:  <?= json_encode($settings['wa_tpl_followup'] ?? '') ?>,
+    tpl_festival:  <?= json_encode($settings['wa_tpl_festival'] ?? '') ?>,
+    auto_inv:      <?= json_encode($settings['wa_auto_inv']     ?? '0') ?>,
+    auto_paid:     <?= json_encode($settings['wa_auto_paid']    ?? '1') ?>,
+    auto_remind:   <?= json_encode($settings['wa_auto_remind']  ?? '1') ?>,
+    auto_overdue:  <?= json_encode($settings['wa_auto_overdue'] ?? '1') ?>,
+    auto_followup: <?= json_encode($settings['wa_auto_followup']?? '0') ?>,
+  }
 };
 </script>
 
@@ -1665,10 +1686,10 @@ const SERVER = {
         <div class="settings-block">
           <div class="sb-title"><i class="fab fa-whatsapp" style="color:#25D366"></i> WhatsApp Business API</div>
           <div class="form-grid g2">
-            <div class="field"><label>API Token</label><input type="password" id="wa-token" placeholder="Bearer token from Meta Developer Console"></div>
-            <div class="field"><label>Phone Number ID</label><input id="wa-pid" placeholder="123456789012345"></div>
-            <div class="field"><label>Business Account ID</label><input id="wa-bid" placeholder="Your WABA ID"></div>
-            <div class="field"><label>Test Phone Number</label><input id="wa-test-phone" placeholder="+91 XXXXX XXXXX (for test messages)"></div>
+            <div class="field"><label>API Token</label><input type="password" id="wa-token" placeholder="Bearer token from Meta Developer Console" value="<?= htmlspecialchars($settings['wa_token']??'') ?>"></div>
+            <div class="field"><label>Phone Number ID</label><input id="wa-pid" placeholder="123456789012345" value="<?= htmlspecialchars($settings['wa_pid']??'') ?>"></div>
+            <div class="field"><label>Business Account ID</label><input id="wa-bid" placeholder="Your WABA ID" value="<?= htmlspecialchars($settings['wa_bid']??'') ?>"></div>
+            <div class="field"><label>Test Phone Number</label><input id="wa-test-phone" placeholder="+91 XXXXX XXXXX" value="<?= htmlspecialchars($settings['wa_test_phone']??'') ?>"></div>
           </div>
           <div style="display:flex;gap:10px;margin-top:14px">
             <button class="btn btn-whatsapp" onclick="testWA()"><i class="fab fa-whatsapp"></i> Send Test Message</button>
@@ -1680,11 +1701,11 @@ const SERVER = {
         <div class="settings-block">
           <div class="sb-title"><i class="fas fa-robot"></i> Automation Triggers</div>
           <div class="toggle-list">
-            <div class="toggle-item"><span><strong>New Invoice</strong> — auto-send when invoice created</span><div class="tog" id="twa1" onclick="this.classList.toggle('on')"></div></div>
-            <div class="toggle-item"><span><strong>Payment Receipt</strong> — send when marked paid</span><div class="tog on" id="twa2" onclick="this.classList.toggle('on')"></div></div>
-            <div class="toggle-item"><span><strong>Due Soon</strong> — reminder 3 days before due date</span><div class="tog on" id="twa3" onclick="this.classList.toggle('on')"></div></div>
-            <div class="toggle-item"><span><strong>Overdue Alert</strong> — send on due date if unpaid</span><div class="tog on" id="twa4" onclick="this.classList.toggle('on')"></div></div>
-            <div class="toggle-item"><span><strong>Overdue Follow-up</strong> — repeat every 7 days while overdue</span><div class="tog" id="twa5" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-item"><span><strong>New Invoice</strong> — auto-send when invoice created</span><div class="tog <?= (($settings['wa_auto_inv']??'0')==='1')?'on':'' ?>" id="twa1" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_inv', this)"></div></div>
+            <div class="toggle-item"><span><strong>Payment Receipt</strong> — send when marked paid</span><div class="tog <?= (($settings['wa_auto_paid']??'1')!=='0')?'on':'' ?>" id="twa2" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_paid', this)"></div></div>
+            <div class="toggle-item"><span><strong>Due Soon</strong> — reminder 3 days before due date</span><div class="tog <?= (($settings['wa_auto_remind']??'1')!=='0')?'on':'' ?>" id="twa3" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_remind', this)"></div></div>
+            <div class="toggle-item"><span><strong>Overdue Alert</strong> — send on due date if unpaid</span><div class="tog <?= (($settings['wa_auto_overdue']??'1')!=='0')?'on':'' ?>" id="twa4" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_overdue', this)"></div></div>
+            <div class="toggle-item"><span><strong>Overdue Follow-up</strong> — repeat every 7 days while overdue</span><div class="tog <?= (($settings['wa_auto_followup']??'0')==='1')?'on':'' ?>" id="twa5" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_followup', this)"></div></div>
           </div>
           <div class="form-grid g2" style="margin-top:14px">
             <div class="field"><label>Reminder Days Before Due</label>
@@ -4458,7 +4479,67 @@ function saveCompanySettings() {
   toast('✅ Company settings saved!', 'success');
 }
 
-// saveWASettings: see window.saveWASettings = async function() below
+// saveWASettings: see // saveWASettings is defined below as // Auto-save a single WA toggle immediately when clicked
+async function saveWAToggle(key, el) {
+  const val = el.classList.contains('on') ? '1' : '0';
+  // Update STATE immediately
+  if (!STATE.settings.wa) STATE.settings.wa = {};
+  STATE.settings.wa[key.replace('wa_', '')] = val;
+  // Save single key to DB
+  try {
+    await api('api/settings.php', 'POST', { [key]: val });
+    // Brief visual feedback on the toggle
+    el.classList.add('saving');
+    setTimeout(() => el.classList.remove('saving'), 700);
+  } catch(e) {
+    // Revert on error
+    el.classList.toggle('on');
+    toast('❌ Failed to save: ' + e.message, 'error');
+  }
+}
+
+window.saveWASettings = async function() {
+  // Save all WA settings (credentials + templates) to DB
+  const tog = id => document.getElementById(id)?.classList.contains('on') ? '1' : '0';
+  const val = id => document.getElementById(id)?.value || '';
+  const payload = {
+    wa_token:         val('wa-token'),
+    wa_pid:           val('wa-pid'),
+    wa_bid:           val('wa-bid'),
+    wa_test_phone:    val('wa-test-phone'),
+    wa_remind_days:   val('wa-remind-days') || '3',
+    wa_max_followup:  val('wa-max-followup') || '3',
+    wa_tpl_inv:       val('wa-tpl-inv'),
+    wa_tpl_paid:      val('wa-tpl-paid'),
+    wa_tpl_remind:    val('wa-tpl-remind'),
+    wa_tpl_overdue:   val('wa-tpl-overdue'),
+    wa_tpl_followup:  val('wa-tpl-followup'),
+    wa_tpl_festival:  val('wa-tpl-festival'),
+    wa_auto_inv:      tog('twa1'),
+    wa_auto_paid:     tog('twa2'),
+    wa_auto_remind:   tog('twa3'),
+    wa_auto_overdue:  tog('twa4'),
+    wa_auto_followup: tog('twa5'),
+  };
+  // Update STATE immediately with all keys
+  if (!STATE.settings.wa) STATE.settings.wa = {};
+  Object.assign(STATE.settings.wa, {
+    token: payload.wa_token, pid: payload.wa_pid, bid: payload.wa_bid,
+    test_phone: payload.wa_test_phone,
+    remind_days: payload.wa_remind_days, max_followup: payload.wa_max_followup,
+    tpl_inv: payload.wa_tpl_inv, tpl_paid: payload.wa_tpl_paid,
+    tpl_remind: payload.wa_tpl_remind, tpl_overdue: payload.wa_tpl_overdue,
+    tpl_followup: payload.wa_tpl_followup, tpl_festival: payload.wa_tpl_festival,
+    auto_inv: payload.wa_auto_inv, auto_paid: payload.wa_auto_paid,
+    auto_remind: payload.wa_auto_remind, auto_overdue: payload.wa_auto_overdue,
+    auto_followup: payload.wa_auto_followup,
+  });
+  try {
+    await api('api/settings.php', 'POST', payload);
+    toast('✅ WhatsApp settings saved!', 'success');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+};
+
 function saveEmailSettings() {
   toast('✅ Email settings saved!', 'success');
 }
@@ -4740,6 +4821,10 @@ document.addEventListener('click', e => closeAllDropdowns(e));
   STATE.settings.activeTemplate = parseInt(s.active_template) || 1;
   STATE.settings.defaultGST     = (s.default_gst !== undefined && s.default_gst !== null && s.default_gst !== '') ? parseInt(s.default_gst) : 18;
   STATE.settings.dueDays        = parseInt(s.due_days) || 15;
+  // Apply WA settings from PHP-rendered SERVER.wa (guaranteed accurate)
+  if (SERVER.wa) {
+    STATE.settings.wa = Object.assign({}, SERVER.wa);
+  }
 })();
 
 // ── API helper ──────────────────────────────────────────────────
@@ -4825,36 +4910,6 @@ async function loadAllData() {
       STATE.settings.defaultGST     = (s.default_gst !== undefined && s.default_gst !== '') ? parseInt(s.default_gst) : 18;
       STATE.settings.dueDays        = parseInt(s.due_days)||15;
       STATE.settings.defaultBank    = s.default_bank || '';
-      // WA settings
-      STATE.settings.wa = {
-        token:       s.wa_token    || '',
-        pid:         s.wa_pid      || '',
-        bid:         s.wa_bid      || '',
-        remindDays:  s.wa_remind_days   || '3',
-        maxFollowup: s.wa_max_followup  || '3',
-        tplInv:      s.wa_tpl_inv      || "Hi {client_name}! 👋\n\n📋 *Invoice #{invoice_no}*\n💼 Service: {service}\n💰 Amount: *{currency}{amount}*\n📅 Due Date: {due_date}\n🏢 From: {company_name}\n\n💳 Pay via UPI: *{upi}*\n{bank_details}\n\nThank you for your business! 🙏",
-        tplPaid:     s.wa_tpl_paid     || "Hi {client_name}! 🎉\n\n✅ *Payment Received!*\n📋 Invoice: #{invoice_no}\n💰 Amount Paid: *{currency}{amount}*\n🏢 {company_name}\n\nYour account is now clear. Thank you for prompt payment! 🙏",
-        tplRemind:   s.wa_tpl_remind   || "Hi {client_name}! 🔔\n\n⏰ *Payment Reminder*\n📋 Invoice: #{invoice_no}\n💼 Service: {service}\n💰 Amount: *{currency}{amount}*\n📅 Due: *{due_date}*\n\n💳 UPI: {upi}\n\nPlease arrange payment before due date. 🙏",
-        tplOverdue:  s.wa_tpl_overdue  || "Hi {client_name}! ⚠️\n\n🔴 *OVERDUE NOTICE*\n📋 Invoice: #{invoice_no}\n💰 Amount: *{currency}{amount}*\n📅 Was due: {due_date}\n⏳ Overdue by: *{days_overdue} days*\n\n💳 Pay now via UPI: *{upi}*\nOr: {bank_details}\n\nPlease settle immediately. 📞 {company_phone}",
-        tplFollowup: s.wa_tpl_followup || "Dear {client_name}, this is follow-up #{followup_no} for Invoice #{invoice_no} ({currency}{amount}), overdue {days_overdue} days. Please clear at earliest. UPI: {upi}",
-        tplFestival: s.wa_tpl_festival || "Hi {client_name}! 🌟 Warm wishes from {company_name}! May this occasion bring you joy & prosperity. Thank you for your trust! 🙏",
-        autoInv:     s.wa_auto_inv     === '1',
-        autoPaid:    s.wa_auto_paid    !== '0',
-        autoRemind:  s.wa_auto_remind  !== '0',
-        autoOverdue: s.wa_auto_overdue !== '0',
-        autoFollowup:s.wa_auto_followup === '1',
-        // TPL_CUSTOM colors
-        tplColor1:   s.tpl_color1   || '',
-        tplColor2:   s.tpl_color2   || '',
-        tplFont:     s.tpl_font     || '',
-        tplNameSize: s.tpl_name_size|| '',
-        tplNameColor:s.tpl_name_color||'',
-        tplNameWeight:s.tpl_name_weight||'',
-        tplNameStyle:s.tpl_name_style||'',
-        tplFooter:   s.tpl_footer_text||'',
-        tplTagline:  s.tpl_tagline  ||'',
-        tplWatermark:s.tpl_watermark_text||'PAID',
-      };
       // Restore TPL_CUSTOM from saved settings
       if (s.tpl_color1)      TPL_CUSTOM.color1          = s.tpl_color1;
       if (s.tpl_color2)      TPL_CUSTOM.color2          = s.tpl_color2;
@@ -5434,58 +5489,8 @@ Thank you for your continued trust and support. We are grateful for your partner
 }
 
 // ── Save WA settings to DB + STATE ───────────────────────────
-window.saveWASettings = async function() {
-  const tog = id => document.getElementById(id)?.classList.contains('on') ? '1' : '0';
-  const val = id => document.getElementById(id)?.value || '';
 
-  const payload = {
-    wa_token:          val('wa-token'),
-    wa_pid:            val('wa-pid'),
-    wa_bid:            val('wa-bid'),
-    wa_test_phone:     val('wa-test-phone'),
-    wa_remind_days:    val('wa-remind-days') || '3',
-    wa_max_followup:   val('wa-max-followup') || '3',
-    wa_tpl_inv:        val('wa-tpl-inv'),
-    wa_tpl_paid:       val('wa-tpl-paid'),
-    wa_tpl_remind:     val('wa-tpl-remind'),
-    wa_tpl_overdue:    val('wa-tpl-overdue'),
-    wa_tpl_followup:   val('wa-tpl-followup'),
-    wa_tpl_festival:   val('wa-tpl-festival'),
-    wa_auto_inv:       tog('twa1'),
-    wa_auto_paid:      tog('twa2'),
-    wa_auto_remind:    tog('twa3'),
-    wa_auto_overdue:   tog('twa4'),
-    wa_auto_followup:  tog('twa5'),
-  };
-
-  // Update STATE immediately (all snake_case)
-  STATE.settings.wa = {
-    token:         payload.wa_token,
-    pid:           payload.wa_pid,
-    bid:           payload.wa_bid,
-    test_phone:    payload.wa_test_phone,
-    remind_days:   payload.wa_remind_days,
-    max_followup:  payload.wa_max_followup,
-    tpl_inv:       payload.wa_tpl_inv,
-    tpl_paid:      payload.wa_tpl_paid,
-    tpl_remind:    payload.wa_tpl_remind,
-    tpl_overdue:   payload.wa_tpl_overdue,
-    tpl_followup:  payload.wa_tpl_followup,
-    tpl_festival:  payload.wa_tpl_festival,
-    auto_inv:      payload.wa_auto_inv,
-    auto_paid:     payload.wa_auto_paid,
-    auto_remind:   payload.wa_auto_remind,
-    auto_overdue:  payload.wa_auto_overdue,
-    auto_followup: payload.wa_auto_followup,
-  };
-
-  try {
-    await api('api/settings.php', 'POST', payload);
-    toast('✅ WhatsApp settings saved!', 'success');
-  } catch(e) {
-    toast('❌ ' + e.message, 'error');
-  }
-};
+// saveWASettings: defined above
 
 // ── Send via Meta WhatsApp Business API ──────────────────────
 async function sendWABusinessMsg(toPhone, message, token, pid) {
