@@ -1056,6 +1056,7 @@ const SERVER = {
         <div class="dash-card" style="flex:0 0 200px;min-width:0">
           <div class="card-header"><span class="card-title">Quick Insights</span></div>
           <div id="dashQuickKpis"></div>
+        <div class="dash-card" id="dashWACard" style="margin-top:0"></div>
         </div>
         <!-- Recent Activity -->
         <div class="dash-card" style="flex:1;min-width:0">
@@ -1701,7 +1702,13 @@ const SERVER = {
         <div class="settings-block">
           <div class="sb-title"><i class="fas fa-robot"></i> Automation Triggers</div>
           <div class="toggle-list">
-            <div class="toggle-item"><span><strong>New Invoice</strong> — auto-send when invoice created</span><div class="tog <?= (($settings['wa_auto_inv']??'0')==='1')?'on':'' ?>" id="twa1" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_inv', this)"></div></div>
+            <div class="toggle-item" style="flex-wrap:wrap;gap:6px">
+              <span style="flex:1"><strong>New Invoice</strong> — auto-send when invoice created</span>
+              <div class="tog <?= (($settings['wa_auto_inv']??'0')==='1')?'on':'' ?>" id="twa1" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_inv', this)"></div>
+            </div>
+            <div style="padding:8px 12px;margin:-4px 0 8px;background:var(--teal-bg);border-radius:0 0 8px 8px;font-size:11px;color:var(--teal)" id="twa1-hint">
+              When ON: sends invoice details, amount, due date, UPI, and item list to client automatically
+            </div>
             <div class="toggle-item"><span><strong>Payment Receipt</strong> — send when marked paid</span><div class="tog <?= (($settings['wa_auto_paid']??'1')!=='0')?'on':'' ?>" id="twa2" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_paid', this)"></div></div>
             <div class="toggle-item"><span><strong>Due Soon</strong> — reminder 3 days before due date</span><div class="tog <?= (($settings['wa_auto_remind']??'1')!=='0')?'on':'' ?>" id="twa3" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_remind', this)"></div></div>
             <div class="toggle-item"><span><strong>Overdue Alert</strong> — send on due date if unpaid</span><div class="tog <?= (($settings['wa_auto_overdue']??'1')!=='0')?'on':'' ?>" id="twa4" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_overdue', this)"></div></div>
@@ -1785,11 +1792,30 @@ const SERVER = {
           <div class="field" style="margin-top:12px"><label>Festival Message</label>
             <textarea id="wa-tpl-festival" style="min-height:90px">Hi {client_name}! 🌟 Wishing you and your family a very Happy Diwali! 🪔✨ May this festival bring you joy, prosperity, and success. Thank you for your continued trust in {company_name}! 🙏</textarea>
           </div>
+          <!-- Schedule options -->
+          <div class="form-grid g2" style="margin-top:12px">
+            <div class="field">
+              <label>Schedule Date &amp; Time <span style="font-size:10px;color:var(--muted)">(leave blank to send now)</span></label>
+              <input type="datetime-local" id="wa-festival-schedule" style="width:100%">
+            </div>
+            <div class="field">
+              <label>Repeat <span style="font-size:10px;color:var(--muted)">(for recurring campaigns)</span></label>
+              <select id="wa-festival-repeat">
+                <option value="">No repeat (one-time)</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly (annual festival)</option>
+              </select>
+            </div>
+          </div>
           <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
-            <button class="btn btn-whatsapp" onclick="previewFestivalMsg()"><i class="fas fa-eye"></i> Preview Message</button>
-            <button class="btn btn-primary" onclick="sendFestivalBulk()"><i class="fab fa-whatsapp"></i> Send to All Selected Clients</button>
+            <button class="btn btn-outline" onclick="previewFestivalMsg()"><i class="fas fa-eye"></i> Preview</button>
+            <button class="btn btn-primary" onclick="saveFestivalCampaign()"><i class="fas fa-save"></i> Save Campaign</button>
+            <button class="btn btn-whatsapp" onclick="sendFestivalBulk()"><i class="fab fa-whatsapp"></i> Send Now</button>
           </div>
           <div id="wa-bulk-log" style="margin-top:14px;max-height:150px;overflow-y:auto;background:var(--bg);border-radius:8px;padding:10px;font-size:12px;color:var(--muted);display:none"></div>
+          <!-- Saved campaigns -->
+          <div id="wa-campaigns-list" style="margin-top:12px"></div>
         </div>
 
         <!-- Approved Template Configuration -->
@@ -2409,7 +2435,7 @@ function showPage(name, el) {
   if (name === 'clients') { updateClientDropdown(); renderClients(); }
   if (name === 'dashboard') renderDashboard();
   if (name === 'templates') renderTemplatesGrid();
-  if (name === 'whatsapp')  setTimeout(populateWAPage, 100);
+  if (name === 'whatsapp')  { setTimeout(populateWAPage, 100); setTimeout(renderFestivalCampaigns, 200); }
   if (name === 'settings')  populateSettingsForm();
 }
 
@@ -3051,20 +3077,26 @@ function buildInvoiceHTML(d, forPrint) {
 
 // ── Shared helpers for templates ──
 function tplLogoHTML(d, sc) {
-  const font = (window.TPL_CUSTOM && TPL_CUSTOM.font) ? TPL_CUSTOM.font : "'Public Sans',sans-serif";
-  const tagline = (window.TPL_CUSTOM && TPL_CUSTOM.tagline) ? TPL_CUSTOM.tagline : '';
-  const logo = d.companyLogo || d.logo || sc.logo || STATE.settings.logo || '';
-  const showLogo = !d.popt || d.popt.logo !== false;  // default: show logo
+  const C        = window.TPL_CUSTOM || {};
+  const font      = C.font             || "'Public Sans',sans-serif";
+  const tagline   = C.tagline          || '';
+  const nameSize  = (C.companyNameSize  ? parseInt(C.companyNameSize) : 28) + 'px';
+  const nameColor = C.companyNameColor  || '#ffffff';
+  const nameWt    = C.companyNameWeight || '800';
+  const company   = sc.company || STATE.settings.company || '';
+  const logo      = d.companyLogo || d.logo || sc.logo || STATE.settings.logo || '';
+  const showLogo  = !d.popt || d.popt.logo !== false;
+
+  const nameDiv = `<div style="font-size:${nameSize};font-weight:${nameWt};color:${nameColor};letter-spacing:-0.5px;font-family:${font};line-height:1.1;margin-top:6px">${company}</div>`;
+  const tagDiv  = tagline ? `<div style="font-size:11px;opacity:.65;margin-top:3px;font-family:${font};color:${nameColor}">${tagline}</div>` : '';
+
   if (showLogo && logo) {
-    return `<div><img src="${logo}" style="height:52px;max-width:200px;object-fit:contain;display:block" onerror="this.style.display='none'">` +
-           (tagline ? `<div style="font-size:11px;opacity:.6;margin-top:4px;font-family:${font}">${tagline}</div>` : '') + '</div>';
+    return `<div>
+      <img src="${logo}" style="height:52px;max-width:200px;object-fit:contain;display:block" onerror="this.style.display='none'">
+      ${nameDiv}${tagDiv}
+    </div>`;
   }
-  const nameSize   = (window.TPL_CUSTOM && TPL_CUSTOM.companyNameSize)   ? TPL_CUSTOM.companyNameSize   + 'px' : '28px';
-  const nameColor  = (window.TPL_CUSTOM && TPL_CUSTOM.companyNameColor)  ? TPL_CUSTOM.companyNameColor  : '#ffffff';
-  const nameWeight = (window.TPL_CUSTOM && TPL_CUSTOM.companyNameWeight) ? TPL_CUSTOM.companyNameWeight : '800';
-  const nameStyle  = (window.TPL_CUSTOM && TPL_CUSTOM.companyNameStyle)  ? TPL_CUSTOM.companyNameStyle  : 'normal';
-  return `<div style="font-size:${nameSize};font-weight:${nameWeight};font-style:${nameStyle};color:${nameColor};letter-spacing:-0.5px;font-family:${font}">${sc.company||STATE.settings.company||''}</div>` +
-         (tagline ? `<div style="font-size:11px;opacity:.7;margin-top:3px;font-family:${font}">${tagline}</div>` : '');
+  return `<div>${nameDiv}${tagDiv}</div>`;
 }
 function tplClientLogoHTML(d) {
   if (!d.popt.clientLogo || !d.clientLogo) return '';
@@ -3092,8 +3124,17 @@ function tplWatermark(d) {
   return `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:80px;font-weight:900;color:rgba(0,150,0,.12);z-index:0;pointer-events:none;white-space:nowrap;letter-spacing:8px">${wText}</div>`;
 }
 function tplBankHTML(d, color='#00695C', bg='#e0f2f1', border='') {
-  if (!d.popt.bank || !d.bank) return '';
-  return `<div style="margin-top:16px;background:${bg};border-radius:8px;padding:12px 14px;font-size:11px;color:${color};line-height:1.7;${border}"><strong>💳 Payment Details:</strong><br>${d.bank}</div>`;
+  if (!d.popt || !d.popt.bank || !d.bank) return '';
+  const sc  = STATE.settings;
+  const upi = sc.upi || '';
+  const upiLine = upi
+    ? `<div style="margin-top:8px;background:rgba(0,0,0,.06);border-radius:6px;padding:8px 10px;font-size:13px;font-weight:800;letter-spacing:.5px">📲 UPI: ${upi}</div>`
+    : '';
+  return `<div style="margin-top:16px;background:${bg};border-radius:8px;padding:12px 14px;font-size:11px;color:${color};line-height:1.8;${border}">
+    <div style="font-weight:700;font-size:12px;margin-bottom:4px">💳 Payment Details:</div>
+    <div>${d.bank.replace(/\|/g,'<span style="opacity:.4;margin:0 4px">|</span>')}</div>
+    ${upiLine}
+  </div>`;
 }
 function tplQrHTML(d) {
   if (!d.popt.qr || !d.qrUrl) return '';
@@ -3120,7 +3161,18 @@ function tplSignHTML(d, sc_arg, label='Authorised Signatory') {
   </div>`;
 }
 function tplNotesHTML(d, color='#795548', bg='#fff8e1') {
-  if (!d.popt.notes || !d.notes) return '';
+  if (!d.popt || !d.popt.notes) return '';
+  const isPaid = d.status === 'Paid';
+  if (isPaid) {
+    // Show positive thank-you message for paid invoices instead of notes
+    const sc = STATE.settings;
+    return `<div style="margin-top:10px;background:linear-gradient(135deg,#E8F5E9,#F1F8E9);border-radius:8px;padding:12px 14px;font-size:11px;color:#2E7D32;line-height:1.8;border-left:3px solid #4CAF50">
+      <div style="font-weight:800;font-size:13px;margin-bottom:4px">🎉 Thank You for Your Payment!</div>
+      <div>We appreciate your prompt payment and continued trust in <strong>${sc.company||''}</strong>. Your account is now clear and up to date.</div>
+      <div style="margin-top:6px;opacity:.8">We look forward to serving you again. For any queries, reach us at ${sc.phone||sc.email||''}.</div>
+    </div>`;
+  }
+  if (!d.notes) return '';
   return `<div style="margin-top:10px;background:${bg};border-radius:8px;padding:10px 14px;font-size:11px;color:${color};line-height:1.6">${d.notes}</div>`;
 }
 function tplTncHTML(d, color='#888') {
@@ -4876,6 +4928,50 @@ function renderDashKpis() {
     <div style="width:30px;height:30px;border-radius:7px;background:${k.col}20;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas ${k.ic}" style="color:${k.col};font-size:12px"></i></div>
     <div><div style="font-size:10px;color:var(--muted)">${k.l}</div><div style="font-weight:700;font-size:13px">${k.v}</div></div>
   </div>`).join('');
+
+  // WA info card
+  const waEl = document.getElementById('dashWACard');
+  if (waEl) {
+    const wa       = STATE.settings.wa || {};
+    const hasAPI   = !!(wa.token && wa.pid);
+    const autoOn   = wa.auto_inv === '1' || wa.auto_paid !== '0' || wa.auto_remind !== '0';
+    const modeLabel = wa.msg_mode === 'template' ? '✅ Template Mode' : '💬 Session Mode';
+    const toggOn   = [wa.auto_inv==='1', wa.auto_paid!=='0', wa.auto_remind!=='0', wa.auto_overdue!=='0'].filter(Boolean).length;
+    waEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="width:38px;height:38px;background:linear-gradient(135deg,#25D366,#128C7E);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📱</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">WhatsApp Automation</div>
+          <div style="font-size:11px;color:var(--muted)">${modeLabel}</div>
+        </div>
+        <div style="margin-left:auto;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${hasAPI?'#E8F5E9':'#FFF3E0'};color:${hasAPI?'#2E7D32':'#E65100'}">
+          ${hasAPI ? '● Connected' : '○ Not Connected'}
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:${wa.auto_inv==='1'?'#E8F5E9':'var(--bg)'};border-radius:8px;padding:8px 10px;border:1px solid ${wa.auto_inv==='1'?'#A5D6A7':'var(--border)'}">
+          <div style="font-size:10px;color:var(--muted)">New Invoice</div>
+          <div style="font-size:12px;font-weight:700;color:${wa.auto_inv==='1'?'#2E7D32':'var(--muted)'}">${wa.auto_inv==='1'?'✓ Auto-send':'○ Off'}</div>
+        </div>
+        <div style="background:${wa.auto_paid!=='0'?'#E8F5E9':'var(--bg)'};border-radius:8px;padding:8px 10px;border:1px solid ${wa.auto_paid!=='0'?'#A5D6A7':'var(--border)'}">
+          <div style="font-size:10px;color:var(--muted)">Payment Receipt</div>
+          <div style="font-size:12px;font-weight:700;color:${wa.auto_paid!=='0'?'#2E7D32':'var(--muted)'}">${wa.auto_paid!=='0'?'✓ Auto-send':'○ Off'}</div>
+        </div>
+        <div style="background:${wa.auto_remind!=='0'?'#E8F5E9':'var(--bg)'};border-radius:8px;padding:8px 10px;border:1px solid ${wa.auto_remind!=='0'?'#A5D6A7':'var(--border)'}">
+          <div style="font-size:10px;color:var(--muted)">Due Reminder</div>
+          <div style="font-size:12px;font-weight:700;color:${wa.auto_remind!=='0'?'#2E7D32':'var(--muted)'}">${wa.auto_remind!=='0'?'✓ Auto-send':'○ Off'}</div>
+        </div>
+        <div style="background:${wa.auto_overdue!=='0'?'#E8F5E9':'var(--bg)'};border-radius:8px;padding:8px 10px;border:1px solid ${wa.auto_overdue!=='0'?'#A5D6A7':'var(--border)'}">
+          <div style="font-size:10px;color:var(--muted)">Overdue Alert</div>
+          <div style="font-size:12px;font-weight:700;color:${wa.auto_overdue!=='0'?'#2E7D32':'var(--muted)'}">${wa.auto_overdue!=='0'?'✓ Auto-send':'○ Off'}</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;text-align:center">
+        <button class="cf-btn" onclick="showPage('whatsapp',null)" style="font-size:11px;color:var(--teal);border-color:var(--teal)">
+          <i class="fab fa-whatsapp"></i> Manage WhatsApp Settings
+        </button>
+      </div>`;
+  }
 }
 
 function renderDashTopClients() {
@@ -5310,6 +5406,7 @@ document.addEventListener('DOMContentLoaded', function() {
       renderNotifications();
       populateSettingsForm();
       populateWAPage();
+      renderFestivalCampaigns();
       resetCreateForm();
       STATE.filteredInvoices = [...STATE.invoices];
       document.getElementById('badge-invoices').textContent = STATE.invoices.length;
@@ -5924,8 +6021,8 @@ window.applyTplCustomization = function() {
   TPL_CUSTOM.watermarkText  = document.getElementById('tpl-watermark-text')?.value || 'PAID';
   TPL_CUSTOM.companyNameSize  = document.getElementById('tpl-name-size')?.value    || '28';
   TPL_CUSTOM.companyNameColor = document.getElementById('tpl-name-color')?.value   || '#ffffff';
-  TPL_CUSTOM.companyNameWeight= document.getElementById('tpl-name-weight')?.value  || '800';
-  TPL_CUSTOM.companyNameStyle = document.getElementById('tpl-name-style')?.value   || 'normal';
+  TPL_CUSTOM.companyNameWeight= document.getElementById('tpl-name-style')?.value   || '800';  // tpl-name-style stores weight
+  TPL_CUSTOM.companyNameStyle = 'normal';  // italic toggle reserved
   TPL_CUSTOM.logoPosition     = document.getElementById('tpl-logo-pos')?.value     || 'left';
   // Sync color hex inputs with color pickers
   const c1hex = document.getElementById('tpl-color1-hex');
@@ -5998,6 +6095,62 @@ function setWAMode(mode) {
   STATE.settings.wa.msg_mode = mode;
 }
 
+
+
+// ── Festival Campaign Save & Schedule ─────────────────────────
+window.saveFestivalCampaign = async function() {
+  const payload = {
+    wa_festival_tpl:      document.getElementById('wa-tpl-festival')?.value   || '',
+    wa_festival_sendto:   document.getElementById('wa-send-to')?.value        || 'all',
+    wa_festival_img:      document.getElementById('wa-festival-img')?.value   || '',
+    wa_festival_schedule: document.getElementById('wa-festival-schedule')?.value || '',
+    wa_festival_repeat:   document.getElementById('wa-festival-repeat')?.value || '',
+    wa_festival_name:     document.getElementById('wa-festival')?.value        || 'custom',
+  };
+  try {
+    await api('api/settings.php', 'POST', payload);
+    // Store locally
+    if (!STATE.settings.wa) STATE.settings.wa = {};
+    STATE.settings.wa.festival_schedule = payload.wa_festival_schedule;
+    STATE.settings.wa.festival_repeat   = payload.wa_festival_repeat;
+    // Show confirmation
+    const schedTime = payload.wa_festival_schedule
+      ? ' — scheduled for ' + new Date(payload.wa_festival_schedule).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})
+      : '';
+    toast('✅ Campaign saved!' + schedTime, 'success');
+    renderFestivalCampaigns();
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+};
+
+function renderFestivalCampaigns() {
+  const el = document.getElementById('wa-campaigns-list');
+  if (!el) return;
+  const wa = STATE.settings.wa || {};
+  if (!wa.festival_schedule && !wa.festival_repeat) { el.innerHTML = ''; return; }
+  const schedTime = wa.festival_schedule
+    ? new Date(wa.festival_schedule).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})
+    : 'Not scheduled';
+  el.innerHTML = `<div style="background:var(--teal-bg);border-radius:8px;padding:10px 14px;font-size:12px;border:1px solid var(--teal);margin-top:4px">
+    <div style="font-weight:700;color:var(--teal);margin-bottom:4px"><i class="fas fa-calendar-check"></i> Saved Campaign</div>
+    <div>📅 Schedule: <strong>${schedTime}</strong></div>
+    ${wa.festival_repeat ? `<div>🔁 Repeat: <strong>${wa.festival_repeat}</strong></div>` : ''}
+    <div>👥 Send to: <strong>${wa.festival_sendto || 'all clients'}</strong></div>
+    <button onclick="clearFestivalCampaign()" style="margin-top:8px;font-size:11px;padding:4px 10px;border:1px solid var(--red);color:var(--red);background:none;border-radius:6px;cursor:pointer">
+      <i class="fas fa-times"></i> Clear Campaign
+    </button>
+  </div>`;
+}
+
+window.clearFestivalCampaign = async function() {
+  try {
+    await api('api/settings.php','POST',{wa_festival_schedule:'',wa_festival_repeat:''});
+    if (STATE.settings.wa) { STATE.settings.wa.festival_schedule=''; STATE.settings.wa.festival_repeat=''; }
+    document.getElementById('wa-festival-schedule').value = '';
+    document.getElementById('wa-festival-repeat').value   = '';
+    renderFestivalCampaigns();
+    toast('Campaign cleared','info');
+  } catch(e) { toast('❌ '+e.message,'error'); }
+};
 
 
 </script>
