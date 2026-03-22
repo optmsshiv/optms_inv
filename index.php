@@ -1528,6 +1528,44 @@ const SERVER = {
               </div>
             </div>
             <div class="field">
+              <label>Company Name Size <span style="font-size:10px;color:var(--muted)">(px)</span></label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="range" id="tpl-name-size" min="16" max="48" value="28" style="flex:1" oninput="document.getElementById('tpl-name-size-val').textContent=this.value+'px'">
+                <span id="tpl-name-size-val" style="width:36px;font-size:12px;font-weight:700;color:var(--teal)">28px</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Company Name Color</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="color" id="tpl-name-color" value="#ffffff" style="width:44px;height:36px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px">
+                <div style="display:flex;gap:4px">
+                  <span onclick="document.getElementById('tpl-name-color').value='#ffffff'" style="width:20px;height:20px;background:#fff;border-radius:4px;cursor:pointer;border:1px solid #ddd"></span>
+                  <span onclick="document.getElementById('tpl-name-color').value='#FFD54F'" style="width:20px;height:20px;background:#FFD54F;border-radius:4px;cursor:pointer;border:1px solid #ddd"></span>
+                  <span onclick="document.getElementById('tpl-name-color').value='#4DB6AC'" style="width:20px;height:20px;background:#4DB6AC;border-radius:4px;cursor:pointer;border:1px solid #ddd"></span>
+                  <span onclick="document.getElementById('tpl-name-color').value='#1A2332'" style="width:20px;height:20px;background:#1A2332;border-radius:4px;cursor:pointer;border:1px solid #ddd"></span>
+                  <span onclick="document.getElementById('tpl-name-color').value='#E53935'" style="width:20px;height:20px;background:#E53935;border-radius:4px;cursor:pointer;border:1px solid #ddd"></span>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label>Company Name Style</label>
+              <select id="tpl-name-style">
+                <option value="800">Extra Bold</option>
+                <option value="700" selected>Bold</option>
+                <option value="600">Semi-Bold</option>
+                <option value="400">Normal</option>
+                <option value="300">Light</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Logo Position</label>
+              <select id="tpl-logo-pos">
+                <option value="left">Left (Default)</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+            </div>
+            <div class="field">
               <label>Font Family</label>
               <select id="tpl-font">
                 <option value="'Public Sans',sans-serif">Public Sans (Default)</option>
@@ -1569,6 +1607,44 @@ const SERVER = {
             <div class="field">
               <label>Page Watermark Text <span style="font-size:10px;color:var(--muted)">(on paid invoices)</span></label>
               <input id="tpl-watermark-text" value="PAID" placeholder="PAID">
+            </div>
+            <div class="field">
+              <label>Company Name Size (px)</label>
+              <input type="number" id="tpl-name-size" value="28" min="14" max="56" placeholder="28">
+            </div>
+            <div class="field">
+              <label>Company Name Color</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="color" id="tpl-name-color" value="#ffffff" style="width:44px;height:38px;border:1.5px solid var(--border);border-radius:8px;padding:2px">
+                <input id="tpl-name-color-hex" value="#ffffff" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:13px" oninput="document.getElementById('tpl-name-color').value=this.value">
+              </div>
+            </div>
+            <div class="field">
+              <label>Company Name Font Weight</label>
+              <select id="tpl-name-weight">
+                <option value="400">Regular (400)</option>
+                <option value="500">Medium (500)</option>
+                <option value="600">SemiBold (600)</option>
+                <option value="700">Bold (700)</option>
+                <option value="800" selected>ExtraBold (800)</option>
+                <option value="900">Black (900)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Company Name Font Style</label>
+              <select id="tpl-name-style">
+                <option value="normal" selected>Normal</option>
+                <option value="italic">Italic</option>
+                <option value="oblique">Oblique</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Logo Position</label>
+              <select id="tpl-logo-pos">
+                <option value="left" selected>Left (default)</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
             </div>
           </div>
 
@@ -1624,7 +1700,7 @@ const SERVER = {
         <div class="settings-block">
           <div class="sb-title"><i class="fas fa-comment-alt"></i> Message Templates</div>
           <div style="background:var(--teal-bg);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--teal);margin-bottom:16px">
-            <strong>Available variables:</strong> {client_name} {invoice_no} {amount} {due_date} {company_name} {upi} {days_overdue}
+            <strong>Variables:</strong> {client_name} {invoice_no} {amount} {currency} {due_date} {issue_date} {service} {company_name} {company_phone} {upi} {bank_details} {days_overdue} {item_list} {status}
           </div>
           <div class="form-grid g1">
             <div class="field"><label>📄 New Invoice Template</label>
@@ -1824,7 +1900,7 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
                   <input type="file" accept="image/*" style="display:none" onchange="handleLogoUpload(this,'sc-logo','sc-logo-preview')">
                 </label>
               </div>
-              <div id="sc-logo-preview" style="margin-top:6px;min-height:0"></div>
+              <div id="sc-logo-preview" style="margin-top:8px;min-height:0"></div>
             </div>
             <div class="field">
               <label>Authorised Signature</label>
@@ -2195,7 +2271,7 @@ function showPage(name, el) {
   if (name === 'clients') { updateClientDropdown(); renderClients(); }
   if (name === 'dashboard') renderDashboard();
   if (name === 'templates') renderTemplatesGrid();
-  if (name === 'whatsapp')  setTimeout(populateWADropdown, 100);
+  if (name === 'whatsapp')  setTimeout(populateWAPage, 100);
   if (name === 'settings')  populateSettingsForm();
 }
 
@@ -2573,7 +2649,7 @@ function openRowMenu(e, id) {
   const menu = document.getElementById('rowMenu');
   menu.innerHTML = `
     <div class="rm-item" onclick="rowMenuAction('preview')"><i class="fas fa-eye"></i> Preview</div>
-    <div class="rm-item" onclick="rowMenuAction('edit')"><i class="fas fa-edit"></i> Edit Invoice</div>
+    <div class="rm-item ${isPaid ? 'rm-disabled' : ''}" onclick="${isPaid ? '' : "rowMenuAction('edit')"}" style="${isPaid ? 'opacity:.4;cursor:not-allowed;' : ''}"><i class="fas fa-edit"></i> Edit Invoice ${isPaid ? '<small style="font-size:9px">(paid)</small>' : ''}</div>
     <div class="rm-item" onclick="rowMenuAction('download')"><i class="fas fa-download"></i> Download PDF</div>
     <div class="rm-item" onclick="rowMenuAction('duplicate')"><i class="fas fa-copy"></i> Duplicate</div>
     <div class="rm-item" onclick="rowMenuAction('wa')"><i class="fab fa-whatsapp"></i> Send WhatsApp</div>
@@ -2626,7 +2702,7 @@ function resetCreateForm() {
   const bankEl = document.getElementById('f-bank');
   if (bankEl) bankEl.value = STATE.settings.defaultBank || '';
   const gstEl = document.getElementById('f-gst');
-  if (gstEl) gstEl.value = String(STATE.settings.defaultGST || 18);
+  if (gstEl) gstEl.value = String(STATE.settings.defaultGST ?? 18);
   setTodayDates();
   document.getElementById('f-cname').value = '';
   document.getElementById('f-cperson').value = '';
@@ -2642,7 +2718,9 @@ function resetCreateForm() {
 }
 
 function addItem() {
-  const defaultGst = parseInt(document.getElementById('f-gst')?.value)||18;
+  const fgst = document.getElementById('f-gst');
+  const gstVal = fgst ? fgst.value : String(STATE.settings.defaultGST ?? 18);
+  const defaultGst = (gstVal !== '' && gstVal !== null) ? parseInt(gstVal) : (STATE.settings.defaultGST ?? 18);
   formItems.push({ id: Date.now(), desc: '', qty: 1, gst: defaultGst, rate: 0 });
   renderFormItems();
 }
@@ -2691,7 +2769,7 @@ function calcTotals() {
   formItems.forEach(item => {
     const lineAmt = (item.qty||1)*(item.rate||0);
     sub += lineAmt;
-    const gstRate = parseFloat(item.gst)||0;
+    const gstRate = parseFloat(item.gst ?? 0);
     gstAmt += lineAmt * gstRate / 100;
   });
   const disc    = parseFloat(document.getElementById('f-disc')?.value) || 0;
@@ -2814,7 +2892,7 @@ function buildInvoiceHTML(d, forPrint) {
   const itemsHTML = formItems.length
     ? formItems.map(i => {
         const line = (i.qty||1)*(i.rate||0);
-        const itemGst = parseFloat(i.gst)||0;
+        const itemGst = parseFloat(i.gst ?? 0);
         const gstAmt = line * itemGst / 100;
         return `<tr>
           <td style="padding:9px 12px;border-bottom:1px solid #eee">${i.desc||'—'}</td>
@@ -2843,8 +2921,12 @@ function tplLogoHTML(d, sc) {
     return `<div><img src="${logo}" style="height:52px;max-width:200px;object-fit:contain;display:block" onerror="this.style.display='none'">` +
            (tagline ? `<div style="font-size:11px;opacity:.6;margin-top:4px;font-family:${font}">${tagline}</div>` : '') + '</div>';
   }
-  return `<div style="font-size:28px;font-weight:800;letter-spacing:-1px;font-family:${font}">${sc.company||STATE.settings.company}</div>` +
-         (tagline ? `<div style="font-size:11px;opacity:.6;margin-top:3px;font-family:${font}">${tagline}</div>` : '');
+  const nameSize   = (window.TPL_CUSTOM && TPL_CUSTOM.companyNameSize)   ? TPL_CUSTOM.companyNameSize   + 'px' : '28px';
+  const nameColor  = (window.TPL_CUSTOM && TPL_CUSTOM.companyNameColor)  ? TPL_CUSTOM.companyNameColor  : '#ffffff';
+  const nameWeight = (window.TPL_CUSTOM && TPL_CUSTOM.companyNameWeight) ? TPL_CUSTOM.companyNameWeight : '800';
+  const nameStyle  = (window.TPL_CUSTOM && TPL_CUSTOM.companyNameStyle)  ? TPL_CUSTOM.companyNameStyle  : 'normal';
+  return `<div style="font-size:${nameSize};font-weight:${nameWeight};font-style:${nameStyle};color:${nameColor};letter-spacing:-0.5px;font-family:${font}">${sc.company||STATE.settings.company||''}</div>` +
+         (tagline ? `<div style="font-size:11px;opacity:.7;margin-top:3px;font-family:${font}">${tagline}</div>` : '');
 }
 function tplClientLogoHTML(d) {
   if (!d.popt.clientLogo || !d.clientLogo) return '';
@@ -3501,7 +3583,7 @@ function printInvoiceById(inv) {
     ? items.map(i=>{
         const qty  = parseFloat(i.qty||i.quantity||1);
         const rate = parseFloat(i.rate||0);
-        const gst  = parseFloat(i.gst||i.gst_rate||18);
+        const gst  = parseFloat(i.gst ?? i.gst_rate ?? 18);
         const line = qty*rate;
         return `<tr>
           <td style="padding:10px 12px;border-bottom:1px solid #eee">${i.desc||i.description||'—'}</td>
@@ -3640,7 +3722,7 @@ function openPreviewModal(id) {
   // Recalculate totals from items if available
   if (inv.items && inv.items.length) {
     let sub=0, gstAmt=0;
-    inv.items.forEach(it => { const line=(it.qty||1)*(it.rate||0); sub+=line; gstAmt+=line*(parseFloat(it.gstRate||it.gst||18)/100); });
+    inv.items.forEach(it => { const line=((it.qty||it.quantity)||1)*(it.rate||0); sub+=line; gstAmt+=line*((it.gstRate!==undefined?parseFloat(it.gstRate):it.gst!==undefined?parseFloat(it.gst):18)/100); });
     const disc=inv.disc||0; const discAmt=sub*disc/100; const discF=sub>0?(1-disc/100):1;
     d.sub=sub; d.discAmt=discAmt; d.gstAmt=gstAmt*discF; d.grand=sub-discAmt+gstAmt*discF;
   }
@@ -3650,7 +3732,7 @@ function openPreviewModal(id) {
     ? invItems.map(i => {
         const qty  = parseFloat(i.qty||i.quantity||1);
         const rate = parseFloat(i.rate||0);
-        const gstR = parseFloat(i.gst||i.gstRate||i.gst_rate||18);
+        const gstR = parseFloat(i.gst ?? i.gstRate ?? i.gst_rate ?? 18);
         const desc = i.desc||i.description||'—';
         const line = qty*rate;
         return `<tr>
@@ -4378,18 +4460,57 @@ function saveCompanySettings() {
   toast('✅ Company settings saved!', 'success');
 }
 
-function saveWASettings() {
-  toast('✅ WhatsApp settings saved!', 'success');
-}
+// saveWASettings: see window.saveWASettings = async function() below
 function saveEmailSettings() {
   toast('✅ Email settings saved!', 'success');
 }
 
-function testWA() {
-  const wa = document.getElementById('wa-pid')?.value;
-  if (!wa) { toast('⚠️ Enter Phone Number ID first', 'warning'); return; }
-  toast('📱 Test message sent! Check your phone.', 'success');
+
+// Format WA message with rich invoice card variables
+function formatWAMsg(tpl, inv, client, settings) {
+  const sc = settings || STATE.settings;
+  const c  = client || STATE.clients.find(x=>String(x.id)===String(inv?.client)) || {};
+  const today = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  const dueDate = inv.due || inv.due_date || '';
+  const dueFmt  = dueDate ? new Date(dueDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '';
+  const issuedFmt = (inv.issued||inv.issued_date) ? new Date(inv.issued||inv.issued_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : today;
+  const amount    = fmt_money(parseFloat(inv.amount||inv.grand_total)||0, inv.currency||'₹');
+  const daysOverdue = dueDate ? Math.max(0,Math.floor((new Date()-new Date(dueDate))/86400000)) : 0;
+  const items = (inv.items||[]).map(i=>`  • ${i.desc||i.description||''}: ${fmt_money((parseFloat(i.qty)||1)*(parseFloat(i.rate)||0), inv.currency||'₹')}`).join('\n');
+  return (tpl||'')
+    .replace(/{client_name}/g,  c.name||inv.clientName||inv.client_name||'Valued Client')
+    .replace(/{invoice_no}/g,   inv.num||inv.invoice_number||'')
+    .replace(/{amount}/g,       amount)
+    .replace(/{currency}/g,     inv.currency||'₹')
+    .replace(/{due_date}/g,     dueFmt)
+    .replace(/{issue_date}/g,   issuedFmt)
+    .replace(/{service}/g,      inv.service||inv.service_type||'')
+    .replace(/{company_name}/g, sc.company||'')
+    .replace(/{company_phone}/g,sc.phone||'')
+    .replace(/{company_email}/g,sc.email||'')
+    .replace(/{upi}/g,          sc.upi||'')
+    .replace(/{bank_details}/g, sc.defaultBank||'')
+    .replace(/{days_overdue}/g, String(daysOverdue))
+    .replace(/{item_list}/g,    items||'')
+    .replace(/{status}/g,       inv.status||'')
+    .replace(/{invoice_link}/g, '');
 }
+
+
+
+function testWA() {
+  const wa   = STATE.settings.wa || {};
+  const phone = (document.getElementById('wa-test-phone')?.value||'').replace(/\D/g,'');
+  if (!phone) { toast('⚠️ Enter test phone number first', 'warning'); return; }
+  // Build sample message
+  const sampleInv = { num:'TEST-001', issued:new Date().toISOString().split('T')[0], due:new Date(Date.now()+15*86400000).toISOString().split('T')[0], amount:10000, currency:'₹', service:'Test Service', status:'Pending', items:[{desc:'Sample Service',qty:1,rate:10000}] };
+  const sampleClient = { name:'Test Client' };
+  const tpl = wa.tpl_inv || 'Hi {client_name}! Test message from {company_name}. Invoice #{invoice_no} for {amount}. Due: {due_date}. UPI: {upi}';
+  const msg = formatWAMsg(tpl, sampleInv, sampleClient, STATE.settings);
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+  toast('📱 Opening WhatsApp test message...', 'success');
+}
+
 
 function testEmail() {
   const from = document.getElementById('em-from')?.value;
@@ -4620,7 +4741,7 @@ document.addEventListener('click', e => closeAllDropdowns(e));
   STATE.settings.logo      = s.company_logo    || '';
   STATE.settings.signature = s.company_sign    || '';
   STATE.settings.activeTemplate = parseInt(s.active_template) || 1;
-  STATE.settings.defaultGST     = parseInt(s.default_gst) || 18;
+  STATE.settings.defaultGST     = (s.default_gst !== undefined && s.default_gst !== null && s.default_gst !== '') ? parseInt(s.default_gst) : 18;
   STATE.settings.dueDays        = parseInt(s.due_days) || 15;
 })();
 
@@ -4660,6 +4781,31 @@ async function loadAllData() {
     // Merge latest server settings into STATE.settings
     if (cfg.data) {
       const s = cfg.data;
+      // Parse WA settings into nested object
+      STATE.settings.wa = {
+        token:        s.wa_token||'', pid: s.wa_pid||'', bid: s.wa_bid||'',
+        test_phone:   s.wa_test_phone||'',
+        remind_days:  s.wa_remind_days||'3', max_followup: s.wa_max_followup||'3',
+        tpl_inv:      s.wa_tpl_inv||'', tpl_paid: s.wa_tpl_paid||'',
+        tpl_remind:   s.wa_tpl_remind||'', tpl_overdue: s.wa_tpl_overdue||'',
+        tpl_followup: s.wa_tpl_followup||'', tpl_festival: s.wa_tpl_festival||'',
+        auto_inv:     s.wa_auto_inv||'0', auto_paid: s.wa_auto_paid||'1',
+        auto_remind:  s.wa_auto_remind||'1', auto_overdue: s.wa_auto_overdue||'1',
+        auto_followup:s.wa_auto_followup||'0',
+      };
+      // Parse TPL_CUSTOM settings
+      if (window.TPL_CUSTOM) {
+        if (s.tpl_color1)        TPL_CUSTOM.color1         = s.tpl_color1;
+        if (s.tpl_color2)        TPL_CUSTOM.color2         = s.tpl_color2;
+        if (s.tpl_font)          TPL_CUSTOM.font           = s.tpl_font;
+        if (s.tpl_name_size)     TPL_CUSTOM.companyNameSize= s.tpl_name_size;
+        if (s.tpl_name_color)    TPL_CUSTOM.companyNameColor=s.tpl_name_color;
+        if (s.tpl_name_style)    TPL_CUSTOM.companyNameStyle=s.tpl_name_style;
+        if (s.tpl_logo_position) TPL_CUSTOM.logoPosition   = s.tpl_logo_position;
+        if (s.tpl_footer_text)   TPL_CUSTOM.footerText     = s.tpl_footer_text;
+        if (s.tpl_tagline)       TPL_CUSTOM.tagline        = s.tpl_tagline;
+        if (s.tpl_watermark_text)TPL_CUSTOM.watermarkText  = s.tpl_watermark_text;
+      }
       STATE.settings.company   = s.company_name    || STATE.settings.company;
       STATE.settings.gst       = s.company_gst     || STATE.settings.gst;
       STATE.settings.phone     = s.company_phone   || STATE.settings.phone;
@@ -4671,9 +4817,52 @@ async function loadAllData() {
       STATE.settings.logo      = s.company_logo    || '';
       STATE.settings.signature = s.company_sign    || '';
       STATE.settings.activeTemplate = parseInt(s.active_template)||1;
-      STATE.settings.defaultGST     = parseInt(s.default_gst)||18;
+      STATE.settings.defaultGST     = (s.default_gst !== undefined && s.default_gst !== '') ? parseInt(s.default_gst) : 18;
       STATE.settings.dueDays        = parseInt(s.due_days)||15;
       STATE.settings.defaultBank    = s.default_bank || '';
+      // WA settings
+      STATE.settings.wa = {
+        token:       s.wa_token    || '',
+        pid:         s.wa_pid      || '',
+        bid:         s.wa_bid      || '',
+        remindDays:  s.wa_remind_days   || '3',
+        maxFollowup: s.wa_max_followup  || '3',
+        tplInv:      s.wa_tpl_inv      || "Hi {client_name}! 👋\n\n📋 *Invoice #{invoice_no}*\n💼 Service: {service}\n💰 Amount: *{currency}{amount}*\n📅 Due Date: {due_date}\n🏢 From: {company_name}\n\n💳 Pay via UPI: *{upi}*\n{bank_details}\n\nThank you for your business! 🙏",
+        tplPaid:     s.wa_tpl_paid     || "Hi {client_name}! 🎉\n\n✅ *Payment Received!*\n📋 Invoice: #{invoice_no}\n💰 Amount Paid: *{currency}{amount}*\n🏢 {company_name}\n\nYour account is now clear. Thank you for prompt payment! 🙏",
+        tplRemind:   s.wa_tpl_remind   || "Hi {client_name}! 🔔\n\n⏰ *Payment Reminder*\n📋 Invoice: #{invoice_no}\n💼 Service: {service}\n💰 Amount: *{currency}{amount}*\n📅 Due: *{due_date}*\n\n💳 UPI: {upi}\n\nPlease arrange payment before due date. 🙏",
+        tplOverdue:  s.wa_tpl_overdue  || "Hi {client_name}! ⚠️\n\n🔴 *OVERDUE NOTICE*\n📋 Invoice: #{invoice_no}\n💰 Amount: *{currency}{amount}*\n📅 Was due: {due_date}\n⏳ Overdue by: *{days_overdue} days*\n\n💳 Pay now via UPI: *{upi}*\nOr: {bank_details}\n\nPlease settle immediately. 📞 {company_phone}",
+        tplFollowup: s.wa_tpl_followup || "Dear {client_name}, this is follow-up #{followup_no} for Invoice #{invoice_no} ({currency}{amount}), overdue {days_overdue} days. Please clear at earliest. UPI: {upi}",
+        tplFestival: s.wa_tpl_festival || "Hi {client_name}! 🌟 Warm wishes from {company_name}! May this occasion bring you joy & prosperity. Thank you for your trust! 🙏",
+        autoInv:     s.wa_auto_inv     === '1',
+        autoPaid:    s.wa_auto_paid    !== '0',
+        autoRemind:  s.wa_auto_remind  !== '0',
+        autoOverdue: s.wa_auto_overdue !== '0',
+        autoFollowup:s.wa_auto_followup === '1',
+        // TPL_CUSTOM colors
+        tplColor1:   s.tpl_color1   || '',
+        tplColor2:   s.tpl_color2   || '',
+        tplFont:     s.tpl_font     || '',
+        tplNameSize: s.tpl_name_size|| '',
+        tplNameColor:s.tpl_name_color||'',
+        tplNameWeight:s.tpl_name_weight||'',
+        tplNameStyle:s.tpl_name_style||'',
+        tplFooter:   s.tpl_footer_text||'',
+        tplTagline:  s.tpl_tagline  ||'',
+        tplWatermark:s.tpl_watermark_text||'PAID',
+      };
+      // Restore TPL_CUSTOM from saved settings
+      if (s.tpl_color1)      TPL_CUSTOM.color1          = s.tpl_color1;
+      if (s.tpl_color2)      TPL_CUSTOM.color2          = s.tpl_color2;
+      if (s.tpl_font)        TPL_CUSTOM.font            = s.tpl_font;
+      if (s.tpl_name_size)   TPL_CUSTOM.companyNameSize = s.tpl_name_size;
+      if (s.tpl_name_color)  TPL_CUSTOM.companyNameColor= s.tpl_name_color;
+      if (s.tpl_name_weight) TPL_CUSTOM.companyNameWeight=s.tpl_name_weight;
+      if (s.tpl_name_style)  TPL_CUSTOM.companyNameStyle=s.tpl_name_style;
+      if (s.tpl_footer_text) TPL_CUSTOM.footerText      = s.tpl_footer_text;
+      if (s.tpl_tagline)     TPL_CUSTOM.tagline         = s.tpl_tagline;
+      if (s.tpl_watermark_text) TPL_CUSTOM.watermarkText= s.tpl_watermark_text;
+      if (s.tpl_header_style) TPL_CUSTOM.headerStyle    = s.tpl_header_style;
+      if (s.tpl_table_style)  TPL_CUSTOM.tableStyle     = s.tpl_table_style;
     }
     console.log('Loaded:', STATE.invoices.length,'invoices,', STATE.clients.length,'clients');
   } catch(e) {
@@ -4855,7 +5044,10 @@ window.handleLogoUpload = async function(input, targetId, previewId) {
     if (!data.success) throw new Error(data.error || 'Upload failed');
     const el = document.getElementById(targetId);
     if (el) { el.value = data.url; el.dispatchEvent(new Event('input')); }
-    if (targetId === 'sc-logo' || targetId === 'f-company-logo') STATE.settings.logo = data.url;
+    if (targetId === 'sc-logo' || targetId === 'f-company-logo') {
+      STATE.settings.logo = data.url;
+      // Immediately update sidebar / topbar if logo shown there
+    }
     if (targetId === 'sc-sign' || targetId === 'f-signature') STATE.settings.signature = data.url;
     if (previewId) {
       const prev = document.getElementById(previewId);
@@ -4898,7 +5090,7 @@ document.addEventListener('DOMContentLoaded', function() {
       renderTemplatesGrid();
       renderNotifications();
       populateSettingsForm();
-      populateWADropdown();
+      populateWAPage();
       resetCreateForm();
       STATE.filteredInvoices = [...STATE.invoices];
       document.getElementById('badge-invoices').textContent = STATE.invoices.length;
@@ -4963,7 +5155,7 @@ function renderNotifications() {
 // ── saveInvoiceDefaults ─────────────────────────────────────────
 window.saveInvoiceDefaults = async function() {
   const payload = {
-    default_gst:     (document.getElementById('sd-gst')?.value ?? '18'),
+    default_gst:     document.getElementById('sd-gst')?.value ?? '0',
     due_days:        document.getElementById('sd-due')?.value     || '15',
     active_template: document.getElementById('sd-tpl')?.value     || '1',
     invoice_prefix:  document.getElementById('sd-prefix')?.value  || STATE.settings.prefix || 'OT-',
@@ -4971,7 +5163,7 @@ window.saveInvoiceDefaults = async function() {
     default_bank:    document.getElementById('sd-bank')?.value    || '',
   };
   // Also update STATE
-  STATE.settings.defaultGST     = parseInt(payload.default_gst ?? '18');
+  STATE.settings.defaultGST     = parseInt(payload.default_gst ?? '0');
   STATE.settings.dueDays        = parseInt(payload.due_days);
   STATE.settings.activeTemplate = parseInt(payload.active_template);
   if (payload.invoice_prefix) STATE.settings.prefix = payload.invoice_prefix;
@@ -5000,16 +5192,39 @@ function populateSettingsForm() {
   set('sd-prefix',  s.prefix);
   set('sd-due',     s.dueDays);
   set('sd-bank',    s.defaultBank || '');
+  // Restore template customization
+  const setV = (id,v) => { const e=document.getElementById(id); if(e&&v!==undefined&&v!=='')e.value=v; };
+  if (TPL_CUSTOM.color1)          { setV('tpl-color1',TPL_CUSTOM.color1); setV('tpl-color1-hex',TPL_CUSTOM.color1); }
+  if (TPL_CUSTOM.color2)          { setV('tpl-color2',TPL_CUSTOM.color2); setV('tpl-color2-hex',TPL_CUSTOM.color2); }
+  setV('tpl-font',         TPL_CUSTOM.font);
+  setV('tpl-watermark-text',TPL_CUSTOM.watermarkText||'PAID');
+  setV('tpl-footer-text',  TPL_CUSTOM.footerText);
+  setV('tpl-tagline',      TPL_CUSTOM.tagline);
+  setV('tpl-name-size',    TPL_CUSTOM.companyNameSize||'28');
+  if (TPL_CUSTOM.companyNameColor) { setV('tpl-name-color',TPL_CUSTOM.companyNameColor); setV('tpl-name-color-hex',TPL_CUSTOM.companyNameColor); }
+  setV('tpl-name-weight',  TPL_CUSTOM.companyNameWeight||'800');
+  setV('tpl-name-style',   TPL_CUSTOM.companyNameStyle||'normal');
+  setV('tpl-logo-pos',     TPL_CUSTOM.logoPosition||'left');
   // Show logo preview if set
-  if (s.logo) {
+  // Show logo preview
+  if (s.logo || STATE.settings.logo) {
+    const logoUrl = s.logo || STATE.settings.logo;
     const prev = document.getElementById('sc-logo-preview');
-    if (prev) prev.innerHTML = `<img src="${s.logo}" style="height:40px;border-radius:6px;border:1px solid var(--border);margin-top:4px;object-fit:contain">`;
+    if (prev) prev.innerHTML = `<div style="display:inline-flex;align-items:center;gap:8px;padding:6px 10px;background:var(--teal-bg);border-radius:8px;border:1px solid var(--border);margin-top:4px"><img src="${logoUrl}" style="height:32px;max-width:120px;object-fit:contain;border-radius:4px"><span style="font-size:11px;color:var(--muted)">Current logo</span></div>`;
+    const scLogoEl = document.getElementById('sc-logo'); if(scLogoEl&&!scLogoEl.value) scLogoEl.value = logoUrl;
+  }
+  // Show sign preview
+  if (s.signature || STATE.settings.signature) {
+    const signUrl = s.signature || STATE.settings.signature;
+    const sprev = document.getElementById('sc-sign-preview');
+    if (sprev) sprev.innerHTML = `<div style="display:inline-flex;align-items:center;gap:8px;padding:6px 10px;background:#1a1a2e;border-radius:8px;border:1px solid var(--border);margin-top:4px"><img src="${signUrl}" style="height:36px;max-width:120px;object-fit:contain;border-radius:4px"><span style="font-size:11px;color:#aaa">Current signature</span></div>`;
+    const scSignEl = document.getElementById('sc-sign'); if(scSignEl&&!scSignEl.value) scSignEl.value = signUrl;
   }
   // Set select values
   ['sd-gst','sd-tpl','sd-currency'].forEach(id => {
     const e=document.getElementById(id);
     if (!e) return;
-    if (id==='sd-gst')      e.value = String(s.defaultGST||18);
+    if (id==='sd-gst')      e.value = String(s.defaultGST ?? 18);
     if (id==='sd-tpl')      e.value = String(s.activeTemplate||1);
     if (id==='sd-currency') e.value = '₹';
   });
@@ -5084,7 +5299,54 @@ window.saveWASettings = async function() {
   };
   try {
     await api('api/settings.php', 'POST', payload);
+    // Update in-memory WA state
+    if (!STATE.settings.wa) STATE.settings.wa = {};
+    STATE.settings.wa.token       = payload.wa_token;
+    STATE.settings.wa.pid         = payload.wa_pid;
+    STATE.settings.wa.bid         = payload.wa_bid;
+    STATE.settings.wa.remindDays  = payload.wa_remind_days;
+    STATE.settings.wa.maxFollowup = payload.wa_max_followup;
+    STATE.settings.wa.tplInv      = payload.wa_tpl_inv;
+    STATE.settings.wa.tplPaid     = payload.wa_tpl_paid;
+    STATE.settings.wa.tplRemind   = payload.wa_tpl_remind;
+    STATE.settings.wa.tplOverdue  = payload.wa_tpl_overdue;
+    STATE.settings.wa.tplFollowup = payload.wa_tpl_followup;
+    STATE.settings.wa.autoInv     = payload.wa_auto_inv  === '1';
+    STATE.settings.wa.autoPaid    = payload.wa_auto_paid !== '0';
+    STATE.settings.wa.autoRemind  = payload.wa_auto_remind !== '0';
+    STATE.settings.wa.autoOverdue = payload.wa_auto_overdue !== '0';
+    STATE.settings.wa.autoFollowup= payload.wa_auto_followup === '1';
     toast('✅ WhatsApp settings saved!', 'success');
+  } catch(e) { toast('❌ ' + e.message, 'error'); };
+    STATE.settings.wa = Object.assign(STATE.settings.wa||{}, {
+      token:payload.wa_token,pid:payload.wa_pid,bid:payload.wa_bid,
+      auto_inv:payload.wa_auto_inv,auto_paid:payload.wa_auto_paid,
+      auto_remind:payload.wa_auto_remind,auto_overdue:payload.wa_auto_overdue,
+      auto_followup:payload.wa_auto_followup,
+    });
+};
+
+
+
+window.testWA = async function() {
+  const token = (document.getElementById('wa-token')?.value || '').trim() || (STATE.settings.wa||{}).token || '';
+  const pid   = (document.getElementById('wa-pid')?.value   || '').trim() || (STATE.settings.wa||{}).pid   || '';
+  const phone = (document.getElementById('wa-test-phone')?.value||'').replace(/[^0-9]/g,'');
+  if (!token) { toast('⚠️ Enter API Token first', 'warning'); return; }
+  if (!pid)   { toast('⚠️ Enter Phone Number ID first', 'warning'); return; }
+  if (!phone) { toast('⚠️ Enter a test phone number', 'warning'); return; }
+  try {
+    const res = await fetch(`https://graph.facebook.com/v18.0/${pid}/messages`, {
+      method:'POST',
+      headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},
+      body: JSON.stringify({
+        messaging_product:'whatsapp', to: phone, type:'text',
+        text:{ body:`Test from ${STATE.settings.company||'OPTMS Tech'} Invoice Manager - WhatsApp connected! ✅` }
+      })
+    });
+    const data = await res.json();
+    if (res.ok) toast('✅ Test message sent! Check WhatsApp on ' + phone, 'success');
+    else toast('❌ API: ' + (data.error?.message || JSON.stringify(data).substring(0,100)), 'error');
   } catch(e) { toast('❌ ' + e.message, 'error'); }
 };
 
@@ -5121,8 +5383,7 @@ window.sendFestivalBulk = async function() {
   let sent=0, failed=0;
   for (const client of targets) {
     if (!client.wa && !client.phone) { failed++; continue; }
-    const msg = tpl.replace('{client_name}', client.name||'')
-                   .replace(/{company_name}/g, sc.company||'OPTMS Tech');
+    const msg = formatWAMsg(tpl, {}, client, sc);
     const phone = (client.wa || client.phone || '').replace(/\D/g,'');
     if (phone) {
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -5157,11 +5418,57 @@ window.sendManualWA = function() {
 };
 
 // Populate WA client dropdown when navigating to WA page
+function populateWAPage() {
+  populateWADropdown();
+  const wa = STATE.settings.wa || {};
+  const setV = (id,v) => { const e=document.getElementById(id); if(e&&v!==undefined)e.value=v; };
+  const setTog = (id,v) => { const e=document.getElementById(id); if(e){if(v)e.classList.add('on');else e.classList.remove('on');} };
+  setV('wa-token',       wa.token||'');
+  setV('wa-pid',         wa.pid||'');
+  setV('wa-bid',         wa.bid||'');
+  setV('wa-remind-days', wa.remindDays||'3');
+  setV('wa-max-followup',wa.maxFollowup||'3');
+  if (wa.tplInv)     setV('wa-tpl-inv',     wa.tplInv);
+  if (wa.tplPaid)    setV('wa-tpl-paid',    wa.tplPaid);
+  if (wa.tplRemind)  setV('wa-tpl-remind',  wa.tplRemind);
+  if (wa.tplOverdue) setV('wa-tpl-overdue', wa.tplOverdue);
+  if (wa.tplFollowup)setV('wa-tpl-followup',wa.tplFollowup);
+  if (wa.tplFestival)setV('wa-tpl-festival',wa.tplFestival);
+  setTog('twa1', wa.autoInv);
+  setTog('twa2', wa.autoPaid !== false);
+  setTog('twa3', wa.autoRemind !== false);
+  setTog('twa4', wa.autoOverdue !== false);
+  setTog('twa5', wa.autoFollowup);
+}
+
 function populateWADropdown() {
   const sel = document.getElementById('wa-manual-client');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">-- Select Client --</option>' +
-    STATE.clients.map(c=>`<option value="${c.id}">${c.name}${c.wa||c.phone?' ('+( c.wa||c.phone)+')':''}</option>`).join('');
+  if (sel) {
+    sel.innerHTML = '<option value="">-- Select Client --</option>' +
+      STATE.clients.map(c=>`<option value="${c.id}">${c.name}${c.wa||c.phone?' ('+( c.wa||c.phone)+')':''}</option>`).join('');
+  }
+  // Restore WA settings from STATE
+  const wa = STATE.settings.wa || {};
+  const set = (id,v) => { const e=document.getElementById(id); if(e&&v!==undefined) e.value=v; };
+  set('wa-token',      wa.token||'');
+  set('wa-pid',        wa.pid||'');
+  set('wa-bid',        wa.bid||'');
+  set('wa-test-phone', wa.test_phone||'');
+  set('wa-remind-days',wa.remind_days||'3');
+  set('wa-max-followup',wa.max_followup||'3');
+  set('wa-tpl-inv',    wa.tpl_inv||'Hi {client_name}! 👋 Invoice #{invoice_no} for {currency}{amount} from {company_name} is ready. Due: {due_date}. UPI: {upi}. Thanks! 🙏');
+  set('wa-tpl-paid',   wa.tpl_paid||'Hi {client_name}! ✅ Payment of {currency}{amount} for #{invoice_no} received. Thank you for choosing {company_name}! 🎉');
+  set('wa-tpl-remind', wa.tpl_remind||'Hi {client_name}! 🔔 Invoice #{invoice_no} for {currency}{amount} is due on {due_date}. Service: {service}. UPI: {upi}. 🙏');
+  set('wa-tpl-overdue',wa.tpl_overdue||'Hi {client_name}! ⚠️ Invoice #{invoice_no} for {currency}{amount} (due {due_date}) is OVERDUE by {days_overdue} days. Please pay immediately. UPI: {upi}.');
+  set('wa-tpl-followup',wa.tpl_followup||'Hi {client_name}, following up on invoice #{invoice_no} ({currency}{amount}), overdue {days_overdue} days. Service: {service}. Please clear ASAP. UPI: {upi}.');
+  set('wa-tpl-festival',wa.tpl_festival||'Hi {client_name}! 🌟 Warm wishes from {company_name}! Thank you for your continued trust. 🙏');
+  // Restore toggle states
+  const setTog = (id, val) => { const e=document.getElementById(id); if(e) { if(val==='1'||val===true) e.classList.add('on'); else e.classList.remove('on'); } };
+  setTog('twa1', wa.auto_inv);
+  setTog('twa2', wa.auto_paid||'1');
+  setTog('twa3', wa.auto_remind||'1');
+  setTog('twa4', wa.auto_overdue||'1');
+  setTog('twa5', wa.auto_followup);
 }
 
 // ── Template Customization ─────────────────────────────────────
@@ -5169,7 +5476,10 @@ const TPL_CUSTOM = {
   color1: '#1A2332', color2: '#4DB6AC',
   font: "'Public Sans',sans-serif",
   headerStyle: 'gradient', tableStyle: 'dark',
-  footerText: '', tagline: '', watermarkText: 'PAID'
+  footerText: '', tagline: '', watermarkText: 'PAID',
+  companyNameSize: '28', companyNameColor: '#ffffff',
+  companyNameWeight: '800', companyNameStyle: 'normal',
+  logoPosition: 'left'
 };
 
 function setTplColor(inputId, color) {
@@ -5187,7 +5497,12 @@ window.applyTplCustomization = function() {
   TPL_CUSTOM.tableStyle   = document.getElementById('tpl-table-style')?.value || TPL_CUSTOM.tableStyle;
   TPL_CUSTOM.footerText   = document.getElementById('tpl-footer-text')?.value || '';
   TPL_CUSTOM.tagline      = document.getElementById('tpl-tagline')?.value     || '';
-  TPL_CUSTOM.watermarkText= document.getElementById('tpl-watermark-text')?.value || 'PAID';
+  TPL_CUSTOM.watermarkText  = document.getElementById('tpl-watermark-text')?.value || 'PAID';
+  TPL_CUSTOM.companyNameSize  = document.getElementById('tpl-name-size')?.value    || '28';
+  TPL_CUSTOM.companyNameColor = document.getElementById('tpl-name-color')?.value   || '#ffffff';
+  TPL_CUSTOM.companyNameWeight= document.getElementById('tpl-name-weight')?.value  || '800';
+  TPL_CUSTOM.companyNameStyle = document.getElementById('tpl-name-style')?.value   || 'normal';
+  TPL_CUSTOM.logoPosition     = document.getElementById('tpl-logo-pos')?.value     || 'left';
   // Sync color hex inputs with color pickers
   const c1hex = document.getElementById('tpl-color1-hex');
   const c2hex = document.getElementById('tpl-color2-hex');
@@ -5212,6 +5527,11 @@ window.saveTplCustomization = async function() {
     tpl_footer_text:   TPL_CUSTOM.footerText,
     tpl_tagline:       TPL_CUSTOM.tagline,
     tpl_watermark_text:TPL_CUSTOM.watermarkText,
+    tpl_name_size:     TPL_CUSTOM.companyNameSize,
+    tpl_name_color:    TPL_CUSTOM.companyNameColor,
+    tpl_name_weight:   TPL_CUSTOM.companyNameWeight,
+    tpl_name_style:    TPL_CUSTOM.companyNameStyle,
+    tpl_logo_pos:      TPL_CUSTOM.logoPosition,
   };
   try {
     await api('api/settings.php', 'POST', payload);
