@@ -325,10 +325,13 @@ canvas { max-width: 100% !important; }
   font-size: 11px; border-radius: 6px; cursor: default; position: relative;
   font-weight: 500; color: var(--text2);
 }
-.cal-day.today { background: var(--teal); color: #fff; font-weight: 700; }
+.cal-day.today { background: var(--teal); color: #fff; font-weight: 800; border-radius: 6px; }
+.cal-day.has-due { border: 2px solid var(--teal); border-radius: 6px; color: var(--teal); font-weight: 700; }
+.cal-day.has-overdue { border: 2px solid var(--red); border-radius: 6px; color: var(--red); font-weight: 700; background: var(--red-bg); }
+.cal-day.has-paid { border: 2px solid var(--blue); border-radius: 6px; color: var(--blue); font-weight: 600; }
 .cal-day.has-due::after { content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:4px; height:4px; background:var(--teal); border-radius:50%; }
-.cal-day.has-overdue::after { background: var(--red); }
-.cal-day.has-paid::after { background: var(--blue); }
+.cal-day.has-overdue::after { background: var(--red); content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; }
+.cal-day.has-paid::after { background: var(--blue); content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; }
 .cal-day.other-month { color: var(--muted2); }
 .cal-month-title { text-align: center; font-weight: 700; font-size: 13px; margin-bottom: 10px; color: var(--text); }
 .cal-legend { display: flex; align-items: center; margin-top: 10px; font-size: 11px; color: var(--muted); }
@@ -949,41 +952,41 @@ const SERVER = {
         <div class="stat-card" data-color="teal">
           <div class="stat-icon" style="background:#e0f2f1;color:#00897B"><i class="fas fa-rupee-sign"></i></div>
           <div class="stat-body">
-            <div class="stat-val" id="s-revenue">₹2,45,800</div>
+            <div class="stat-val" id="s-revenue">₹0</div>
             <div class="stat-lbl">Total Revenue</div>
-            <div class="stat-trend up"><i class="fas fa-arrow-up"></i> 18% this month</div>
+            <div class="stat-trend up" id="s-revenue-trend"><i class="fas fa-arrow-up"></i> this month</div>
           </div>
         </div>
         <div class="stat-card" data-color="amber">
           <div class="stat-icon" style="background:#fff8e1;color:#F9A825"><i class="fas fa-clock"></i></div>
           <div class="stat-body">
-            <div class="stat-val" id="s-pending">₹68,500</div>
+            <div class="stat-val" id="s-pending">₹0</div>
             <div class="stat-lbl">Pending</div>
-            <div class="stat-trend neutral"><i class="fas fa-minus"></i> 4 invoices</div>
+            <div class="stat-trend neutral" id="s-pending-trend"><i class="fas fa-minus"></i> 0 invoices</div>
           </div>
         </div>
         <div class="stat-card" data-color="red">
           <div class="stat-icon" style="background:#fce4ec;color:#e53935"><i class="fas fa-exclamation-circle"></i></div>
           <div class="stat-body">
-            <div class="stat-val" id="s-overdue">₹22,000</div>
+            <div class="stat-val" id="s-overdue">₹0</div>
             <div class="stat-lbl">Overdue</div>
-            <div class="stat-trend down"><i class="fas fa-arrow-down"></i> 2 invoices</div>
+            <div class="stat-trend down" id="s-overdue-trend"><i class="fas fa-arrow-down"></i> 0 invoices</div>
           </div>
         </div>
         <div class="stat-card" data-color="blue">
           <div class="stat-icon" style="background:#e3f2fd;color:#1976D2"><i class="fas fa-file-invoice"></i></div>
           <div class="stat-body">
-            <div class="stat-val" id="s-total">34</div>
+            <div class="stat-val" id="s-total">0</div>
             <div class="stat-lbl">Total Invoices</div>
-            <div class="stat-trend up"><i class="fas fa-arrow-up"></i> 6 this month</div>
+            <div class="stat-trend up" id="s-total-trend"><i class="fas fa-arrow-up"></i> 0 this month</div>
           </div>
         </div>
         <div class="stat-card" data-color="green">
           <div class="stat-icon" style="background:#e8f5e9;color:#388E3C"><i class="fas fa-users"></i></div>
           <div class="stat-body">
-            <div class="stat-val">12</div>
+            <div class="stat-val" id="s-clients">0</div>
             <div class="stat-lbl">Active Clients</div>
-            <div class="stat-trend up"><i class="fas fa-arrow-up"></i> 2 new</div>
+            <div class="stat-trend up" id="s-clients-trend"><i class="fas fa-arrow-up"></i> 0 total</div>
           </div>
         </div>
       </div>
@@ -1466,9 +1469,10 @@ const SERVER = {
 
     <!-- ─────────── PDF TEMPLATES ─────────── -->
     <div id="page-templates" class="page">
-      <div class="templates-intro">Choose a PDF template. <strong>Preview</strong> shows it live below. <strong>Set Active</strong> uses it as default for all new invoices.</div>
+      <div class="templates-intro">Choose a PDF template. <strong>Preview</strong> shows it live below. <strong>Set Active</strong> uses it as default.</div>
       <div class="templates-grid" id="templatesGrid"></div>
-      <!-- Inline preview panel -->
+
+      <!-- Inline Preview Panel -->
       <div id="tplPreviewPanel" style="display:none;margin-top:24px">
         <div class="dash-card">
           <div class="card-header">
@@ -1480,38 +1484,236 @@ const SERVER = {
           </div>
         </div>
       </div>
+
+      <!-- Template Customization -->
+      <div class="dash-card" style="margin-top:24px">
+        <div class="card-header">
+          <span class="card-title"><i class="fas fa-paint-brush" style="color:var(--teal)"></i> Customize Active Template</span>
+          <span style="font-size:12px;color:var(--muted)">Changes apply to new invoices</span>
+        </div>
+        <div style="padding:0 4px">
+          <div class="form-grid g2" style="margin-bottom:16px">
+            <div class="field">
+              <label>Primary Color <span style="font-size:10px;color:var(--muted)">(header background)</span></label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="color" id="tpl-color1" value="#1A2332" style="width:44px;height:38px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px">
+                <input id="tpl-color1-hex" value="#1A2332" placeholder="#1A2332" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:13px" oninput="document.getElementById('tpl-color1').value=this.value">
+                <div style="display:flex;gap:4px;flex-wrap:wrap">
+                  <span onclick="setTplColor('tpl-color1','#1A2332')" style="width:20px;height:20px;background:#1A2332;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                  <span onclick="setTplColor('tpl-color1','#00897B')" style="width:20px;height:20px;background:#00897B;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                  <span onclick="setTplColor('tpl-color1','#1565C0')" style="width:20px;height:20px;background:#1565C0;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                  <span onclick="setTplColor('tpl-color1','#B71C1C')" style="width:20px;height:20px;background:#B71C1C;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                  <span onclick="setTplColor('tpl-color1','#4A148C')" style="width:20px;height:20px;background:#4A148C;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                  <span onclick="setTplColor('tpl-color1','#1B5E20')" style="width:20px;height:20px;background:#1B5E20;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                  <span onclick="setTplColor('tpl-color1','#E64A19')" style="width:20px;height:20px;background:#E64A19;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                  <span onclick="setTplColor('tpl-color1','#0F172A')" style="width:20px;height:20px;background:#0F172A;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label>Accent Color <span style="font-size:10px;color:var(--muted)">(invoice number, totals)</span></label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="color" id="tpl-color2" value="#4DB6AC" style="width:44px;height:38px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px">
+                <input id="tpl-color2-hex" value="#4DB6AC" placeholder="#4DB6AC" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:13px" oninput="document.getElementById('tpl-color2').value=this.value">
+                <div style="display:flex;gap:4px;flex-wrap:wrap">
+                  <span onclick="setTplColor('tpl-color2','#4DB6AC')" style="width:20px;height:20px;background:#4DB6AC;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                  <span onclick="setTplColor('tpl-color2','#FFD54F')" style="width:20px;height:20px;background:#FFD54F;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                  <span onclick="setTplColor('tpl-color2','#42A5F5')" style="width:20px;height:20px;background:#42A5F5;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                  <span onclick="setTplColor('tpl-color2','#EF9A9A')" style="width:20px;height:20px;background:#EF9A9A;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                  <span onclick="setTplColor('tpl-color2','#A5D6A7')" style="width:20px;height:20px;background:#A5D6A7;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                  <span onclick="setTplColor('tpl-color2','#CE93D8')" style="width:20px;height:20px;background:#CE93D8;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                  <span onclick="setTplColor('tpl-color2','#FF8A65')" style="width:20px;height:20px;background:#FF8A65;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                  <span onclick="setTplColor('tpl-color2','#ffffff')" style="width:20px;height:20px;background:#fff;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label>Font Family</label>
+              <select id="tpl-font">
+                <option value="'Public Sans',sans-serif">Public Sans (Default)</option>
+                <option value="'Roboto',sans-serif">Roboto</option>
+                <option value="'Inter',sans-serif">Inter</option>
+                <option value="'Poppins',sans-serif">Poppins</option>
+                <option value="'Montserrat',sans-serif">Montserrat</option>
+                <option value="'Lato',sans-serif">Lato</option>
+                <option value="Arial,sans-serif">Arial</option>
+                <option value="Georgia,serif">Georgia (Serif)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Invoice Header Style</label>
+              <select id="tpl-header-style">
+                <option value="gradient">Gradient Background</option>
+                <option value="solid">Solid Color</option>
+                <option value="minimal">Minimal (White + Border)</option>
+                <option value="split">Split Layout</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Table Header Style</label>
+              <select id="tpl-table-style">
+                <option value="dark">Dark Header (Default)</option>
+                <option value="accent">Accent Color Header</option>
+                <option value="light">Light Gray Header</option>
+                <option value="outline">Outline / Borderless</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Footer Text</label>
+              <input id="tpl-footer-text" placeholder="e.g. Thank you for your business!">
+            </div>
+            <div class="field">
+              <label>Invoice Tagline <span style="font-size:10px;color:var(--muted)">(shown near company name)</span></label>
+              <input id="tpl-tagline" placeholder="e.g. Tax Invoice · GST Registered">
+            </div>
+            <div class="field">
+              <label>Page Watermark Text <span style="font-size:10px;color:var(--muted)">(on paid invoices)</span></label>
+              <input id="tpl-watermark-text" value="PAID" placeholder="PAID">
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="applyTplCustomization()"><i class="fas fa-magic"></i> Apply &amp; Preview</button>
+            <button class="btn btn-success" onclick="saveTplCustomization()"><i class="fas fa-save"></i> Save Customization</button>
+            <button class="btn btn-outline" onclick="resetTplCustomization()"><i class="fas fa-undo"></i> Reset to Default</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ─────────── WHATSAPP SETUP ─────────── -->
     <div id="page-whatsapp" class="page">
       <div class="settings-wrap">
+
+        <!-- API Credentials -->
         <div class="settings-block">
           <div class="sb-title"><i class="fab fa-whatsapp" style="color:#25D366"></i> WhatsApp Business API</div>
           <div class="form-grid g2">
             <div class="field"><label>API Token</label><input type="password" id="wa-token" placeholder="Bearer token from Meta Developer Console"></div>
             <div class="field"><label>Phone Number ID</label><input id="wa-pid" placeholder="123456789012345"></div>
             <div class="field"><label>Business Account ID</label><input id="wa-bid" placeholder="Your WABA ID"></div>
-            <div class="field"><label>Webhook Verify Token</label><input id="wa-wvt" placeholder="Custom verify token"></div>
+            <div class="field"><label>Test Phone Number</label><input id="wa-test-phone" placeholder="+91 XXXXX XXXXX (for test messages)"></div>
           </div>
-          <div class="toggle-list">
-            <div class="toggle-item"><span>Auto-send invoice on creation</span><div class="tog" id="twa1" onclick="this.classList.toggle('on')"></div></div>
-            <div class="toggle-item"><span>Send receipt when marked paid</span><div class="tog on" id="twa2" onclick="this.classList.toggle('on')"></div></div>
-            <div class="toggle-item"><span>Payment reminder (3 days before due)</span><div class="tog on" id="twa3" onclick="this.classList.toggle('on')"></div></div>
-            <div class="toggle-item"><span>Overdue notification</span><div class="tog on" id="twa4" onclick="this.classList.toggle('on')"></div></div>
-          </div>
-          <div class="form-grid g1">
-            <div class="field"><label>Invoice Message Template</label>
-              <textarea id="wa-tpl-inv" style="min-height:80px">Hi {client_name}! 👋 Invoice #{invoice_no} for ₹{amount} from OPTMS Tech is ready. Due: {due_date}. Pay to: {upi}. Thanks! 🙏</textarea>
-            </div>
-            <div class="field"><label>Payment Receipt Template</label>
-              <textarea id="wa-tpl-paid" style="min-height:80px">Hi {client_name}! ✅ Payment of ₹{amount} for invoice #{invoice_no} confirmed. Thank you for choosing OPTMS Tech! 🎉</textarea>
-            </div>
-          </div>
-          <div style="display:flex;gap:10px;margin-top:16px">
+          <div style="display:flex;gap:10px;margin-top:14px">
             <button class="btn btn-whatsapp" onclick="testWA()"><i class="fab fa-whatsapp"></i> Send Test Message</button>
-            <button class="btn btn-primary" onclick="saveWASettings()"><i class="fas fa-save"></i> Save</button>
+            <button class="btn btn-primary" onclick="saveWASettings()"><i class="fas fa-save"></i> Save Credentials</button>
           </div>
         </div>
+
+        <!-- Automation Triggers -->
+        <div class="settings-block">
+          <div class="sb-title"><i class="fas fa-robot"></i> Automation Triggers</div>
+          <div class="toggle-list">
+            <div class="toggle-item"><span><strong>New Invoice</strong> — auto-send when invoice created</span><div class="tog" id="twa1" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-item"><span><strong>Payment Receipt</strong> — send when marked paid</span><div class="tog on" id="twa2" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-item"><span><strong>Due Soon</strong> — reminder 3 days before due date</span><div class="tog on" id="twa3" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-item"><span><strong>Overdue Alert</strong> — send on due date if unpaid</span><div class="tog on" id="twa4" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-item"><span><strong>Overdue Follow-up</strong> — repeat every 7 days while overdue</span><div class="tog" id="twa5" onclick="this.classList.toggle('on')"></div></div>
+          </div>
+          <div class="form-grid g2" style="margin-top:14px">
+            <div class="field"><label>Reminder Days Before Due</label>
+              <input type="number" id="wa-remind-days" value="3" min="1" max="30" placeholder="3">
+            </div>
+            <div class="field"><label>Max Overdue Follow-ups</label>
+              <input type="number" id="wa-max-followup" value="3" min="1" max="10" placeholder="3">
+            </div>
+          </div>
+        </div>
+
+        <!-- Message Templates -->
+        <div class="settings-block">
+          <div class="sb-title"><i class="fas fa-comment-alt"></i> Message Templates</div>
+          <div style="background:var(--teal-bg);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--teal);margin-bottom:16px">
+            <strong>Available variables:</strong> {client_name} {invoice_no} {amount} {due_date} {company_name} {upi} {days_overdue}
+          </div>
+          <div class="form-grid g1">
+            <div class="field"><label>📄 New Invoice Template</label>
+              <textarea id="wa-tpl-inv" style="min-height:80px">Hi {client_name}! 👋 Invoice #{invoice_no} for ₹{amount} from {company_name} is ready. Due: {due_date}. Pay to UPI: {upi}. Thanks! 🙏</textarea>
+            </div>
+            <div class="field"><label>✅ Payment Receipt Template</label>
+              <textarea id="wa-tpl-paid" style="min-height:80px">Hi {client_name}! ✅ Payment of ₹{amount} for invoice #{invoice_no} received. Thank you for choosing {company_name}! 🎉</textarea>
+            </div>
+            <div class="field"><label>⏰ Payment Reminder Template (before due)</label>
+              <textarea id="wa-tpl-remind" style="min-height:80px">Hi {client_name}! 🔔 Gentle reminder: Invoice #{invoice_no} for ₹{amount} is due on {due_date}. Please arrange payment. UPI: {upi} 🙏</textarea>
+            </div>
+            <div class="field"><label>🔴 Overdue Alert Template</label>
+              <textarea id="wa-tpl-overdue" style="min-height:80px">Hi {client_name}! ⚠️ Invoice #{invoice_no} for ₹{amount} was due on {due_date} and is now overdue. Please pay immediately. UPI: {upi}. Contact us if any issue.</textarea>
+            </div>
+            <div class="field"><label>📋 Overdue Follow-up Template</label>
+              <textarea id="wa-tpl-followup" style="min-height:80px">Hi {client_name}, this is a follow-up regarding invoice #{invoice_no} (₹{amount}), overdue by {days_overdue} days. Please clear this at earliest. UPI: {upi}.</textarea>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="margin-top:14px" onclick="saveWASettings()"><i class="fas fa-save"></i> Save All Templates</button>
+        </div>
+
+        <!-- Festival / Bulk Messaging -->
+        <div class="settings-block">
+          <div class="sb-title"><i class="fas fa-star"></i> Festival &amp; Bulk Messaging</div>
+          <div style="background:var(--amber-bg);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--amber);margin-bottom:16px">
+            ✨ Send personalised festival greetings to all or selected clients. Requires WhatsApp Business API.
+          </div>
+          <div class="form-grid g2">
+            <div class="field"><label>Festival / Occasion Name</label>
+              <select id="wa-festival">
+                <option value="diwali">Diwali 🪔</option>
+                <option value="holi">Holi 🎨</option>
+                <option value="eid">Eid Mubarak 🌙</option>
+                <option value="christmas">Christmas 🎄</option>
+                <option value="newyear">New Year 🎊</option>
+                <option value="independence">Independence Day 🇮🇳</option>
+                <option value="custom">Custom Occasion</option>
+              </select>
+            </div>
+            <div class="field"><label>Custom Occasion Name</label>
+              <input id="wa-festival-custom" placeholder="e.g. Our Anniversary Sale">
+            </div>
+            <div class="field"><label>Festival Image URL</label>
+              <div style="display:flex;gap:6px">
+                <input id="wa-festival-img" placeholder="https://... (optional image)" style="flex:1">
+                <label style="display:flex;align-items:center;gap:4px;padding:0 10px;border-radius:8px;border:1.5px solid var(--border);cursor:pointer;font-size:11px;color:var(--muted);white-space:nowrap;background:var(--bg)">
+                  <i class="fas fa-upload"></i>
+                  <input type="file" accept="image/*" style="display:none" onchange="handleLogoUpload(this,'wa-festival-img','wa-festival-img-preview')">
+                </label>
+              </div>
+              <div id="wa-festival-img-preview" style="margin-top:6px"></div>
+            </div>
+            <div class="field"><label>Send To</label>
+              <select id="wa-send-to">
+                <option value="all">All Active Clients</option>
+                <option value="paid">Clients with Paid Invoices</option>
+                <option value="active">Clients with Recent Activity (90 days)</option>
+              </select>
+            </div>
+          </div>
+          <div class="field" style="margin-top:12px"><label>Festival Message</label>
+            <textarea id="wa-tpl-festival" style="min-height:90px">Hi {client_name}! 🌟 Wishing you and your family a very Happy Diwali! 🪔✨ May this festival bring you joy, prosperity, and success. Thank you for your continued trust in {company_name}! 🙏</textarea>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+            <button class="btn btn-whatsapp" onclick="previewFestivalMsg()"><i class="fas fa-eye"></i> Preview Message</button>
+            <button class="btn btn-primary" onclick="sendFestivalBulk()"><i class="fab fa-whatsapp"></i> Send to All Selected Clients</button>
+          </div>
+          <div id="wa-bulk-log" style="margin-top:14px;max-height:150px;overflow-y:auto;background:var(--bg);border-radius:8px;padding:10px;font-size:12px;color:var(--muted);display:none"></div>
+        </div>
+
+        <!-- Send Manual Message -->
+        <div class="settings-block">
+          <div class="sb-title"><i class="fas fa-paper-plane"></i> Send Manual Message</div>
+          <div class="form-grid g2">
+            <div class="field"><label>Client</label>
+              <select id="wa-manual-client" onchange="fillWaManualPhone()">
+                <option value="">-- Select Client --</option>
+              </select>
+            </div>
+            <div class="field"><label>WhatsApp Number</label>
+              <input id="wa-manual-phone" placeholder="+91 XXXXX XXXXX">
+            </div>
+          </div>
+          <div class="field"><label>Message</label>
+            <textarea id="wa-manual-msg" style="min-height:80px" placeholder="Type your message here..."></textarea>
+          </div>
+          <button class="btn btn-whatsapp" style="margin-top:12px" onclick="sendManualWA()"><i class="fab fa-whatsapp"></i> Send Message</button>
+        </div>
+
       </div>
     </div>
 
@@ -1561,6 +1763,41 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
     <!-- ─────────── SETTINGS ─────────── -->
     <div id="page-settings" class="page">
       <div class="settings-wrap">
+
+        <!-- Admin Profile -->
+        <div class="settings-block">
+          <div class="sb-title"><i class="fas fa-user-circle"></i> Admin Profile</div>
+          <div class="form-grid g2">
+            <div class="field">
+              <label>Profile Photo</label>
+              <div style="display:flex;gap:12px;align-items:center">
+                <div id="profile-avatar-preview" style="width:64px;height:64px;border-radius:12px;background:var(--teal);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden">
+                  <?= strtoupper(substr($user['name'],0,2)) ?>
+                </div>
+                <div>
+                  <label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);cursor:pointer;font-size:12px;font-weight:600;color:var(--muted)">
+                    <i class="fas fa-upload"></i> Upload Photo
+                    <input type="file" accept="image/*" style="display:none" onchange="uploadProfilePhoto(this)">
+                  </label>
+                  <div style="font-size:10px;color:var(--muted);margin-top:4px">JPG, PNG, WebP — max 2MB</div>
+                </div>
+              </div>
+            </div>
+            <div></div>
+            <div class="field"><label>Full Name</label><input id="profile-name" value="<?= htmlspecialchars($user['name']) ?>"></div>
+            <div class="field"><label>Email</label><input type="email" id="profile-email" value="<?= htmlspecialchars($user['email']) ?>"></div>
+            <div class="field"><label>New Password <span style="font-size:10px;font-weight:400;color:var(--muted)">(leave blank to keep current)</span></label>
+              <input type="password" id="profile-pass" placeholder="New password (min 6 chars)" autocomplete="new-password">
+            </div>
+            <div class="field"><label>Confirm Password</label>
+              <input type="password" id="profile-pass2" placeholder="Repeat new password" autocomplete="new-password">
+            </div>
+          </div>
+          <button class="btn btn-primary" style="margin-top:14px" onclick="saveProfile()">
+            <i class="fas fa-save"></i> Update Profile
+          </button>
+        </div>
+
         <div class="settings-block">
           <div class="sb-title"><i class="fas fa-building"></i> Company Profile</div>
           <div class="form-grid g2">
@@ -1605,19 +1842,38 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
           <div class="sb-title"><i class="fas fa-sliders-h"></i> Invoice Defaults</div>
           <div class="form-grid g2">
             <div class="field"><label>Default GST Rate</label>
-              <select id="sd-gst"><option>0%</option><option>5%</option><option>12%</option><option selected>18%</option><option>28%</option></select>
+              <select id="sd-gst">
+                <option value="0">0%</option><option value="5">5%</option><option value="12">12%</option>
+                <option value="18" selected>18%</option><option value="28">28%</option>
+              </select>
             </div>
-            <div class="field"><label>Payment Due (days)</label><input type="number" id="sd-due" value="15"></div>
+            <div class="field"><label>Payment Due (days)</label>
+              <input type="number" id="sd-due" value="15" min="1" max="365">
+            </div>
             <div class="field"><label>Default Template</label>
               <select id="sd-tpl">
                 <option value="1">1 – Classic Pro</option><option value="2">2 – Modern Teal</option>
                 <option value="3">3 – Bold Dark</option><option value="4">4 – Minimal Clean</option>
+                <option value="5">5 – Corporate Blue</option><option value="6">6 – Warm Orange</option>
+                <option value="7">7 – Purple Gradient</option><option value="8">8 – Green Leaf</option>
+                <option value="9">9 – Red Executive</option>
               </select>
             </div>
-            <div class="field"><label>Auto Invoice Numbering</label>
-              <select><option>OT-YYYY-NNN</option><option>OT-NNN</option><option>INV-NNN</option></select>
+            <div class="field"><label>Invoice Number Prefix</label>
+              <input id="sd-prefix" placeholder="OT-2025-" value="">
+            </div>
+            <div class="field"><label>Default Currency</label>
+              <select id="sd-currency">
+                <option value="₹">INR (₹)</option><option value="$">USD ($)</option><option value="€">EUR (€)</option>
+              </select>
+            </div>
+            <div class="field"><label>Default Bank Details</label>
+              <textarea id="sd-bank" style="min-height:60px" placeholder="Bank name, account, IFSC, UPI..."></textarea>
             </div>
           </div>
+          <button class="btn btn-primary" style="margin-top:14px" onclick="saveInvoiceDefaults()">
+            <i class="fas fa-save"></i> Save Invoice Defaults
+          </button>
         </div>
       </div>
     </div>
@@ -1953,40 +2209,121 @@ function renderDashboard() {
   updateDashStats();
 }
 function updateDashStats() {
-  const paid   = STATE.invoices.filter(i=>i.status==='Paid').reduce((s,i)=>s+i.amount,0);
-  const pend   = STATE.invoices.filter(i=>i.status==='Pending').reduce((s,i)=>s+i.amount,0);
-  const over   = STATE.invoices.filter(i=>i.status==='Overdue').reduce((s,i)=>s+i.amount,0);
-  const e=id=>document.getElementById(id);
-  if(e('s-revenue'))e('s-revenue').textContent=fmt_money(paid);
-  if(e('s-pending'))e('s-pending').textContent=fmt_money(pend);
-  if(e('s-overdue'))e('s-overdue').textContent=fmt_money(over);
-  if(e('s-total'))e('s-total').textContent=STATE.invoices.length;
+  const e = id => document.getElementById(id);
+  const now = new Date();
+  const thisMonth = now.getMonth(), thisYear = now.getFullYear();
+  const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+  const lastYear  = thisMonth === 0 ? thisYear - 1 : thisYear;
+
+  const paid    = STATE.invoices.filter(i=>i.status==='Paid').reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  const pend    = STATE.invoices.filter(i=>i.status==='Pending').reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  const over    = STATE.invoices.filter(i=>i.status==='Overdue').reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  const pendCnt = STATE.invoices.filter(i=>i.status==='Pending').length;
+  const overCnt = STATE.invoices.filter(i=>i.status==='Overdue').length;
+
+  // This month vs last month revenue
+  const revThisM = STATE.invoices.filter(i=>{
+    if(!i.issued) return false;
+    const d=new Date(i.issued);
+    return d.getMonth()===thisMonth && d.getFullYear()===thisYear && i.status==='Paid';
+  }).reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  const revLastM = STATE.invoices.filter(i=>{
+    if(!i.issued) return false;
+    const d=new Date(i.issued);
+    return d.getMonth()===lastMonth && d.getFullYear()===lastYear && i.status==='Paid';
+  }).reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  const revChange = revLastM > 0 ? Math.round((revThisM-revLastM)/revLastM*100) : 0;
+
+  const invThisM = STATE.invoices.filter(i=>{
+    if(!i.issued) return false;
+    const d=new Date(i.issued);
+    return d.getMonth()===thisMonth && d.getFullYear()===thisYear;
+  }).length;
+
+  if(e('s-revenue')) e('s-revenue').textContent = fmt_money(paid);
+  if(e('s-pending')) e('s-pending').textContent = fmt_money(pend);
+  if(e('s-overdue')) e('s-overdue').textContent = fmt_money(over);
+  if(e('s-total'))   e('s-total').textContent   = STATE.invoices.length;
+  if(e('s-clients')) e('s-clients').textContent = STATE.clients.length;
+
+  // Update trend texts
+  if(e('s-revenue-trend')) {
+    const sign = revChange >= 0 ? '+' : '';
+    e('s-revenue-trend').innerHTML = `<i class="fas fa-${revChange>=0?'arrow-up':'arrow-down'}"></i> ${sign}${revChange}% vs last month`;
+    e('s-revenue-trend').className = `stat-trend ${revChange>=0?'up':'down'}`;
+  }
+  if(e('s-pending-trend'))  e('s-pending-trend').innerHTML  = `<i class="fas fa-minus"></i> ${pendCnt} invoice${pendCnt!==1?'s':''}`;
+  if(e('s-overdue-trend'))  e('s-overdue-trend').innerHTML  = `<i class="fas fa-exclamation-circle"></i> ${overCnt} invoice${overCnt!==1?'s':''}`;
+  if(e('s-total-trend'))    e('s-total-trend').innerHTML    = `<i class="fas fa-file-invoice"></i> ${invThisM} this month`;
+  if(e('s-clients-trend'))  e('s-clients-trend').innerHTML  = `<i class="fas fa-users"></i> ${STATE.clients.length} total`;
+}
+
+function buildLiveChartData(mode) {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const now = new Date();
+  if (mode === 'monthly') {
+    const year = now.getFullYear();
+    const paid = Array(12).fill(0), pend = Array(12).fill(0);
+    STATE.invoices.forEach(inv => {
+      if (!inv.issued) return;
+      const d = new Date(inv.issued);
+      if (d.getFullYear() !== year) return;
+      const m = d.getMonth();
+      if (inv.status === 'Paid')    paid[m] += parseFloat(inv.amount)||0;
+      if (inv.status === 'Pending') pend[m] += parseFloat(inv.amount)||0;
+    });
+    return { labels: months, paid, pending: pend };
+  }
+  if (mode === 'weekly') {
+    const weeks = ['W1','W2','W3','W4','W5','W6','W7','W8'];
+    const paid = Array(8).fill(0), pend = Array(8).fill(0);
+    const baseDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    STATE.invoices.forEach(inv => {
+      if (!inv.issued) return;
+      const d = new Date(inv.issued);
+      const diffDays = Math.floor((d - baseDate) / 86400000);
+      const wk = Math.min(Math.max(Math.floor(diffDays / 7), 0), 7);
+      if (inv.status === 'Paid')    paid[wk] += parseFloat(inv.amount)||0;
+      if (inv.status === 'Pending') pend[wk] += parseFloat(inv.amount)||0;
+    });
+    return { labels: weeks, paid, pending: pend };
+  }
+  // yearly
+  const curYear = now.getFullYear();
+  const years = [curYear-3, curYear-2, curYear-1, curYear].map(String);
+  const paid = Array(4).fill(0), pend = Array(4).fill(0);
+  STATE.invoices.forEach(inv => {
+    if (!inv.issued) return;
+    const yr = new Date(inv.issued).getFullYear();
+    const idx = years.indexOf(String(yr));
+    if (idx < 0) return;
+    if (inv.status === 'Paid')    paid[idx] += parseFloat(inv.amount)||0;
+    if (inv.status === 'Pending') pend[idx] += parseFloat(inv.amount)||0;
+  });
+  return { labels: years, paid, pending: pend };
 }
 
 function renderRevenueChart(mode) {
   const ctx = document.getElementById('revenueChart');
   if (!ctx) return;
-  const d = CHART_DATA[mode];
+  const d = buildLiveChartData(mode);
   if (revenueChartInstance) revenueChartInstance.destroy();
   revenueChartInstance = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: d.labels,
       datasets: [
-        { label: 'Paid', data: d.paid, backgroundColor: 'rgba(0,137,123,.7)', borderRadius: 5, borderSkipped: false },
-        { label: 'Pending', data: d.pending, backgroundColor: 'rgba(249,168,37,.6)', borderRadius: 5, borderSkipped: false }
+        { label: 'Paid', data: d.paid, backgroundColor: 'rgba(0,137,123,.75)', borderRadius: 5, borderSkipped: false },
+        { label: 'Pending', data: d.pending, backgroundColor: 'rgba(249,168,37,.65)', borderRadius: 5, borderSkipped: false }
       ]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: { duration: 600 },
-      plugins: {
-        legend: { position: 'top', labels: { font: { family: "'Public Sans'", size: 11 }, boxWidth: 10 } }
-      },
+      responsive: true, maintainAspectRatio: false, animation: { duration: 600 },
+      plugins: { legend: { position:'top', labels:{ font:{family:"'Public Sans'",size:11}, boxWidth:10 } } },
       scales: {
-        x: { stacked: true, grid: { display: false }, ticks: { font: { family: "'Public Sans'", size: 10 }, maxRotation: 0 } },
-        y: { stacked: true, grid: { color: '#F0F0F0' }, beginAtZero: true, ticks: { font: { family: "'Public Sans'", size: 10 }, callback: v => '₹' + (v >= 1000 ? (v/1000)+'K' : v) } }
+        x: { stacked:true, grid:{display:false}, ticks:{font:{family:"'Public Sans'",size:10},maxRotation:0} },
+        y: { stacked:true, grid:{color:'#F0F0F0'}, beginAtZero:true,
+             ticks:{font:{family:"'Public Sans'",size:10}, callback:v=>'₹'+(v>=1000?(v/1000)+'K':v)} }
       }
     }
   });
@@ -2226,7 +2563,7 @@ function selectAllInv(cb) {
 function openRowMenu(e, id) {
   e.stopPropagation();
   STATE.activeMenuInvoiceId = id;
-  const inv = STATE.invoices.find(i=>i.id===id);
+  const inv = STATE.invoices.find(i=>String(i.id)===String(id));
   const isPaid = inv && inv.status === 'Paid';
   const menu = document.getElementById('rowMenu');
   menu.innerHTML = `
@@ -2245,7 +2582,7 @@ function openRowMenu(e, id) {
 
 function rowMenuAction(action) {
   const id = STATE.activeMenuInvoiceId;
-  const inv = STATE.invoices.find(i=>i.id===id);
+  const inv = STATE.invoices.find(i=>String(i.id)===String(id));
   closeAllDropdowns();
   if (!inv) return;
   if (action === 'preview' || action === 'download') { openPreviewModal(id); return; }
@@ -3127,7 +3464,8 @@ function saveInvoice() {
 // PREVIEW MODAL
 // ══════════════════════════════════════════
 function openPreviewModal(id) {
-  const inv = STATE.invoices.find(i=>i.id===id);
+  // Handle both string and numeric IDs from DB
+  const inv = STATE.invoices.find(i=>String(i.id)===String(id));
   if (!inv) return;
   STATE.activeMenuInvoiceId = id;
   const c = STATE.clients.find(x=>x.id===inv.client) || {};
@@ -3303,10 +3641,10 @@ function sendEmailForClient(email, name, num, amount, due, service, d) {
 // ══════════════════════════════════════════
 function markFormPaid() { openPaidModal(null); }
 function openPaidModal(id) {
-  STATE.activeMenuInvoiceId = id || STATE.activeMenuInvoiceId;
+  STATE.activeMenuInvoiceId = String(id || STATE.activeMenuInvoiceId);
   document.getElementById('paid-date').value = fmt_date(new Date());
   document.getElementById('paid-txn').value = '';
-  const inv = STATE.invoices.find(i=>i.id===STATE.activeMenuInvoiceId);
+  const inv = STATE.invoices.find(i=>String(i.id)===String(STATE.activeMenuInvoiceId));
   if (inv) document.getElementById('paid-amt').value = inv.amount;
   else {
     const d = getFormData();
@@ -3352,7 +3690,7 @@ function confirmPaid() {
 // ══════════════════════════════════════════
 function openDeleteModal(id) {
   STATE.activeMenuInvoiceId = id;
-  const inv = STATE.invoices.find(i=>i.id===id);
+  const inv = STATE.invoices.find(i=>String(i.id)===String(id));
   document.getElementById('del-inv-num').textContent = inv ? inv.num : '';
   openModal('modal-delete');
 }
@@ -3543,7 +3881,7 @@ function openAddProductModal() {
     <td><input id="np-hsn" class="table-search" style="width:80px" placeholder="HSN" value="998314"></td>
     <td>
       <select id="np-gst" class="table-filter">
-        <option>0</option><option>5</option><option>12</option><option value="18" selected>18</option><option>28</option>
+        <option value="0">0%</option><option value="5">5%</option><option value="12">12%</option><option value="18" selected>18%</option><option value="28">28%</option>
       </select>%
     </td>
     <td>
@@ -3802,7 +4140,19 @@ function _renderRptCharts(){
   const svc={};RPT.list.forEach(i=>{svc[i.service]=(svc[i.service]||0)+i.amount;});
   const cols=['#00897B','#1976D2','#AB47BC','#E64A19','#F9A825','#388E3C','#E53935','#0097A7','#795548'];
   serviceChartInst=new Chart(c1,{type:'bar',data:{labels:Object.keys(svc),datasets:[{label:'Revenue',data:Object.values(svc),backgroundColor:cols,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'₹'+(v>=1000?(v/1000)+'K':v)}}}}});
-  compareChartInst=new Chart(c2,{type:'line',data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],datasets:[{label:'2024',data:[85000,98000,112000,130000,0,0,0,0,0,0,0,0],borderColor:'#BDBDBD',tension:.4,borderDash:[5,5]},{label:'2025',data:[115000,110000,165000,245800,0,0,0,0,0,0,0,0],borderColor:'#00897B',tension:.4,fill:true,backgroundColor:'rgba(0,137,123,.08)'}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'₹'+(v>=1000?(v/1000)+'K':v)}}}}});
+    const trendNow=new Date(), tYear=trendNow.getFullYear();
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const curYr=Array(12).fill(0), prevYr=Array(12).fill(0);
+  STATE.invoices.forEach(inv=>{
+    if(!inv.issued) return;
+    const d=new Date(inv.issued),yr=d.getFullYear(),m=d.getMonth(),amt=parseFloat(inv.amount)||0;
+    if(yr===tYear)   curYr[m]+=amt;
+    if(yr===tYear-1) prevYr[m]+=amt;
+  });
+  compareChartInst=new Chart(c2,{type:'line',data:{labels:months,datasets:[
+    {label:String(tYear-1),data:prevYr,borderColor:'#BDBDBD',tension:.4,borderDash:[5,5],pointRadius:3},
+    {label:String(tYear),data:curYr,borderColor:'#00897B',tension:.4,fill:true,backgroundColor:'rgba(0,137,123,.08)',pointRadius:3}
+  ]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'₹'+(v>=1000?(v/1000)+'K':v)}}}}});
 }
 
 // ══════════════════════════════════════════
@@ -4160,22 +4510,40 @@ async function api(endpoint, method, body) {
 // ── Load all data from API on page load ────────────────────────
 async function loadAllData() {
   try {
-    const [inv, cls, prd, pmt] = await Promise.all([
+    const [inv, cls, prd, pmt, cfg] = await Promise.all([
       api('api/invoices.php'),
       api('api/clients.php'),
       api('api/products.php'),
       api('api/payments.php'),
+      api('api/settings.php'),
     ]);
-    // Replace ALL data — empty arrays are fine (fresh install)
     STATE.invoices  = Array.isArray(inv.data)  ? inv.data  : [];
     STATE.clients   = Array.isArray(cls.data)  ? cls.data  : [];
     STATE.products  = Array.isArray(prd.data)  ? prd.data  : [];
     STATE.payments  = Array.isArray(pmt.data)  ? pmt.data  : [];
     STATE.filteredInvoices = [...STATE.invoices];
-    console.log('Loaded from DB:', STATE.invoices.length, 'invoices,', STATE.clients.length, 'clients');
+    // Merge latest server settings into STATE.settings
+    if (cfg.data) {
+      const s = cfg.data;
+      STATE.settings.company   = s.company_name    || STATE.settings.company;
+      STATE.settings.gst       = s.company_gst     || STATE.settings.gst;
+      STATE.settings.phone     = s.company_phone   || STATE.settings.phone;
+      STATE.settings.email     = s.company_email   || STATE.settings.email;
+      STATE.settings.website   = s.company_website || STATE.settings.website;
+      STATE.settings.prefix    = s.invoice_prefix  || STATE.settings.prefix;
+      STATE.settings.upi       = s.company_upi     || STATE.settings.upi;
+      STATE.settings.address   = s.company_address || STATE.settings.address;
+      STATE.settings.logo      = s.company_logo    || '';
+      STATE.settings.signature = s.company_sign    || '';
+      STATE.settings.activeTemplate = parseInt(s.active_template)||1;
+      STATE.settings.defaultGST     = parseInt(s.default_gst)||18;
+      STATE.settings.dueDays        = parseInt(s.due_days)||15;
+      STATE.settings.defaultBank    = s.default_bank || '';
+    }
+    console.log('Loaded:', STATE.invoices.length,'invoices,', STATE.clients.length,'clients');
   } catch(e) {
     console.error('loadAllData failed:', e.message);
-    toast('⚠️ Could not load data from server: ' + e.message, 'warning');
+    toast('⚠️ Could not load data: ' + e.message, 'warning');
   }
 }
 
@@ -4195,7 +4563,7 @@ window.saveInvoice = async function() {
     signature: d.signature, qr_code: d.qrUrl,
     template_id: d.tpl, generated_by: d.generatedBy, show_generated: d.showGeneratedBy ? 1 : 0,
     pdf_options: d.popt,
-    items: formItems.map(i => ({ desc: i.desc, qty: i.qty, rate: i.rate, gst: i.gst || 18 }))
+    items: formItems.map(i => ({ desc: i.desc, qty: parseFloat(i.qty)||1, rate: parseFloat(i.rate)||0, gst: parseFloat(i.gst)||18 }))
   };
   try {
     if (STATE.editingInvoiceId) {
@@ -4424,6 +4792,7 @@ document.addEventListener('DOMContentLoaded', function() {
       renderPayments();
       renderTemplatesGrid();
       renderNotifications();
+      populateSettingsForm();
       STATE.filteredInvoices = [...STATE.invoices];
       document.getElementById('badge-invoices').textContent = STATE.invoices.length;
       setTimeout(livePreview, 100);
@@ -4482,6 +4851,274 @@ function renderNotifications() {
     bell.style.display = count > 0 ? 'flex' : 'none';
   }
 }
+
+
+// ── saveInvoiceDefaults ─────────────────────────────────────────
+window.saveInvoiceDefaults = async function() {
+  const payload = {
+    default_gst:     document.getElementById('sd-gst')?.value     || '18',
+    due_days:        document.getElementById('sd-due')?.value     || '15',
+    active_template: document.getElementById('sd-tpl')?.value     || '1',
+    invoice_prefix:  document.getElementById('sd-prefix')?.value  || STATE.settings.prefix || 'OT-',
+    default_currency:document.getElementById('sd-currency')?.value|| '₹',
+    default_bank:    document.getElementById('sd-bank')?.value    || '',
+  };
+  // Also update STATE
+  STATE.settings.defaultGST     = parseInt(payload.default_gst);
+  STATE.settings.dueDays        = parseInt(payload.due_days);
+  STATE.settings.activeTemplate = parseInt(payload.active_template);
+  if (payload.invoice_prefix) STATE.settings.prefix = payload.invoice_prefix;
+  try {
+    await api('api/settings.php', 'POST', payload);
+    toast('✅ Invoice defaults saved!', 'success');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+};
+
+// ── populateSettingsForm: load saved settings into the form fields ──
+function populateSettingsForm() {
+  const s = STATE.settings;
+  const set = (id, val) => { const e=document.getElementById(id); if(e && val) e.value=val; };
+  set('sc-name',    s.company);
+  set('sc-gst',     s.gst);
+  set('sc-phone',   s.phone);
+  set('sc-email',   s.email);
+  set('sc-web',     s.website);
+  set('sc-prefix',  s.prefix);
+  set('sc-upi',     s.upi);
+  set('sc-addr',    s.address);
+  set('sc-logo',    s.logo);
+  set('sc-sign',    s.signature);
+  // Invoice defaults
+  set('sd-prefix',  s.prefix);
+  set('sd-due',     s.dueDays);
+  set('sd-bank',    s.defaultBank || '');
+  // Show logo preview if set
+  if (s.logo) {
+    const prev = document.getElementById('sc-logo-preview');
+    if (prev) prev.innerHTML = `<img src="${s.logo}" style="height:40px;border-radius:6px;border:1px solid var(--border);margin-top:4px;object-fit:contain">`;
+  }
+  // Set select values
+  ['sd-gst','sd-tpl','sd-currency'].forEach(id => {
+    const e=document.getElementById(id);
+    if (!e) return;
+    if (id==='sd-gst')      e.value = String(s.defaultGST||18);
+    if (id==='sd-tpl')      e.value = String(s.activeTemplate||1);
+    if (id==='sd-currency') e.value = '₹';
+  });
+}
+
+
+// ── Admin Profile ──────────────────────────────────────────────
+window.uploadProfilePhoto = async function(input) {
+  const file = input.files[0]; if (!file) return;
+  if (file.size > 2*1024*1024) { toast('⚠️ Max 2MB', 'warning'); return; }
+  const fd = new FormData(); fd.append('file', file); fd.append('type', 'avatar');
+  try {
+    const res  = await fetch('api/upload.php', { method:'POST', body:fd });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+    const prev = document.getElementById('profile-avatar-preview');
+    if (prev) prev.innerHTML = `<img src="${data.url}" style="width:100%;height:100%;object-fit:cover">`;
+    SERVER.user = SERVER.user || {};
+    SERVER.user._avatarUrl = data.url;
+    toast('✅ Photo uploaded!', 'success');
+  } catch(e) {
+    // fallback base64
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const prev = document.getElementById('profile-avatar-preview');
+      if (prev) prev.innerHTML = `<img src="${ev.target.result}" style="width:100%;height:100%;object-fit:cover">`;
+      SERVER.user._avatarUrl = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+window.saveProfile = async function() {
+  const name  = document.getElementById('profile-name')?.value?.trim();
+  const email = document.getElementById('profile-email')?.value?.trim();
+  const pass  = document.getElementById('profile-pass')?.value  || '';
+  const pass2 = document.getElementById('profile-pass2')?.value || '';
+  if (!name || !email) { toast('⚠️ Name and email required', 'warning'); return; }
+  if (pass && pass.length < 6) { toast('⚠️ Password min 6 characters', 'warning'); return; }
+  if (pass && pass !== pass2)  { toast('⚠️ Passwords do not match', 'warning'); return; }
+  const payload = { name, email, password: pass || null, avatar: SERVER.user?._avatarUrl || null };
+  try {
+    const res = await api('api/profile.php', 'POST', payload);
+    // Update sidebar display
+    const nameEl = document.querySelector('.user-name'); if (nameEl) nameEl.textContent = name;
+    const avaEl  = document.querySelector('.user-avatar');
+    if (avaEl && payload.avatar) avaEl.innerHTML = `<img src="${payload.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
+    if (pass) { document.getElementById('profile-pass').value = ''; document.getElementById('profile-pass2').value = ''; }
+    toast('✅ Profile updated!', 'success');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+};
+
+
+// ── WhatsApp Functions ─────────────────────────────────────────
+window.saveWASettings = async function() {
+  const payload = {
+    wa_token:         document.getElementById('wa-token')?.value || '',
+    wa_pid:           document.getElementById('wa-pid')?.value   || '',
+    wa_bid:           document.getElementById('wa-bid')?.value   || '',
+    wa_remind_days:   document.getElementById('wa-remind-days')?.value || '3',
+    wa_max_followup:  document.getElementById('wa-max-followup')?.value || '3',
+    wa_tpl_inv:       document.getElementById('wa-tpl-inv')?.value     || '',
+    wa_tpl_paid:      document.getElementById('wa-tpl-paid')?.value    || '',
+    wa_tpl_remind:    document.getElementById('wa-tpl-remind')?.value  || '',
+    wa_tpl_overdue:   document.getElementById('wa-tpl-overdue')?.value || '',
+    wa_tpl_followup:  document.getElementById('wa-tpl-followup')?.value|| '',
+    wa_auto_inv:      document.getElementById('twa1')?.classList.contains('on') ? '1':'0',
+    wa_auto_paid:     document.getElementById('twa2')?.classList.contains('on') ? '1':'0',
+    wa_auto_remind:   document.getElementById('twa3')?.classList.contains('on') ? '1':'0',
+    wa_auto_overdue:  document.getElementById('twa4')?.classList.contains('on') ? '1':'0',
+    wa_auto_followup: document.getElementById('twa5')?.classList.contains('on') ? '1':'0',
+  };
+  try {
+    await api('api/settings.php', 'POST', payload);
+    toast('✅ WhatsApp settings saved!', 'success');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+};
+
+window.previewFestivalMsg = function() {
+  const festival = document.getElementById('wa-festival')?.value;
+  const custom   = document.getElementById('wa-festival-custom')?.value;
+  const tpl      = document.getElementById('wa-tpl-festival')?.value || '';
+  const sc       = STATE.settings;
+  const preview  = tpl.replace('{client_name}','[Client Name]')
+                       .replace('{company_name}', sc.company)
+                       .replace(/{festival}/g, custom || festival);
+  toast('📱 Preview: ' + preview.substring(0,100) + (preview.length>100?'...':''), 'info');
+};
+
+window.sendFestivalBulk = async function() {
+  const sendTo = document.getElementById('wa-send-to')?.value || 'all';
+  const tpl    = document.getElementById('wa-tpl-festival')?.value || '';
+  const imgUrl = document.getElementById('wa-festival-img')?.value || '';
+  const sc     = STATE.settings;
+  let targets = [...STATE.clients];
+  if (sendTo === 'paid') {
+    const paidIds = new Set(STATE.invoices.filter(i=>i.status==='Paid').map(i=>i.client));
+    targets = targets.filter(c => paidIds.has(c.id));
+  }
+  if (sendTo === 'active') {
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-90);
+    const activeIds = new Set(STATE.invoices.filter(i=>{
+      return i.issued && new Date(i.issued) > cutoff;
+    }).map(i=>i.client));
+    targets = targets.filter(c => activeIds.has(c.id));
+  }
+  const log = document.getElementById('wa-bulk-log');
+  if (log) { log.style.display='block'; log.innerHTML=''; }
+  let sent=0, failed=0;
+  for (const client of targets) {
+    if (!client.wa && !client.phone) { failed++; continue; }
+    const msg = tpl.replace('{client_name}', client.name||'')
+                   .replace(/{company_name}/g, sc.company||'OPTMS Tech');
+    const phone = (client.wa || client.phone || '').replace(/\D/g,'');
+    if (phone) {
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      sent++;
+      if (log) log.innerHTML += `<div style="color:var(--green)">✓ ${client.name} (${client.wa||client.phone})</div>`;
+    } else { failed++; }
+    await new Promise(r=>setTimeout(r,300)); // small delay between opens
+  }
+  toast(`📱 Opened WhatsApp for ${sent} clients (${failed} skipped - no number)`, 'success');
+};
+
+window.fillWaManualPhone = function() {
+  const sel = document.getElementById('wa-manual-client');
+  const c   = STATE.clients.find(x=>String(x.id)===String(sel?.value));
+  const ph  = document.getElementById('wa-manual-phone');
+  if (ph && c) ph.value = c.wa || c.phone || '';
+};
+
+window.sendManualWA = function() {
+  const phone = (document.getElementById('wa-manual-phone')?.value||'').replace(/\D/g,'');
+  const msg   = document.getElementById('wa-manual-msg')?.value || '';
+  if (!phone) { toast('⚠️ Enter phone number', 'warning'); return; }
+  if (!msg)   { toast('⚠️ Enter message', 'warning'); return; }
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+  toast('📱 Opening WhatsApp...', 'success');
+};
+
+// Populate WA client dropdown when navigating to WA page
+function populateWADropdown() {
+  const sel = document.getElementById('wa-manual-client');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- Select Client --</option>' +
+    STATE.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+// ── Template Customization ─────────────────────────────────────
+const TPL_CUSTOM = {
+  color1: '#1A2332', color2: '#4DB6AC',
+  font: "'Public Sans',sans-serif",
+  headerStyle: 'gradient', tableStyle: 'dark',
+  footerText: '', tagline: '', watermarkText: 'PAID'
+};
+
+function setTplColor(inputId, color) {
+  const colorInput = document.getElementById(inputId);
+  const hexInput   = document.getElementById(inputId + '-hex');
+  if (colorInput) colorInput.value = color;
+  if (hexInput)   hexInput.value   = color;
+}
+
+window.applyTplCustomization = function() {
+  TPL_CUSTOM.color1       = document.getElementById('tpl-color1')?.value      || TPL_CUSTOM.color1;
+  TPL_CUSTOM.color2       = document.getElementById('tpl-color2')?.value      || TPL_CUSTOM.color2;
+  TPL_CUSTOM.font         = document.getElementById('tpl-font')?.value        || TPL_CUSTOM.font;
+  TPL_CUSTOM.headerStyle  = document.getElementById('tpl-header-style')?.value|| TPL_CUSTOM.headerStyle;
+  TPL_CUSTOM.tableStyle   = document.getElementById('tpl-table-style')?.value || TPL_CUSTOM.tableStyle;
+  TPL_CUSTOM.footerText   = document.getElementById('tpl-footer-text')?.value || '';
+  TPL_CUSTOM.tagline      = document.getElementById('tpl-tagline')?.value     || '';
+  TPL_CUSTOM.watermarkText= document.getElementById('tpl-watermark-text')?.value || 'PAID';
+  // Preview the active template with new colors
+  const n = STATE.settings.activeTemplate || 1;
+  previewTemplate(n);
+  toast('✅ Customization applied — see preview below', 'success');
+};
+
+window.saveTplCustomization = async function() {
+  applyTplCustomization();
+  const payload = {
+    tpl_color1:        TPL_CUSTOM.color1,
+    tpl_color2:        TPL_CUSTOM.color2,
+    tpl_font:          TPL_CUSTOM.font,
+    tpl_header_style:  TPL_CUSTOM.headerStyle,
+    tpl_table_style:   TPL_CUSTOM.tableStyle,
+    tpl_footer_text:   TPL_CUSTOM.footerText,
+    tpl_tagline:       TPL_CUSTOM.tagline,
+    tpl_watermark_text:TPL_CUSTOM.watermarkText,
+  };
+  try {
+    await api('api/settings.php', 'POST', payload);
+    toast('✅ Template customization saved!', 'success');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+};
+
+window.resetTplCustomization = function() {
+  TPL_CUSTOM.color1 = '#1A2332'; TPL_CUSTOM.color2 = '#4DB6AC';
+  TPL_CUSTOM.font   = "'Public Sans',sans-serif";
+  TPL_CUSTOM.headerStyle='gradient'; TPL_CUSTOM.tableStyle='dark';
+  TPL_CUSTOM.footerText=''; TPL_CUSTOM.tagline=''; TPL_CUSTOM.watermarkText='PAID';
+  setTplColor('tpl-color1','#1A2332'); setTplColor('tpl-color2','#4DB6AC');
+  const tplFont=document.getElementById('tpl-font'); if(tplFont)tplFont.value="'Public Sans',sans-serif";
+  toast('↩️ Reset to defaults', 'info');
+  previewTemplate(STATE.settings.activeTemplate||1);
+};
+
+// Override tplLogoHTML to use custom font
+const _origTplLogoHTML = window.tplLogoHTML;
+window.tplLogoHTML = function(d, sc) {
+  const font = TPL_CUSTOM.font || "'Public Sans',sans-serif";
+  const tag  = TPL_CUSTOM.tagline || '';
+  if (!d.popt.logo) return `<div style="font-size:28px;font-weight:800;letter-spacing:-1px;font-family:${font}">${sc.company}</div>${tag?`<div style="font-size:11px;opacity:.7;margin-top:2px">${tag}</div>`:''}`;
+  const logo = d.companyLogo || sc.logo;
+  if (logo) return `<img src="${logo}" style="height:52px;max-width:180px;object-fit:contain;display:block" onerror="this.style.display='none'">`;
+  return `<div style="font-size:28px;font-weight:800;letter-spacing:-1px;font-family:${font}">${sc.company}</div>${tag?`<div style="font-size:11px;opacity:.7;margin-top:2px">${tag}</div>`:''}`;
+};
 
 
 </script>
