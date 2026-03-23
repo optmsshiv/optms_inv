@@ -3277,18 +3277,23 @@ function buildTpl1(d, sc, itemsHTML, gstColHeader) {
 
 // ── Helper: totals rows ──
 function totalsRows(d, accentColor, borderColor='#eee', mainColor='#000', mutedColor='#666') {
-  // Calculate total already paid for this invoice
-  const invId = d.invId || d.id || '';
-  const paymentsForInv = invId
-    ? STATE.payments.filter(p => 
-        String(p.invoice_id) === String(invId) ||
-        (d.num && p.invoice_number === d.num)
-      )
-    : [];
-  const totalPaid = paymentsForInv.reduce((s,p) => s + parseFloat(p.amount||0), 0);
-  const remaining = Math.max(0, (d.grand||0) - totalPaid);
-  const isPartial = totalPaid > 0 && remaining > 0.01;
-  const showPaidRow = totalPaid > 0 && (d.status === 'Pending' || d.status === 'Overdue' || isPartial);
+  // Only show paid/remaining for invoices that are explicitly Partial status
+  // Match payments ONLY by numeric invoice_id — never by invoice_number string
+  // (number strings are not unique enough and cause false matches)
+  const invId = d.invId ? String(d.invId) : '';
+  const isPartialStatus = d.status === 'Partial';
+
+  let totalPaid = 0, paymentsForInv = [], remaining = 0;
+  if (isPartialStatus && invId && invId !== '0' && invId !== '') {
+    paymentsForInv = STATE.payments.filter(p =>
+      p.invoice_id && String(p.invoice_id) === invId
+    );
+    totalPaid  = paymentsForInv.reduce((s,p) => s + parseFloat(p.amount||0), 0);
+    remaining  = Math.max(0, (d.grand||0) - totalPaid);
+  }
+
+  const showPaidRow = isPartialStatus && totalPaid > 0.01;
+  const showRemRow  = isPartialStatus && remaining  > 0.01;
 
   const discRow = d.disc > 0 ? `
     <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid ${borderColor}">
@@ -3308,7 +3313,7 @@ function totalsRows(d, accentColor, borderColor='#eee', mainColor='#000', mutedC
       <span style="font-family:monospace;font-weight:700;color:#388E3C">-${fmt_money(totalPaid,d.sym)}</span>
     </div>` : '';
 
-  const remainRow = isPartial ? `
+  const remainRow = showRemRow ? `
     <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;padding:8px 10px;margin-top:6px;
          background:#FFF8E1;border-radius:7px;border:2px solid #FFB300;color:#E65100">
       <span>⚠ Remaining Due</span>
