@@ -841,14 +841,12 @@ const SERVER = {
     max_followup:  <?= json_encode($settings['wa_max_followup'] ?? '3') ?>,
     tpl_inv:       <?= json_encode($settings['wa_tpl_inv']      ?? '') ?>,
     tpl_paid:      <?= json_encode($settings['wa_tpl_paid']     ?? '') ?>,
-    tpl_partial:   <?= json_encode($settings['wa_tpl_partial']  ?? '') ?>,
     tpl_remind:    <?= json_encode($settings['wa_tpl_remind']   ?? '') ?>,
     tpl_overdue:   <?= json_encode($settings['wa_tpl_overdue']  ?? '') ?>,
     tpl_followup:  <?= json_encode($settings['wa_tpl_followup'] ?? '') ?>,
     tpl_festival:  <?= json_encode($settings['wa_tpl_festival'] ?? '') ?>,
     auto_inv:      <?= json_encode($settings['wa_auto_inv']     ?? '0') ?>,
     auto_paid:     <?= json_encode($settings['wa_auto_paid']    ?? '1') ?>,
-    auto_partial:  <?= json_encode($settings['wa_auto_partial'] ?? '1') ?>,
     auto_remind:   <?= json_encode($settings['wa_auto_remind']  ?? '1') ?>,
     auto_overdue:  <?= json_encode($settings['wa_auto_overdue'] ?? '1') ?>,
     auto_followup: <?= json_encode($settings['wa_auto_followup']?? '0') ?>,
@@ -913,10 +911,6 @@ const SERVER = {
     </a>
     <a class="nav-item" data-page="backup" onclick="showPage('backup',this)">
       <i class="fas fa-database"></i><span>Backup & Export</span>
-    </a>
-    <a class="nav-item" data-page="msglog" onclick="showPage('msglog',this)">
-      <i class="fas fa-comments"></i><span>Message Log</span>
-      <span class="nav-badge" id="badge-msglog" style="display:none">0</span>
     </a>
     <a class="nav-item" href="/auth/logout.php" style="margin-top:6px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1)"><i class="fas fa-sign-out-alt" style="color:#ff8a80"></i><span style="color:#ff8a80">Logout</span></a>
   </nav>
@@ -1715,8 +1709,7 @@ const SERVER = {
             <div style="padding:8px 12px;margin:-4px 0 8px;background:var(--teal-bg);border-radius:0 0 8px 8px;font-size:11px;color:var(--teal)" id="twa1-hint">
               When ON: sends invoice details, amount, due date, UPI, and item list to client automatically
             </div>
-            <div class="toggle-item"><span><strong>Payment Receipt</strong> — send when marked fully paid</span><div class="tog <?= (($settings['wa_auto_paid']??'1')!=='0')?'on':'' ?>" id="twa2" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_paid', this)"></div></div>
-            <div class="toggle-item"><span><strong>Partial Payment</strong> — send receipt when partial payment recorded</span><div class="tog <?= (($settings['wa_auto_partial']??'1')!=='0')?'on':'' ?>" id="twa6" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_partial', this)"></div></div>
+            <div class="toggle-item"><span><strong>Payment Receipt</strong> — send when marked paid</span><div class="tog <?= (($settings['wa_auto_paid']??'1')!=='0')?'on':'' ?>" id="twa2" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_paid', this)"></div></div>
             <div class="toggle-item"><span><strong>Due Soon</strong> — reminder 3 days before due date</span><div class="tog <?= (($settings['wa_auto_remind']??'1')!=='0')?'on':'' ?>" id="twa3" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_remind', this)"></div></div>
             <div class="toggle-item"><span><strong>Overdue Alert</strong> — send on due date if unpaid</span><div class="tog <?= (($settings['wa_auto_overdue']??'1')!=='0')?'on':'' ?>" id="twa4" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_overdue', this)"></div></div>
             <div class="toggle-item"><span><strong>Overdue Follow-up</strong> — repeat every 7 days while overdue</span><div class="tog <?= (($settings['wa_auto_followup']??'0')==='1')?'on':'' ?>" id="twa5" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_followup', this)"></div></div>
@@ -2153,58 +2146,7 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
           <div class="field" style="margin-top:16px"><label>Last Backup</label><input value="Never" readonly style="background:#f5f5f5"></div>
         </div>
       </div>
-    </div><!-- /page-backup -->
-
-    <!-- ─────────── MESSAGE LOG ─────────── -->
-    <div id="page-msglog" class="page">
-      <div class="page-toolbar">
-        <div class="toolbar-left">
-          <input id="msglog-search" type="text" placeholder="Search by client, invoice, type…" style="padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;width:260px;background:var(--card);color:var(--text)" oninput="renderMsgLog()">
-          <select id="msglog-filter-type" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--card);color:var(--text)" onchange="renderMsgLog()">
-            <option value="">All Types</option>
-            <option value="invoice_created">📄 New Invoice</option>
-            <option value="payment_received">✅ Payment Receipt</option>
-            <option value="partial_payment">💛 Partial Receipt</option>
-            <option value="payment_overdue">🔴 Overdue Alert</option>
-            <option value="payment_reminder">🔔 Due Reminder</option>
-            <option value="split_payment">⚡ Split Payment</option>
-            <option value="invoice_followup">📋 Follow-up</option>
-          </select>
-          <select id="msglog-filter-status" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--card);color:var(--text)" onchange="renderMsgLog()">
-            <option value="">All Status</option>
-            <option value="sent_api">✅ Sent (API)</option>
-            <option value="sent_web">📱 Sent (wa.me)</option>
-            <option value="failed">❌ Failed</option>
-            <option value="sending">⏳ Sending</option>
-          </select>
-        </div>
-        <div class="toolbar-right">
-          <button class="btn btn-outline" onclick="clearMsgLog()"><i class="fas fa-trash"></i> Clear Log</button>
-          <button class="btn btn-outline" onclick="exportMsgLog()"><i class="fas fa-download"></i> Export CSV</button>
-        </div>
-      </div>
-      <!-- Stats row -->
-      <div id="msglog-stats" style="display:flex;gap:12px;flex-wrap:wrap;padding:0 0 16px"></div>
-      <!-- Log table -->
-      <div style="background:var(--card);border-radius:12px;border:1px solid var(--border);overflow:hidden">
-        <table style="width:100%;border-collapse:collapse;font-size:13px">
-          <thead>
-            <tr style="background:var(--bg);border-bottom:2px solid var(--border)">
-              <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Time</th>
-              <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Type</th>
-              <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Client</th>
-              <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Invoice</th>
-              <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Status</th>
-              <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Message</th>
-              <th style="padding:10px 14px;text-align:center;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Action</th>
-            </tr>
-          </thead>
-          <tbody id="msglog-tbody">
-            <tr><td colspan="7" style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-comments" style="font-size:32px;opacity:.2;display:block;margin-bottom:8px"></i>No messages logged yet</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div><!-- /page-msglog -->
+    </div>
 
   </div><!-- /pages-container -->
 </div><!-- /main-wrap -->
@@ -2519,8 +2461,7 @@ const breadcrumbs = {
   dashboard:'Dashboard', invoices:'Invoices', create:'Create Invoice',
   clients:'Clients', products:'Services & Products', payments:'Payments',
   reports:'Reports', templates:'PDF Templates', whatsapp:'WhatsApp Setup',
-  'email-setup':'Email Setup', settings:'Settings', backup:'Backup & Export',
-  msglog:'Message Log'
+  'email-setup':'Email Setup', settings:'Settings', backup:'Backup & Export'
 };
 
 function showPage(name, el) {
@@ -2543,7 +2484,6 @@ function showPage(name, el) {
   if (name === 'templates') { renderTemplatesGrid(); setTimeout(populateTemplateForm,100); }
   if (name === 'whatsapp')  { setTimeout(populateWAPage, 100); setTimeout(renderFestivalCampaigns, 200); }
   if (name === 'settings')  populateSettingsForm();
-  if (name === 'msglog')    renderMsgLog();
 }
 
 // ══════════════════════════════════════════
@@ -2927,18 +2867,8 @@ function openRowMenu(e, id) {
     <div class="rm-item" onclick="rowMenuAction('email')"><i class="fas fa-envelope"></i> Send Email</div>
     <div class="rm-item ${isPaid ? 'rm-disabled' : ''}" onclick="${isPaid ? '' : "rowMenuAction('paid')"}" style="${isPaid ? 'opacity:.4;cursor:not-allowed' : ''}"><i class="fas fa-check-circle"></i> Mark as Paid ${isPaid ? '(already paid)' : ''}</div>
     <div class="rm-item rm-danger" onclick="rowMenuAction('delete')"><i class="fas fa-trash"></i> Delete</div>`;
-  // Smart positioning: show above click if near bottom of screen
-  menu.style.visibility = 'hidden';
-  menu.style.display = 'block';
-  const menuH = menu.offsetHeight || 280;
-  const menuW = menu.offsetWidth  || 190;
-  menu.style.display = '';
-  menu.style.visibility = '';
-  const spaceBelow = window.innerHeight - e.clientY;
-  const top  = spaceBelow < menuH + 10 ? Math.max(4, e.clientY - menuH - 4) : e.clientY + 4;
-  const left = Math.min(e.clientX - 160, window.innerWidth - menuW - 8);
-  menu.style.top  = top  + 'px';
-  menu.style.left = Math.max(4, left) + 'px';
+  menu.style.top  = (e.clientY + 4) + 'px';
+  menu.style.left = Math.min(e.clientX - 160, window.innerWidth - 200) + 'px';
   menu.classList.add('open');
 }
 
@@ -4091,7 +4021,7 @@ async function saveInvoice() {
     if (badge) badge.textContent = STATE.invoices.length;
     // Auto-send WA if automation toggle is ON
     const wa = STATE.settings.wa || {};
-    if (wa.auto_inv === '1') {
+    if (wa.auto_inv === '1' && wa.token && wa.pid) {
       const saved = STATE.invoices.find(i => (i.num||i.invoice_number) === d.num);
       if (saved) {
         const c = STATE.clients.find(x => String(x.id) === String(saved.client)) || {};
@@ -4099,10 +4029,7 @@ async function saveInvoice() {
         if (phone) {
           const tpl = wa.tpl_inv || getDefaultWATpl('inv');
           const msg = formatWAMsg(tpl, saved, c, STATE.settings);
-          logWAMessage({ inv: saved, client: c, type: 'invoice_created', msg, status: 'sending' });
-          sendWA(phone, msg, 'invoice_created', saved, c)
-            .then(r => logWAMessage({ inv: saved, client: c, type: 'invoice_created', msg, status: r ? 'sent_api' : 'sent_web' }))
-            .catch(e => { logWAMessage({ inv: saved, client: c, type: 'invoice_created', msg, status: 'failed', error: e.message }); console.warn('WA send failed:', e.message); });
+          sendWA(phone, msg, 'invoice_created', saved, c).catch(e => console.warn('WA send failed:', e.message));
         }
       }
     }
@@ -4439,9 +4366,7 @@ function confirmPaid() {
       }
       // Auto-send WA receipt if toggle ON
       const waP = STATE.settings.wa || {};
-      // Determine if we should send: paid uses auto_paid, partial uses auto_partial
-      const shouldSendWA = wasPartial ? (waP.auto_partial !== '0') : (waP.auto_paid !== '0');
-      if (shouldSendWA) {
+      if (waP.auto_paid !== '0' && waP.token && waP.pid) {
         const paidInv = STATE.invoices.find(i => String(i.id) === String(mid));
         if (paidInv) {
           const cP     = STATE.clients.find(x => String(x.id) === String(paidInv.client)) || {};
@@ -4449,16 +4374,16 @@ function confirmPaid() {
           if (phoneP) {
             // Choose template based on payment type
             const isSplitPmt = payload.method && payload.method.startsWith('Split');
-            let tplKey, tplDefault, tplName;
+            let tplKey, tplDefault;
             if (wasPartial) {
-              tplKey = waP.tpl_partial; tplDefault = getDefaultWATpl('partial_receipt');
-              tplName = 'partial_payment';
+              tplKey     = waP.tpl_partial;
+              tplDefault = getDefaultWATpl('partial_receipt');
             } else if (isSplitPmt) {
-              tplKey = waP.tpl_split || waP.tpl_paid; tplDefault = getDefaultWATpl('split_receipt');
-              tplName = 'split_payment';
+              tplKey     = waP.tpl_split || waP.tpl_paid;
+              tplDefault = getDefaultWATpl('split_receipt');
             } else {
-              tplKey = waP.tpl_paid; tplDefault = getDefaultWATpl('paid');
-              tplName = 'payment_received';
+              tplKey     = waP.tpl_paid;
+              tplDefault = getDefaultWATpl('paid');
             }
             const tplP = tplKey || tplDefault;
             // Enrich inv with payment-specific data for template variables
@@ -4469,10 +4394,9 @@ function confirmPaid() {
               _instalmentNo: pr&&pr.data ? pr.data.filter(p=>String(p.invoice_id)===mid).length : 1,
             });
             const msgP = formatWAMsg(tplP, invWithPmt, cP, STATE.settings);
-            logWAMessage({ inv: invWithPmt, client: cP, type: tplName, msg: msgP, status: 'sending' });
+            const tplName = wasPartial ? 'partial_payment' : isSplitPmt ? 'split_payment' : 'payment_received';
             sendWA(phoneP, msgP, tplName, invWithPmt, cP)
-              .then(r => logWAMessage({ inv: invWithPmt, client: cP, type: tplName, msg: msgP, status: r ? 'sent_api' : 'sent_web' }))
-              .catch(e => { logWAMessage({ inv: invWithPmt, client: cP, type: tplName, msg: msgP, status: 'failed', error: e.message }); console.warn('WA payment msg failed:', e.message); });
+              .catch(e => console.warn('WA payment msg failed:', e.message));
           }
         }
       }
@@ -5126,14 +5050,12 @@ window.saveWASettings = async function() {
     wa_max_followup:  val('wa-max-followup') || '3',
     wa_tpl_inv:       val('wa-tpl-inv'),
     wa_tpl_paid:      val('wa-tpl-paid'),
-    wa_tpl_partial:   val('wa-tpl-partial'),
     wa_tpl_remind:    val('wa-tpl-remind'),
     wa_tpl_overdue:   val('wa-tpl-overdue'),
     wa_tpl_followup:  val('wa-tpl-followup'),
     wa_tpl_festival:  val('wa-tpl-festival'),
     wa_auto_inv:      tog('twa1'),
     wa_auto_paid:     tog('twa2'),
-    wa_auto_partial:  tog('twa6'),
     wa_auto_remind:   tog('twa3'),
     wa_auto_overdue:  tog('twa4'),
     wa_auto_followup: tog('twa5'),
@@ -5145,11 +5067,9 @@ window.saveWASettings = async function() {
     test_phone: payload.wa_test_phone,
     remind_days: payload.wa_remind_days, max_followup: payload.wa_max_followup,
     tpl_inv: payload.wa_tpl_inv, tpl_paid: payload.wa_tpl_paid,
-    tpl_partial: payload.wa_tpl_partial,
     tpl_remind: payload.wa_tpl_remind, tpl_overdue: payload.wa_tpl_overdue,
     tpl_followup: payload.wa_tpl_followup, tpl_festival: payload.wa_tpl_festival,
     auto_inv: payload.wa_auto_inv, auto_paid: payload.wa_auto_paid,
-    auto_partial: payload.wa_auto_partial,
     auto_remind: payload.wa_auto_remind, auto_overdue: payload.wa_auto_overdue,
     auto_followup: payload.wa_auto_followup,
   });
@@ -5200,190 +5120,6 @@ function formatWAMsg(tpl, inv, client, settings) {
 
 
 
-
-// ══════════════════════════════════════════
-// MESSAGE LOG
-// ══════════════════════════════════════════
-const MSG_LOG_KEY = 'optms_msg_log';
-const MSG_LOG_MAX = 500;
-
-function getMsgLog() {
-  try { return JSON.parse(localStorage.getItem(MSG_LOG_KEY) || '[]'); } catch(e) { return []; }
-}
-function saveMsgLog(log) {
-  try { localStorage.setItem(MSG_LOG_KEY, JSON.stringify(log.slice(-MSG_LOG_MAX))); } catch(e) {}
-}
-
-function logWAMessage({ inv, client, type, msg, status, error }) {
-  const log = getMsgLog();
-  const entry = {
-    id:       Date.now() + '_' + Math.random().toString(36).slice(2,6),
-    ts:       new Date().toISOString(),
-    type:     type || 'unknown',
-    status:   status || 'sent_web',
-    client:   (client && client.name) || (inv && (inv.clientName||inv.client_name)) || '—',
-    phone:    (client && (client.wa||client.whatsapp||client.phone)) || '—',
-    inv_num:  inv ? (inv.num||inv.invoice_number||'') : '',
-    inv_amt:  inv ? fmt_money(parseFloat(inv.amount||inv.grand_total||0), inv.currency||'₹') : '',
-    inv_status: inv ? (inv.status||'') : '',
-    msg:      msg || '',
-    error:    error || '',
-  };
-  log.push(entry);
-  saveMsgLog(log);
-  // Update badge
-  const failed = log.filter(e=>e.status==='failed').length;
-  const badge = document.getElementById('badge-msglog');
-  if (badge) {
-    if (failed > 0) { badge.style.display=''; badge.textContent = failed; badge.style.background='var(--red)'; }
-    else { badge.style.display='none'; }
-  }
-}
-
-const MSG_TYPE_META = {
-  invoice_created:  { icon:'📄', label:'New Invoice',      color:'#1565C0' },
-  payment_received: { icon:'✅', label:'Payment Receipt',  color:'#2E7D32' },
-  partial_payment:  { icon:'💛', label:'Partial Receipt',  color:'#E65100' },
-  payment_overdue:  { icon:'🔴', label:'Overdue Alert',    color:'#C62828' },
-  payment_reminder: { icon:'🔔', label:'Due Reminder',     color:'#F57F17' },
-  split_payment:    { icon:'⚡', label:'Split Payment',    color:'#7B1FA2' },
-  invoice_followup: { icon:'📋', label:'Follow-up',        color:'#546E7A' },
-  unknown:          { icon:'💬', label:'Message',          color:'#757575' },
-};
-const MSG_STATUS_META = {
-  sent_api:  { icon:'✅', label:'Sent (API)',  color:'#2E7D32' },
-  sent_web:  { icon:'📱', label:'Opened wa.me',color:'#1565C0' },
-  failed:    { icon:'❌', label:'Failed',      color:'#C62828' },
-  sending:   { icon:'⏳', label:'Sending…',   color:'#F57F17' },
-};
-
-function renderMsgLog() {
-  const log   = getMsgLog();
-  const tbody = document.getElementById('msglog-tbody');
-  const stats = document.getElementById('msglog-stats');
-  if (!tbody) return;
-
-  const search  = (document.getElementById('msglog-search')?.value||'').toLowerCase();
-  const fType   = document.getElementById('msglog-filter-type')?.value  || '';
-  const fStatus = document.getElementById('msglog-filter-status')?.value || '';
-
-  // Stats bar
-  if (stats) {
-    const total   = log.length;
-    const sentApi = log.filter(e=>e.status==='sent_api').length;
-    const sentWeb = log.filter(e=>e.status==='sent_web').length;
-    const failed  = log.filter(e=>e.status==='failed').length;
-    const today   = log.filter(e=>e.ts && e.ts.startsWith(new Date().toISOString().slice(0,10))).length;
-    const statItems = [
-      { icon:'💬', label:'Total Sent',    val:total,   col:'var(--teal)' },
-      { icon:'✅', label:'Via API',       val:sentApi, col:'#2E7D32' },
-      { icon:'📱', label:'Via wa.me',     val:sentWeb, col:'#1565C0' },
-      { icon:'❌', label:'Failed',        val:failed,  col:'#C62828' },
-      { icon:'📅', label:"Today",         val:today,   col:'#7B1FA2' },
-    ];
-    stats.innerHTML = statItems.map(s=>`
-      <div style="display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:10px 18px;min-width:120px">
-        <span style="font-size:20px">${s.icon}</span>
-        <div><div style="font-size:20px;font-weight:800;color:${s.col};line-height:1">${s.val}</div><div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px">${s.label}</div></div>
-      </div>`).join('');
-  }
-
-  // Filter
-  let filtered = [...log].reverse().filter(e => {
-    if (fType   && e.type   !== fType)   return false;
-    if (fStatus && e.status !== fStatus) return false;
-    if (search) {
-      const hay = (e.client+e.inv_num+e.type+e.status+e.msg).toLowerCase();
-      if (!hay.includes(search)) return false;
-    }
-    return true;
-  });
-
-  if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="padding:40px;text-align:center;color:var(--muted)">
-      <i class="fas fa-search" style="font-size:28px;opacity:.2;display:block;margin-bottom:8px"></i>No messages match filters</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = filtered.map(e => {
-    const tm = MSG_TYPE_META[e.type]   || MSG_TYPE_META.unknown;
-    const sm = MSG_STATUS_META[e.status] || { icon:'?', label:e.status, color:'#999' };
-    const ts = e.ts ? new Date(e.ts).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true}) : '—';
-    const shortMsg = e.msg ? (e.msg.length>80 ? e.msg.slice(0,80)+'…' : e.msg) : '—';
-    const errBadge = e.error ? `<div style="font-size:10px;color:var(--red);margin-top:2px">⚠ ${e.error.slice(0,60)}</div>` : '';
-    return `<tr style="border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
-      <td style="padding:10px 14px;color:var(--muted);font-size:12px;white-space:nowrap">${ts}</td>
-      <td style="padding:10px 14px">
-        <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:${tm.color}15;color:${tm.color}">
-          ${tm.icon} ${tm.label}
-        </span>
-      </td>
-      <td style="padding:10px 14px;font-weight:600">${e.client}<div style="font-size:10px;color:var(--muted)">${e.phone||''}</div></td>
-      <td style="padding:10px 14px">
-        <span style="font-weight:700;font-family:var(--mono)">${e.inv_num||'—'}</span>
-        <div style="font-size:10px;color:var(--muted)">${e.inv_amt||''} ${e.inv_status?'· '+e.inv_status:''}</div>
-      </td>
-      <td style="padding:10px 14px">
-        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:${sm.color}15;color:${sm.color}">
-          ${sm.icon} ${sm.label}
-        </span>
-        ${errBadge}
-      </td>
-      <td style="padding:10px 14px;font-size:12px;color:var(--muted);max-width:260px">
-        <div style="cursor:pointer" onclick="this.style.whiteSpace=this.style.whiteSpace?'':'pre-wrap';this.title=this.style.whiteSpace?'Click to collapse':'Click to expand'"
-          title="Click to expand" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${shortMsg}</div>
-      </td>
-      <td style="padding:10px 14px;text-align:center">
-        <button onclick="resendMsgLogEntry('${e.id}')" title="Resend" style="background:none;border:1.5px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer;color:var(--teal);font-size:11px">↩ Resend</button>
-      </td>
-    </tr>`;
-  }).join('');
-}
-
-function clearMsgLog() {
-  if (!confirm('Clear all message log entries? This cannot be undone.')) return;
-  localStorage.removeItem(MSG_LOG_KEY);
-  renderMsgLog();
-  const badge = document.getElementById('badge-msglog');
-  if (badge) badge.style.display = 'none';
-  toast('🗑️ Message log cleared', 'info');
-}
-
-function exportMsgLog() {
-  const log = getMsgLog();
-  if (!log.length) { toast('⚠️ No messages to export', 'warning'); return; }
-  const header = ['Time','Type','Client','Phone','Invoice','Amount','Inv Status','Msg Status','Message','Error'];
-  const rows   = log.map(e => [
-    e.ts ? new Date(e.ts).toLocaleString('en-IN') : '',
-    e.type, e.client, e.phone, e.inv_num, e.inv_amt, e.inv_status, e.status,
-    '"'+(e.msg||'').replace(/"/g,'""')+'"',
-    '"'+(e.error||'').replace(/"/g,'""')+'"',
-  ].join(','));
-  const csv  = [header.join(','), ...rows].join('\n');
-  const blob = new Blob([csv], { type:'text/csv' });
-  const a    = document.createElement('a');
-  a.href     = URL.createObjectURL(blob);
-  a.download = 'message_log_' + new Date().toISOString().slice(0,10) + '.csv';
-  a.click();
-  toast('📥 Message log exported', 'success');
-}
-
-function resendMsgLogEntry(id) {
-  const log   = getMsgLog();
-  const entry = log.find(e => e.id === id);
-  if (!entry) { toast('⚠️ Entry not found', 'warning'); return; }
-  const inv = STATE.invoices.find(i => (i.num||i.invoice_number) === entry.inv_num) ||
-              STATE.invoices.find(i => String(i.id) === String(entry.inv_id));
-  if (!inv) { toast('⚠️ Original invoice not found — sending message manually', 'warning'); }
-  // Re-use message text and open wa.me with it
-  const phone = entry.phone ? entry.phone.replace(/\D/g,'') : '';
-  if (!phone) { toast('⚠️ No phone number to resend to', 'warning'); return; }
-  const clean = phone.length === 10 ? '91' + phone : phone;
-  window.open('https://wa.me/' + clean + '?text=' + encodeURIComponent(entry.msg || ''), '_blank');
-  logWAMessage({ inv: inv||{num:entry.inv_num,amount:0}, client:{name:entry.client,wa:entry.phone}, type: entry.type, msg: entry.msg, status:'sent_web' });
-  toast('📱 Resend opened in WhatsApp', 'success');
-  renderMsgLog();
-}
 
 // Send message via Meta WhatsApp Business API
 
@@ -5563,7 +5299,7 @@ function renderDashKpis() {
   const wa     = STATE.settings.wa || {};
   const hasAPI = !!(wa.token && wa.pid);
   const mode   = wa.msg_mode === 'template' ? '✅ Template Mode' : '💬 Session Mode';
-  const onCount = [wa.auto_inv==='1', wa.auto_paid!=='0', wa.auto_partial!=='0', wa.auto_remind!=='0', wa.auto_overdue!=='0', wa.auto_followup==='1'].filter(Boolean).length;
+  const onCount = [wa.auto_inv==='1', wa.auto_paid!=='0', wa.auto_remind!=='0', wa.auto_overdue!=='0', wa.auto_followup==='1'].filter(Boolean).length;
 
   const pendWA   = STATE.invoices.filter(i => i.status==='Pending' || i.status==='Overdue').length;
   const overWA   = STATE.invoices.filter(i => i.status==='Overdue').length;
@@ -5595,8 +5331,7 @@ function renderDashKpis() {
 
   const toggles = [
     {key:'auto_inv',      label:'New Invoice',     icon:'📄', val: wa.auto_inv==='1'},
-    {key:'auto_paid',     label:'Receipt',         icon:'✅', val: wa.auto_paid!=='0'},
-    {key:'auto_partial',  label:'Partial',         icon:'💛', val: wa.auto_partial!=='0'},
+    {key:'auto_paid',     label:'Payment Receipt', icon:'✅', val: wa.auto_paid!=='0'},
     {key:'auto_remind',   label:'Due Reminder',    icon:'🔔', val: wa.auto_remind!=='0'},
     {key:'auto_overdue',  label:'Overdue Alert',   icon:'⚠️', val: wa.auto_overdue!=='0'},
     {key:'auto_followup', label:'Follow-up',       icon:'📋', val: wa.auto_followup==='1'},
@@ -5826,14 +5561,12 @@ async function loadAllData() {
         max_followup:  s.wa_max_followup || '3',
         tpl_inv:       s.wa_tpl_inv      || '',
         tpl_paid:      s.wa_tpl_paid     || '',
-        tpl_partial:   s.wa_tpl_partial  || '',
         tpl_remind:    s.wa_tpl_remind   || '',
         tpl_overdue:   s.wa_tpl_overdue  || '',
         tpl_followup:  s.wa_tpl_followup || '',
         tpl_festival:  s.wa_tpl_festival || '',
         auto_inv:      s.wa_auto_inv      !== undefined ? s.wa_auto_inv      : '0',
         auto_paid:     s.wa_auto_paid     !== undefined ? s.wa_auto_paid     : '1',
-        auto_partial:  s.wa_auto_partial  !== undefined ? s.wa_auto_partial  : '1',
         auto_remind:   s.wa_auto_remind   !== undefined ? s.wa_auto_remind   : '1',
         auto_overdue:  s.wa_auto_overdue  !== undefined ? s.wa_auto_overdue  : '1',
         auto_followup: s.wa_auto_followup !== undefined ? s.wa_auto_followup : '0',
@@ -6210,7 +5943,6 @@ function populateWAPage() {
   // Toggles
   setTog('twa1', wa.auto_inv     === '1');
   setTog('twa2', wa.auto_paid    !== '0');
-  setTog('twa6', wa.auto_partial !== '0');
   setTog('twa3', wa.auto_remind  !== '0');
   setTog('twa4', wa.auto_overdue !== '0');
   setTog('twa5', wa.auto_followup === '1');
@@ -6487,41 +6219,18 @@ async function sendWAForInvoice(inv) {
   // Try client lookup by multiple field names
   const clientId = inv.client || inv.client_id;
   const c = STATE.clients.find(x => String(x.id) === String(clientId)) || {};
+  // Also try by name if id not found
   const cByName = !c.id ? (STATE.clients.find(x => x.name === (inv.clientName||inv.client_name)) || {}) : c;
   const client = c.id ? c : cByName;
   const phone = (client.wa || client.whatsapp || client.phone || '').replace(/\D/g, '');
   if (!phone) { toast('⚠️ No WhatsApp number for client "' + (client.name||'Unknown') + '"', 'warning'); return; }
-  const wa = STATE.settings.wa || {};
-
-  // Pick the correct template and tplName based on invoice status
-  let tplKey, tplDefault, tplName, statusLabel;
-  const status = inv.status || '';
-  if (status === 'Paid') {
-    tplKey = wa.tpl_paid; tplDefault = getDefaultWATpl('paid');
-    tplName = 'payment_received'; statusLabel = 'Payment Receipt';
-  } else if (status === 'Partial') {
-    tplKey = wa.tpl_partial; tplDefault = getDefaultWATpl('partial_receipt');
-    tplName = 'partial_payment'; statusLabel = 'Partial Receipt';
-  } else if (status === 'Overdue') {
-    tplKey = wa.tpl_overdue; tplDefault = getDefaultWATpl('overdue');
-    tplName = 'payment_overdue'; statusLabel = 'Overdue Alert';
-  } else {
-    // Pending / Draft / default → new invoice template
-    tplKey = wa.tpl_inv; tplDefault = getDefaultWATpl('inv');
-    tplName = 'invoice_created'; statusLabel = 'Invoice';
-  }
-  const tpl = tplKey || tplDefault;
-  const msg = formatWAMsg(tpl, inv, client, STATE.settings);
-  // Log message
-  logWAMessage({ inv, client, type: tplName, msg, status: 'sending' });
+  const wa  = STATE.settings.wa || {};
+  const tpl = wa.tpl_inv || getDefaultWATpl('inv');
+  const msg = formatWAMsg(tpl, inv, c, STATE.settings);
   try {
-    const result = await sendWA(phone, msg, tplName, inv, client);
-    logWAMessage({ inv, client, type: tplName, msg, status: result ? 'sent_api' : 'sent_web' });
-    toast(result ? `✅ ${statusLabel} sent to ${client.name}!` : `📱 WhatsApp opened for ${client.name}`, 'success');
-  } catch(e) {
-    logWAMessage({ inv, client, type: tplName, msg, status: 'failed', error: e.message });
-    toast('❌ ' + e.message, 'error');
-  }
+    const result = await sendWA(phone, msg, 'invoice_created', inv, c);
+    toast(result ? '✅ WhatsApp sent to ' + c.name + '!' : '📱 WhatsApp opened', 'success');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
 }
 
 // ── Manual send from WA page ──────────────────────────────────
