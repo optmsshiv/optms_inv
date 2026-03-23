@@ -969,6 +969,9 @@ const SERVER = {
           <span id="dashDueSoonAlert" style="display:none;padding:5px 12px;border-radius:20px;background:var(--amber-bg);color:var(--amber);font-size:12px;font-weight:700"></span>
         </div>
       </div>
+      <!-- WhatsApp Automation Status Bar -->
+      <div id="dashWABar" style="margin-bottom:14px"></div>
+
       <div class="dash-stats-row">
         <div class="stat-card" data-color="teal">
           <div class="stat-icon" style="background:#e0f2f1;color:#00897B"><i class="fas fa-rupee-sign"></i></div>
@@ -1056,7 +1059,6 @@ const SERVER = {
         <div class="dash-card" style="flex:0 0 200px;min-width:0">
           <div class="card-header"><span class="card-title">Quick Insights</span></div>
           <div id="dashQuickKpis"></div>
-        <div class="dash-card" id="dashWACard" style="margin-top:0"></div>
         </div>
         <!-- Recent Activity -->
         <div class="dash-card" style="flex:1;min-width:0">
@@ -1552,14 +1554,14 @@ const SERVER = {
             <div class="field">
               <label>Company Name Size <span style="font-size:10px;color:var(--muted)">(px)</span></label>
               <div style="display:flex;gap:8px;align-items:center">
-                <input type="range" id="tpl-name-size" min="16" max="48" value="28" style="flex:1" oninput="(document.getElementById('tpl-r-name-size-val')||{}).textContent=this.value+'px'">
-                <span id="tpl-r-name-size-val" style="width:36px;font-size:12px;font-weight:700;color:var(--teal)">28px</span>
+                <input type="range" id="tpl-name-size" min="16" max="48" value="28" style="flex:1" oninput="document.getElementById('tpl-name-size-val').textContent=this.value+'px'">
+                <span id="tpl-name-size-val" style="width:36px;font-size:12px;font-weight:700;color:var(--teal)">28px</span>
               </div>
             </div>
             <div class="field">
               <label>Company Name Color</label>
               <div style="display:flex;gap:8px;align-items:center">
-                <input type="color" id="tpl-r-name-color" value="#ffffff" style="width:44px;height:36px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px">
+                <input type="color" id="tpl-name-color" value="#ffffff" style="width:44px;height:36px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px">
                 <div style="display:flex;gap:4px">
                   <span onclick="document.getElementById('tpl-name-color').value='#ffffff'" style="width:20px;height:20px;background:#fff;border-radius:4px;cursor:pointer;border:1px solid #ddd"></span>
                   <span onclick="document.getElementById('tpl-name-color').value='#FFD54F'" style="width:20px;height:20px;background:#FFD54F;border-radius:4px;cursor:pointer;border:1px solid #ddd"></span>
@@ -1571,7 +1573,7 @@ const SERVER = {
             </div>
             <div class="field">
               <label>Company Name Style</label>
-              <select id="tpl-r-name-style">
+              <select id="tpl-name-style">
                 <option value="800">Extra Bold</option>
                 <option value="700" selected>Bold</option>
                 <option value="600">Semi-Bold</option>
@@ -1581,7 +1583,7 @@ const SERVER = {
             </div>
             <div class="field">
               <label>Logo Position</label>
-              <select id="tpl-r-logo-pos">
+              <select id="tpl-logo-pos">
                 <option value="left">Left (Default)</option>
                 <option value="center">Center</option>
                 <option value="right">Right</option>
@@ -1758,7 +1760,7 @@ const SERVER = {
           </div>
           <div class="form-grid g2">
             <div class="field"><label>Festival / Occasion Name</label>
-              <select id="wa-festival">
+              <select id="wa-festival" onchange="debounceFestivalSave()">
                 <option value="diwali">Diwali 🪔</option>
                 <option value="holi">Holi 🎨</option>
                 <option value="eid">Eid Mubarak 🌙</option>
@@ -1782,7 +1784,7 @@ const SERVER = {
               <div id="wa-festival-img-preview" style="margin-top:6px"></div>
             </div>
             <div class="field"><label>Send To</label>
-              <select id="wa-send-to">
+              <select id="wa-send-to" onchange="debounceFestivalSave()">
                 <option value="all">All Active Clients</option>
                 <option value="paid">Clients with Paid Invoices</option>
                 <option value="active">Clients with Recent Activity (90 days)</option>
@@ -1790,17 +1792,18 @@ const SERVER = {
             </div>
           </div>
           <div class="field" style="margin-top:12px"><label>Festival Message</label>
-            <textarea id="wa-tpl-festival" style="min-height:90px">Hi {client_name}! 🌟 Wishing you and your family a very Happy Diwali! 🪔✨ May this festival bring you joy, prosperity, and success. Thank you for your continued trust in {company_name}! 🙏</textarea>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><label style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Festival Message</label><span id="festival-save-ind" style="font-size:11px;color:var(--teal);opacity:0;transition:opacity .3s;font-weight:600">✓ Auto-saved</span></div>
+          <textarea id="wa-tpl-festival" style="min-height:90px;width:100%" oninput="debounceFestivalSave()">Hi {client_name}! 🌟 Wishing you and your family a very Happy Diwali! 🪔✨ May this festival bring you joy, prosperity, and success. Thank you for your continued trust in {company_name}! 🙏</textarea>
           </div>
           <!-- Schedule options -->
           <div class="form-grid g2" style="margin-top:12px">
             <div class="field">
               <label>Schedule Date &amp; Time <span style="font-size:10px;color:var(--muted)">(leave blank to send now)</span></label>
-              <input type="datetime-local" id="wa-festival-schedule" style="width:100%">
+              <input type="datetime-local" id="wa-festival-schedule" onchange="debounceFestivalSave()" style="width:100%">
             </div>
             <div class="field">
               <label>Repeat <span style="font-size:10px;color:var(--muted)">(for recurring campaigns)</span></label>
-              <select id="wa-festival-repeat">
+              <select id="wa-festival-repeat" onchange="debounceFestivalSave()">
                 <option value="">No repeat (one-time)</option>
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
@@ -1810,6 +1813,7 @@ const SERVER = {
           </div>
           <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
             <button class="btn btn-outline" onclick="previewFestivalMsg()"><i class="fas fa-eye"></i> Preview</button>
+            <span id="festival-save-ind" style="font-size:11px;color:var(--teal);opacity:0;transition:opacity .4s;align-self:center">✓ Saved</span>
             <button class="btn btn-primary" onclick="saveFestivalCampaign()"><i class="fas fa-save"></i> Save Campaign</button>
             <button class="btn btn-whatsapp" onclick="sendFestivalBulk()"><i class="fab fa-whatsapp"></i> Send Now</button>
           </div>
@@ -2229,6 +2233,32 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
 </div>
 
 <!-- Receipt Modal -->
+<div class="modal-overlay" id="modal-receipt">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <span>Payment Receipt</span>
+      <button class="modal-close" onclick="closeModal('modal-receipt')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" id="receiptBody" style="padding:24px;max-height:70vh;overflow-y:auto"></div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="printReceiptModal()"><i class="fas fa-print"></i> Print Receipt</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-receipt')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Row Action Menu -->
+<div class="row-menu" id="rowMenu">
+  <div class="rm-item" onclick="rowMenuAction('download')"><i class="fas fa-download"></i> Download PDF</div>
+  <div class="rm-item" onclick="rowMenuAction('duplicate')"><i class="fas fa-copy"></i> Duplicate</div>
+  <div class="rm-item" onclick="rowMenuAction('wa')"><i class="fab fa-whatsapp"></i> Send WhatsApp</div>
+  <div class="rm-item" onclick="rowMenuAction('email')"><i class="fas fa-envelope"></i> Send Email</div>
+  <div class="rm-item" onclick="rowMenuAction('paid')"><i class="fas fa-check-circle"></i> Mark as Paid</div>
+  <div class="rm-item rm-danger" onclick="rowMenuAction('delete')"><i class="fas fa-trash"></i> Delete</div>
+</div>
 
 <!-- Receipt Modal (PHP build) -->
 <div class="modal-overlay" id="modal-receipt">
@@ -2408,7 +2438,7 @@ function showPage(name, el) {
   if (name === 'products') renderProducts();
   if (name === 'clients') { updateClientDropdown(); renderClients(); }
   if (name === 'dashboard') renderDashboard();
-  if (name === 'templates') { renderTemplatesGrid(); setTimeout(populateTemplateForm,100); }
+  if (name === 'templates') renderTemplatesGrid();
   if (name === 'whatsapp')  { setTimeout(populateWAPage, 100); setTimeout(renderFestivalCampaigns, 200); }
   if (name === 'settings')  populateSettingsForm();
 }
@@ -2603,7 +2633,7 @@ function renderDashRecent() {
         <div class="dri-amount">${fmt_money(inv.amount)}</div>
         <span class="badge badge-${inv.status.toLowerCase()}">${inv.status}</span>
       </div>
-    </div></div>`;
+    </div>`;
   }).join('');
 }
 
@@ -3098,9 +3128,7 @@ function tplWatermark(d) {
   return `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:80px;font-weight:900;color:rgba(0,150,0,.12);z-index:0;pointer-events:none;white-space:nowrap;letter-spacing:8px">${wText}</div>`;
 }
 function tplBankHTML(d, color='#00695C', bg='#e0f2f1', border='') {
-  const bankText = d.bank || STATE.settings.defaultBank || '';
-  if (!bankText) return '';
-  if (d.popt && d.popt.bank === false) return '';
+  if (!d.popt || !d.popt.bank || !d.bank) return '';
   const sc  = STATE.settings;
   const upi = sc.upi || '';
   const upiLine = upi
@@ -3108,7 +3136,7 @@ function tplBankHTML(d, color='#00695C', bg='#e0f2f1', border='') {
     : '';
   return `<div style="margin-top:16px;background:${bg};border-radius:8px;padding:12px 14px;font-size:11px;color:${color};line-height:1.8;${border}">
     <div style="font-weight:700;font-size:12px;margin-bottom:4px">💳 Payment Details:</div>
-    <div>${bankText.replace(/\|/g,'<span style="opacity:.4;margin:0 4px">|</span>')}</div>
+    <div>${d.bank.replace(/\|/g,'<span style="opacity:.4;margin:0 4px">|</span>')}</div>
     ${upiLine}
   </div>`;
 }
@@ -3806,54 +3834,42 @@ function printInvoiceById(inv) {
 // ══════════════════════════════════════════
 // SAVE INVOICE
 // ══════════════════════════════════════════
-async function saveInvoice() {
+function saveInvoice() {
   const d = getFormData();
   if (!d.cname || d.cname === 'Client Name') { toast('⚠️ Please enter client name', 'warning'); return; }
-  if (formItems.length === 0) { toast('⚠️ Add at least one line item', 'warning'); return; }
-  const selVal = document.getElementById('f-client-select')?.value;
-  const payload = {
-    invoice_number: d.num, client_id: selVal ? parseInt(selVal) : null,
-    client_name: d.cname, service_type: d.svc, issued_date: d.date, due_date: d.due,
-    status: d.status, currency: d.sym, subtotal: d.sub,
-    discount_pct: d.disc, discount_amt: d.discAmt, gst_amount: d.gstAmt, grand_total: d.grand,
-    notes: d.notes || '', bank_details: d.bank || '', terms: d.tnc || '',
-    company_logo: d.companyLogo, client_logo: d.clientLogo,
-    signature: d.signature, qr_code: d.qrUrl,
-    template_id: d.tpl, generated_by: d.generatedBy, show_generated: d.showGeneratedBy ? 1 : 0,
-    pdf_options: d.popt,
-    items: formItems.map(i => ({ desc: i.desc, qty: parseFloat(i.qty)||1, rate: parseFloat(i.rate)||0, gst: (i.gst !== undefined && i.gst !== null && i.gst !== '') ? parseFloat(i.gst) : 18 }))
+  if (formItems.length === 0) { toast('⚠️ Please add at least one line item', 'warning'); return; }
+  const num = STATE.invoices.length + 1;
+  const newInv = {
+    id: 'i' + Date.now(),
+    num: d.num,
+    client: document.getElementById('f-client-select').value || 'c_new',
+    clientName: d.cname,
+    service: d.svc,
+    issued: d.date,
+    due: d.due,
+    amount: d.grand,
+    status: d.status,
+    items: formItems.map(i => ({ desc:i.desc, qty:i.qty, rate:i.rate })),
+    disc: d.disc,
+    gst: d.gstR,
+    notes: d.notes,
+    bank: d.bank,
+    currency: d.sym,
+    template: d.tpl,
+    subtotal: d.sub
   };
-  try {
-    if (STATE.editingInvoiceId) {
-      const inv = STATE.invoices.find(i => String(i.id) === String(STATE.editingInvoiceId));
-      const dbId = inv?._dbId || parseInt(inv?.id) || 0;
-      await api('api/invoices.php?id=' + dbId, 'PUT', payload);
-      toast('✅ Invoice updated!', 'success');
-    } else {
-      await api('api/invoices.php', 'POST', payload);
-      toast('✅ Invoice ' + d.num + ' saved!', 'success');
-    }
-    const r = await api('api/invoices.php');
-    STATE.invoices = Array.isArray(r.data) ? r.data : [];
+  if (STATE.editingInvoiceId) {
+    const idx = STATE.invoices.findIndex(i=>i.id===STATE.editingInvoiceId);
+    if (idx > -1) { STATE.invoices[idx] = { ...STATE.invoices[idx], ...newInv, id: STATE.editingInvoiceId }; toast('✅ Invoice updated!', 'success'); }
+  } else {
+    STATE.invoices.push(newInv);
     STATE.filteredInvoices = [...STATE.invoices];
-    renderInvoicesTable(); renderDashRecent(); renderDonutChart(); updateDashStats();
-    const badge = document.getElementById('badge-invoices');
-    if (badge) badge.textContent = STATE.invoices.length;
-    // Auto-send WA if automation toggle is ON
-    const wa = STATE.settings.wa || {};
-    if (wa.auto_inv === '1' && wa.token && wa.pid) {
-      const saved = STATE.invoices.find(i => (i.num||i.invoice_number) === d.num);
-      if (saved) {
-        const c = STATE.clients.find(x => String(x.id) === String(saved.client)) || {};
-        const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g,'');
-        if (phone) {
-          const tpl = wa.tpl_inv || getDefaultWATpl('inv');
-          const msg = formatWAMsg(tpl, saved, c, STATE.settings);
-          sendWA(phone, msg, 'invoice_created', saved, c).catch(e => console.warn('WA send failed:', e.message));
-        }
-      }
-    }
-  } catch(e) { toast('❌ ' + e.message, 'error'); }
+    toast(`✅ Invoice ${d.num} saved!`, 'success');
+  }
+  renderInvoicesTable();
+  renderDashRecent();
+  renderDonutChart();
+  document.getElementById('badge-invoices').textContent = STATE.invoices.length;
 }
 
 // ══════════════════════════════════════════
@@ -3973,10 +3989,11 @@ function sendWAFromForm() {
 }
 
 function sendWAFromModal() {
-  const id  = document.getElementById('mp-title').dataset.invId;
-  const inv = STATE.invoices.find(i=>String(i.id)===String(id));
-  if (!inv) { toast('⚠️ Invoice not found','warning'); return; }
-  sendWAForInvoice(inv).catch(e => { if(e) toast('❌ '+e.message,'error'); });
+  const id = document.getElementById('mp-title').dataset.invId;
+  const inv = STATE.invoices.find(i=>i.id===id);
+  if (!inv) return;
+  const c = STATE.clients.find(x=>x.id===inv.client);
+  sendWAMessage(c?.wa||'', c?.name||inv.clientName||'Client', inv.num, fmt_money(inv.amount), inv.due);
 }
 
 
@@ -4007,28 +4024,12 @@ function sendEmailFromForm() {
 }
 
 function sendEmailFromModal() {
-  const id  = document.getElementById('mp-title').dataset.invId;
-  const inv = STATE.invoices.find(i=>String(i.id)===String(id));
-  if (!inv) { toast('⚠️ Invoice not found','warning'); return; }
-  const c   = STATE.clients.find(x=>String(x.id)===String(inv.client)) || {};
-  const email = c.email || '';
-  if (!email) { toast('⚠️ No email for this client','warning'); return; }
-  const sc  = STATE.settings;
-  const subj= encodeURIComponent(`Invoice #${inv.num||inv.invoice_number} from ${sc.company||'OPTMS Tech'} – ${fmt_money(inv.amount)}`);
-  const bdy = encodeURIComponent(`Dear ${c.name||'Client'},
-
-Invoice #: ${inv.num||inv.invoice_number}
-Service: ${inv.service||''}
-Amount: ${fmt_money(inv.amount)}
-Due: ${inv.due||''}
-
-UPI: ${sc.upi||''}
-
-Thank you,
-${sc.company||''}
-${sc.phone||''}`);
-  window.open(`mailto:${email}?subject=${subj}&body=${bdy}`,'_blank');
-  toast('📧 Opening email client...','info');
+  const id = document.getElementById('mp-title').dataset.invId;
+  const inv = STATE.invoices.find(i=>i.id===id);
+  if (!inv) return;
+  const c = STATE.clients.find(x=>x.id===inv.client);
+  const d = getFormData();
+  sendEmailForClient(c?.email||'', c?.name||'Client', inv.num, fmt_money(inv.amount), inv.due, inv.service, d);
 }
 
 function sendEmailForInvoice(inv) {
@@ -4202,38 +4203,24 @@ function openAddClientModal() {
   openModal('modal-addclient');
 }
 
-async function saveNewClient() {
-  const name = (document.getElementById('nc-name')?.value || '').trim();
-  if (!name) { toast('⚠️ Enter name', 'warning'); return; }
-  const payload = {
-    name,
-    person: document.getElementById('nc-person')?.value || '',
-    email:  document.getElementById('nc-email')?.value  || '',
-    wa:     document.getElementById('nc-wa')?.value     || '',
-    gst:    document.getElementById('nc-gst')?.value    || '',
-    color:  document.getElementById('nc-color')?.value  || '#00897B',
-    addr:   document.getElementById('nc-addr')?.value   || ''
-  };
-  try {
-    if (STATE._editCid) {
-      const c = STATE.clients.find(x => x.id === STATE._editCid);
-      await api('api/clients.php?id=' + (parseInt(c?.id) || 0), 'PUT', payload);
-      toast('✅ Client updated!', 'success');
-      STATE._editCid = null;
-      const hdr = document.querySelector('#modal-addclient .modal-header span');
-      if (hdr) hdr.textContent = 'Add New Client';
-    } else {
-      await api('api/clients.php', 'POST', payload);
-      toast('✅ "' + name + '" added!', 'success');
-    }
-    const r = await api('api/clients.php');
-    STATE.clients = Array.isArray(r.data) ? r.data : STATE.clients;
-    updateClientDropdown(); renderClients(); populateWAClientDropdown();
-    closeModal('modal-addclient');
-    ['nc-name','nc-person','nc-wa','nc-email','nc-gst','nc-addr'].forEach(id => {
-      const e = document.getElementById(id); if (e) e.value = '';
-    });
-  } catch(e) { toast('❌ ' + e.message, 'error'); }
+function saveNewClient() {
+  const name=(document.getElementById('nc-name')?.value||'').trim();
+  if(!name){toast('⚠️ Enter organization name','warning');return;}
+  const getData=fid=>document.getElementById(fid)?.value||'';
+  if(STATE._editCid){
+    const i=STATE.clients.findIndex(x=>x.id===STATE._editCid);
+    if(i>-1) STATE.clients[i]={...STATE.clients[i],name,person:getData('nc-person'),wa:getData('nc-wa'),email:getData('nc-email'),gst:getData('nc-gst'),color:getData('nc-color')||'#00897B',addr:getData('nc-addr')};
+    toast(`✅ Client updated!`,'success');
+    STATE._editCid=null;
+    const hdr=document.querySelector('#modal-addclient .modal-header span'); if(hdr) hdr.textContent='Add New Client';
+    const btn=document.querySelector('#modal-addclient .modal-footer .btn-primary'); if(btn) btn.textContent='Add Client';
+  } else {
+    STATE.clients.push({id:'c'+Date.now(),name,person:getData('nc-person'),wa:getData('nc-wa'),email:getData('nc-email'),gst:getData('nc-gst'),color:getData('nc-color')||'#00897B',addr:getData('nc-addr'),invoices:0,revenue:0,image:''});
+    toast(`✅ Client "${name}" added!`,'success');
+  }
+  updateClientDropdown(); renderClients();
+  closeModal('modal-addclient');
+  ['nc-name','nc-person','nc-wa','nc-email','nc-gst','nc-addr'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
 }
 
 function editClient(id) {
@@ -4293,19 +4280,11 @@ function editProduct(id){
     }
   });
 }
-async function saveEditProd(id) {
-  const idx = STATE.products.findIndex(x => x.id === id); if (idx < 0) return;
-  const n = document.getElementById('ep-name')?.value?.trim();
-  if (!n) { toast('Name required', 'warning'); return; }
-  const payload = { name:n, category:document.getElementById('ep-cat')?.value||'Other',
-    rate:parseFloat(document.getElementById('ep-rate')?.value)||0,
-    hsn:document.getElementById('ep-hsn')?.value||'998314',
-    gst:(document.getElementById('ep-gst')?.value!==undefined&&document.getElementById('ep-gst')?.value!==''?parseInt(document.getElementById('ep-gst').value):18) };
-  try {
-    await api('api/products.php?id=' + (parseInt(id.replace('p',''))||0), 'PUT', payload);
-    STATE.products[idx] = { ...STATE.products[idx], ...payload };
-    renderProducts(); toast('✅ Updated!', 'success');
-  } catch(e) { toast('❌ ' + e.message, 'error'); }
+function saveEditProd(id){
+  const i=STATE.products.findIndex(x=>x.id===id); if(i<0) return;
+  const n=document.getElementById('ep-name')?.value?.trim(); if(!n){toast('Name required','warning');return;}
+  STATE.products[i]={...STATE.products[i],name:n,category:document.getElementById('ep-cat')?.value||'Other',rate:parseFloat(document.getElementById('ep-rate')?.value)||0,hsn:document.getElementById('ep-hsn')?.value||'998314',gst:(document.getElementById('ep-gst')?.value!==''?parseInt(document.getElementById('ep-gst').value):18)};
+  renderProducts(); toast('✅ Updated!','success');
 }
 
 function openAddProductModal() {
@@ -4338,20 +4317,20 @@ function openAddProductModal() {
   document.getElementById('np-name').focus();
 }
 
-async function saveNewProduct() {
-  const n = document.getElementById('np-name')?.value?.trim();
-  if (!n) { toast('⚠️ Name required', 'warning'); return; }
-  const payload = { name:n, category:document.getElementById('np-cat')?.value||'Other',
-    rate:parseFloat(document.getElementById('np-rate')?.value)||0,
-    hsn:document.getElementById('np-hsn')?.value||'998314',
-    gst:(document.getElementById('np-gst')?.value!==undefined&&document.getElementById('np-gst')?.value!==''?parseInt(document.getElementById('np-gst').value):18) };
-  try {
-    await api('api/products.php', 'POST', payload);
-    const r = await api('api/products.php');
-    STATE.products = Array.isArray(r.data) ? r.data : STATE.products;
-    document.getElementById('add-product-row')?.remove();
-    renderProducts(); toast('✅ "' + n + '" added!', 'success');
-  } catch(e) { toast('❌ ' + e.message, 'error'); }
+function saveNewProduct() {
+  const name = document.getElementById('np-name')?.value?.trim();
+  if (!name) { toast('⚠️ Service name required', 'warning'); return; }
+  STATE.products.push({
+    id: 'p' + Date.now(),
+    name,
+    category: document.getElementById('np-cat')?.value || 'Other',
+    rate: parseFloat(document.getElementById('np-rate')?.value) || 0,
+    hsn: document.getElementById('np-hsn')?.value || '998314',
+    gst: (document.getElementById('np-gst')?.value !== '' && document.getElementById('np-gst')?.value !== undefined ? parseInt(document.getElementById('np-gst').value) : 18)
+  });
+  document.getElementById('add-product-row')?.remove();
+  renderProducts();
+  toast(`✅ Service "${name}" added!`, 'success');
 }
 
 function addProductToInvoice(id) {
@@ -4366,14 +4345,10 @@ function addProductToInvoice(id) {
   }, 60);
 }
 
-async function deleteProduct(id) {
-  const p = STATE.products.find(x => x.id === id); if (!p) return;
-  const dbId = parseInt(id.replace('p','')) || 0;
-  try {
-    await api('api/products.php?id=' + dbId, 'DELETE');
-    STATE.products = STATE.products.filter(x => x.id !== id);
-    renderProducts(); toast('🗑️ Deleted', 'info');
-  } catch(e) { toast('❌ ' + e.message, 'error'); }
+function deleteProduct(id) {
+  STATE.products = STATE.products.filter(p=>p.id!==id);
+  renderProducts();
+  toast('🗑️ Service deleted', 'info');
 }
 
 function openProductPicker() {
@@ -4677,36 +4652,18 @@ function setActiveTemplate(n) {
 // ══════════════════════════════════════════
 // SETTINGS SAVE
 // ══════════════════════════════════════════
-async function saveCompanySettings() {
-  const payload = {
-    company_name:    document.getElementById('sc-name')?.value    || '',
-    company_gst:     document.getElementById('sc-gst')?.value     || '',
-    company_phone:   document.getElementById('sc-phone')?.value   || '',
-    company_email:   document.getElementById('sc-email')?.value   || '',
-    company_website: document.getElementById('sc-web')?.value     || '',
-    invoice_prefix:  document.getElementById('sc-prefix')?.value  || '',
-    company_upi:     document.getElementById('sc-upi')?.value     || '',
-    company_address: document.getElementById('sc-addr')?.value    || '',
-    company_logo:    document.getElementById('sc-logo')?.value    || STATE.settings.logo || '',
-    company_sign:    document.getElementById('sc-sign')?.value    || STATE.settings.signature || '',
-    company_bank:    document.getElementById('sc-bank')?.value    || STATE.settings.defaultBank  || '',
-  };
-  Object.assign(STATE.settings, {
-    company: payload.company_name, gst: payload.company_gst, phone: payload.company_phone,
-    email: payload.company_email, website: payload.company_website, prefix: payload.invoice_prefix,
-    upi: payload.company_upi, address: payload.company_address,
-    logo: payload.company_logo || STATE.settings.logo,
-    signature: payload.company_sign || STATE.settings.signature,
-    defaultBank: payload.company_bank || STATE.settings.defaultBank
-  });
-  // Also refresh bank field in create form if open
-  const bankEl = document.getElementById('f-bank');
-  if (bankEl && !bankEl.value) bankEl.value = STATE.settings.defaultBank || '';
-  try {
-    await api('api/settings.php', 'POST', payload);
-    livePreview();
-    toast('✅ Settings saved!', 'success');
-  } catch(e) { toast('❌ ' + e.message, 'error'); }
+function saveCompanySettings() {
+  STATE.settings.company = document.getElementById('sc-name').value;
+  STATE.settings.gst     = document.getElementById('sc-gst').value;
+  STATE.settings.phone   = document.getElementById('sc-phone').value;
+  STATE.settings.email   = document.getElementById('sc-email').value;
+  STATE.settings.website = document.getElementById('sc-web').value;
+  STATE.settings.prefix  = document.getElementById('sc-prefix').value;
+  STATE.settings.upi     = document.getElementById('sc-upi').value;
+  STATE.settings.address = document.getElementById('sc-addr').value;
+  STATE.settings.logo    = document.getElementById('sc-logo').value||STATE.settings.logo;
+  livePreview();
+  toast('✅ Company settings saved!', 'success');
 }
 
 // saveWASettings: see // saveWASettings is defined below as // Auto-save a single WA toggle immediately when clicked
@@ -4976,61 +4933,75 @@ function renderDashKpis() {
     <div><div style="font-size:10px;color:var(--muted)">${k.l}</div><div style="font-weight:700;font-size:13px">${k.v}</div></div>
   </div>`).join('');
 
-  // WA info card
-  const waEl = document.getElementById('dashWACard');
+  // WA horizontal status bar
+  // ── WA Automation horizontal bar above all cards ────────────
+  const waEl = document.getElementById('dashWABar');
   if (waEl) {
-    const wa       = STATE.settings.wa || {};
-    const hasAPI   = !!(wa.token && wa.pid);
-    const autoOn   = wa.auto_inv === '1' || wa.auto_paid !== '0' || wa.auto_remind !== '0';
-    const modeLabel = wa.msg_mode === 'template' ? '✅ Template Mode' : '💬 Session Mode';
-    const toggOn   = [wa.auto_inv==='1', wa.auto_paid!=='0', wa.auto_remind!=='0', wa.auto_overdue!=='0'].filter(Boolean).length;
-    // WA stats mini-cards
-  const _pendWA=STATE.invoices.filter(i=>i.status==='Pending'||i.status==='Overdue').length;
-  const _overWA=STATE.invoices.filter(i=>i.status==='Overdue').length;
-  const _paidTM=STATE.invoices.filter(i=>{const d=new Date();return i.status==='Paid'&&i.issued&&new Date(i.issued).getMonth()===d.getMonth()&&new Date(i.issued).getFullYear()===d.getFullYear();}).length;
-  const _waClientsCount=STATE.clients.filter(c=>c.wa||c.whatsapp||c.phone).length;
-  waEl.innerHTML = `
-  <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">
-    ${[
-      {ic:'fa-paper-plane',    col:'#25D366',label:'Need Follow-up',  val:_pendWA,           sub:'pending/overdue'},
-      {ic:'fa-exclamation-triangle',col:'#e53935',label:'Overdue Alerts',val:_overWA,         sub:'send now'},
-      {ic:'fa-check-circle',   col:'#00897B',label:'Paid This Month', val:_paidTM,            sub:'receipts sent'},
-      {ic:'fa-address-book',   col:'#1565C0',label:'WA-Ready Clients',val:_waClientsCount,    sub:'have phone #'},
-    ].map(c=>`<div onclick="showPage('whatsapp',null)" style="flex:1;min-width:110px;background:${c.col}0f;border:1.5px solid ${c.col}28;border-radius:10px;padding:9px 11px;cursor:pointer">
-      <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
-        <i class="fas ${c.ic}" style="color:${c.col};font-size:11px"></i>
-        <span style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px">${c.label}</span>
+    const wa      = STATE.settings.wa || {};
+    const hasAPI  = !!(wa.token && wa.pid);
+    const mode    = wa.msg_mode === 'template' ? '✅ Template' : '💬 Session';
+    const toggles = [
+      { key:'auto_inv',     label:'New Invoice',     icon:'📄', val: wa.auto_inv     === '1' },
+      { key:'auto_paid',    label:'Payment Receipt', icon:'✅', val: wa.auto_paid    !== '0' },
+      { key:'auto_remind',  label:'Due Reminder',    icon:'🔔', val: wa.auto_remind  !== '0' },
+      { key:'auto_overdue', label:'Overdue Alert',   icon:'⚠️', val: wa.auto_overdue !== '0' },
+      { key:'auto_followup',label:'Follow-up',       icon:'📋', val: wa.auto_followup === '1' },
+    ];
+    const onCount = toggles.filter(t => t.val).length;
+
+    waEl.innerHTML = `<div style="
+        display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+        background:linear-gradient(135deg,#1A2332 0%,#263348 60%,#0d3d2e 100%);
+        border-radius:12px; padding:12px 18px; margin-bottom:16px;
+        box-shadow:0 4px 16px rgba(0,0,0,.18)">
+
+      <!-- Brand icon + title -->
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <div style="width:36px;height:36px;background:#25D366;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📱</div>
+        <div>
+          <div style="color:#fff;font-size:13px;font-weight:800;line-height:1.2">WhatsApp</div>
+          <div style="color:rgba(255,255,255,.5);font-size:10px">${mode}</div>
+        </div>
       </div>
-      <div style="font-size:22px;font-weight:800;color:${c.col};line-height:1">${c.val}</div>
-      <div style="font-size:9px;color:var(--muted);margin-top:1px">${c.sub}</div>
-    </div>`).join('')}
-  </div>
-  <!-- Automation bar -->
-  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--card);border:1.5px solid #25D36628;border-radius:10px;padding:10px 14px;">
-    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-      <div style="width:32px;height:32px;background:#25D366;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px">📱</div>
-      <div>
-        <div style="color:var(--text);font-size:13px;font-weight:800;line-height:1.2">WhatsApp</div>
-        <div style="color:var(--muted);font-size:10px">${mode}</div>
+
+      <!-- API status pill -->
+      <div style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;flex-shrink:0;
+          background:${hasAPI ? 'rgba(37,211,102,.2)' : 'rgba(255,255,255,.08)'};
+          color:${hasAPI ? '#25D366' : 'rgba(255,255,255,.4)'};
+          border:1px solid ${hasAPI ? 'rgba(37,211,102,.4)' : 'rgba(255,255,255,.15)'}">
+        ${hasAPI ? '● Connected' : '○ No API'}
       </div>
-    </div>
-    <div style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;flex-shrink:0;background:${hasAPI?'#25D36615':'#f5f5f5'};color:${hasAPI?'#1a7a3c':'#999'};border:1px solid ${hasAPI?'#25D36635':'#e0e0e0'}">
-      ${hasAPI ? '● Connected' : '○ No API'}
-    </div>
-    <div style="width:1px;height:28px;background:var(--border);flex-shrink:0"></div>
-    ${toggles.map(t=>`
-      <div onclick="showPage('whatsapp',null)" style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;cursor:pointer;flex-shrink:0;background:${t.val?'#25D36612':'var(--bg)'};border:1px solid ${t.val?'#25D36630':'var(--border)'}">
-        <span>${t.icon}</span>
-        <span style="font-size:11px;font-weight:600;color:${t.val?'#1a7a3c':'var(--muted)'}">${t.label}</span>
-        <span style="width:5px;height:5px;border-radius:50%;background:${t.val?'#25D366':'#ccc'};flex-shrink:0"></span>
-      </div>`).join('')}
-    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0">
-      <span style="font-size:11px;color:var(--muted);font-weight:600">${onCount}/5 active</span>
-      <button onclick="showPage('whatsapp',null)" style="padding:5px 12px;background:#25D36615;color:#1a7a3c;border:1px solid #25D36635;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
-        <i class="fas fa-cog"></i> Manage
-      </button>
-    </div>
-  </div>`;
+
+      <!-- Divider -->
+      <div style="width:1px;height:32px;background:rgba(255,255,255,.12);flex-shrink:0"></div>
+
+      <!-- Toggle pills - horizontal row -->
+      ${toggles.map(t => `
+        <div onclick="showPage('whatsapp',null)" style="
+            display:flex;align-items:center;gap:5px;
+            padding:5px 11px;border-radius:20px;cursor:pointer;flex-shrink:0;
+            background:${t.val ? 'rgba(37,211,102,.15)' : 'rgba(255,255,255,.06)'};
+            border:1px solid ${t.val ? 'rgba(37,211,102,.35)' : 'rgba(255,255,255,.1)'};
+            transition:.2s" title="Click to manage">
+          <span style="font-size:13px">${t.icon}</span>
+          <span style="font-size:11px;font-weight:600;color:${t.val ? '#4ade80' : 'rgba(255,255,255,.4)'}">
+            ${t.label}
+          </span>
+          <span style="width:6px;height:6px;border-radius:50%;flex-shrink:0;
+              background:${t.val ? '#25D366' : 'rgba(255,255,255,.2)'}"></span>
+        </div>`).join('')}
+
+      <!-- Count + manage button -->
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <span style="font-size:11px;color:rgba(255,255,255,.5)">${onCount}/5 active</span>
+        <button onclick="showPage('whatsapp',null)"
+            style="padding:6px 14px;background:rgba(37,211,102,.2);color:#25D366;
+                   border:1px solid rgba(37,211,102,.4);border-radius:8px;
+                   font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
+          <i class="fas fa-cog"></i> Manage
+        </button>
+      </div>
+    </div>`;
   }
 }
 
@@ -5052,53 +5023,30 @@ function renderDashAlerts() {
   if(da){da.style.display=soon.length?'':'none';if(soon.length)da.innerHTML=`<i class="fas fa-clock"></i> ${soon.length} Due Soon`;}
 }
 
-async function handleLogoUpload(input, targetId, previewId) {
+function handleLogoUpload(input, targetId, previewId) {
   const file = input.files[0]; if (!file) return;
-  if (file.size > 3*1024*1024) { toast('⚠️ Max 3MB', 'warning'); return; }
-  const typeMap = {
-    'f-company-logo':'logo','sc-logo':'logo',
-    'f-signature':'signature','sc-sign':'signature',
-    'f-client-logo':'client_logo','f-qr':'qr'
-  };
-  const fd = new FormData();
-  fd.append('file', file);
-  fd.append('type', typeMap[targetId] || 'logo');
-  try {
-    const res  = await fetch('api/upload.php', { method:'POST', body:fd });
-    const text = await res.text();
-    let data;
-    try { data = JSON.parse(text); } catch(e) { throw new Error('Upload failed: server returned HTML'); }
-    if (!data.success) throw new Error(data.error || 'Upload failed');
+  if (file.size > 3*1024*1024) { toast('⚠️ Image too large (max 3MB)', 'warning'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const url = e.target.result;
     const el = document.getElementById(targetId);
-    if (el) { el.value = data.url; el.dispatchEvent(new Event('input')); }
-    if (targetId === 'sc-logo' || targetId === 'f-company-logo') {
-      STATE.settings.logo = data.url;
-      // Immediately update sidebar / topbar if logo shown there
-    }
-    if (targetId === 'sc-sign' || targetId === 'f-signature') STATE.settings.signature = data.url;
+    if (el) { el.value = url; el.dispatchEvent(new Event('input')); }
+    if (targetId === 'sc-logo') STATE.settings.logo = url;
+    // Show preview thumbnail
     if (previewId) {
       const prev = document.getElementById(previewId);
       if (prev) {
         const isSign = previewId.includes('sign');
         prev.innerHTML = `<div style="display:inline-flex;align-items:center;gap:8px;padding:6px 10px;background:${isSign?'#1a1a2e':'var(--teal-bg)'};border-radius:8px;border:1px solid var(--border)">
-          <img src="${data.url}" style="height:${isSign?'36':'32'}px;max-width:120px;object-fit:contain;border-radius:4px">
+          <img src="${url}" style="height:${isSign?'36px':'32px'};max-width:120px;object-fit:contain;border-radius:4px;${isSign?'filter:invert(1)':''}">
           <span style="font-size:11px;color:var(--muted)">${file.name}</span>
-          <button onclick="clearLogoField('${targetId}','${previewId}')" style="border:none;background:none;cursor:pointer;color:var(--red);font-size:13px"><i class="fas fa-times"></i></button>
+          <button onclick="clearLogoField('${targetId}','${previewId}')" style="border:none;background:none;cursor:pointer;color:var(--red);font-size:13px;padding:0"><i class="fas fa-times"></i></button>
         </div>`;
       }
     }
-    toast('✅ Uploaded!', 'success');
-  } catch(e) {
-    // Fallback: use base64
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const el = document.getElementById(targetId);
-      if (el) { el.value = ev.target.result; el.dispatchEvent(new Event('input')); }
-      toast('✅ Image loaded', 'success');
-    };
-    reader.readAsDataURL(file);
-    console.warn('Server upload failed, using base64:', e.message);
-  }
+    toast('✅ Image uploaded!', 'success');
+  };
+  reader.readAsDataURL(file);
 }
 
 function clearLogoField(targetId, previewId) {
@@ -5206,13 +5154,20 @@ async function loadAllData() {
         tpl_lang_followup: s.wa_tpl_lang_followup || 'en',
         tpl_name_festival: s.wa_tpl_name_festival || '',
         tpl_lang_festival: s.wa_tpl_lang_festival || 'en',
+        // Festival campaign state
+        festival_tpl:      s.wa_festival_tpl      || '',
+        festival_sendto:   s.wa_festival_sendto   || 'all',
+        festival_img:      s.wa_festival_img      || '',
+        festival_schedule: s.wa_festival_schedule || '',
+        festival_repeat:   s.wa_festival_repeat   || '',
+        festival_name:     s.wa_festival_name     || 'diwali',
       };
       // Parse TPL_CUSTOM settings
       if (window.TPL_CUSTOM) {
         if (s.tpl_color1)        TPL_CUSTOM.color1         = s.tpl_color1;
         if (s.tpl_color2)        TPL_CUSTOM.color2         = s.tpl_color2;
         if (s.tpl_font)          TPL_CUSTOM.font           = s.tpl_font;
-        if (s.tpl_name_size)     TPL_CUSTOM.companyNameSize= String(parseInt(s.tpl_name_size)||28);
+        if (s.tpl_name_size)     TPL_CUSTOM.companyNameSize= s.tpl_name_size;
         if (s.tpl_name_color)    TPL_CUSTOM.companyNameColor=s.tpl_name_color;
         if (s.tpl_name_style)    TPL_CUSTOM.companyNameStyle=s.tpl_name_style;
         if (s.tpl_logo_position) TPL_CUSTOM.logoPosition   = s.tpl_logo_position;
@@ -5256,43 +5211,221 @@ async function loadAllData() {
 }
 
 // ── Override: saveInvoice ───────────────────────────────────────
-
-// window.saveInvoice: now handled by the function declaration above
-;
+window.saveInvoice = async function() {
+  const d = getFormData();
+  if (!d.cname || d.cname === 'Client Name') { toast('⚠️ Please enter client name', 'warning'); return; }
+  if (formItems.length === 0) { toast('⚠️ Add at least one line item', 'warning'); return; }
+  const selVal = document.getElementById('f-client-select')?.value;
+  const payload = {
+    invoice_number: d.num, client_id: selVal ? parseInt(selVal) : null,
+    client_name: d.cname, service_type: d.svc, issued_date: d.date, due_date: d.due,
+    status: d.status, currency: d.sym, subtotal: d.sub,
+    discount_pct: d.disc, discount_amt: d.discAmt, gst_amount: d.gstAmt, grand_total: d.grand,
+    notes: d.notes || '', bank_details: d.bank || '', terms: d.tnc || '',
+    company_logo: d.companyLogo, client_logo: d.clientLogo,
+    signature: d.signature, qr_code: d.qrUrl,
+    template_id: d.tpl, generated_by: d.generatedBy, show_generated: d.showGeneratedBy ? 1 : 0,
+    pdf_options: d.popt,
+    items: formItems.map(i => ({ desc: i.desc, qty: parseFloat(i.qty)||1, rate: parseFloat(i.rate)||0, gst: (i.gst !== undefined && i.gst !== null && i.gst !== '') ? parseFloat(i.gst) : 18 }))
+  };
+  try {
+    if (STATE.editingInvoiceId) {
+      const inv = STATE.invoices.find(i => String(i.id) === String(STATE.editingInvoiceId));
+      const dbId = inv?._dbId || parseInt(inv?.id) || 0;
+      await api('api/invoices.php?id=' + dbId, 'PUT', payload);
+      toast('✅ Invoice updated!', 'success');
+    } else {
+      await api('api/invoices.php', 'POST', payload);
+      toast('✅ Invoice ' + d.num + ' saved!', 'success');
+    }
+    const r = await api('api/invoices.php');
+    STATE.invoices = Array.isArray(r.data) ? r.data : [];
+    STATE.filteredInvoices = [...STATE.invoices];
+    renderInvoicesTable(); renderDashRecent(); renderDonutChart(); updateDashStats();
+    const badge = document.getElementById('badge-invoices');
+    if (badge) badge.textContent = STATE.invoices.length;
+    // Auto-send WA if automation toggle is ON
+    const wa = STATE.settings.wa || {};
+    if (wa.auto_inv === '1' && wa.token && wa.pid) {
+      const saved = STATE.invoices.find(i => (i.num||i.invoice_number) === d.num);
+      if (saved) {
+        const c = STATE.clients.find(x => String(x.id) === String(saved.client)) || {};
+        const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g,'');
+        if (phone) {
+          const tpl = wa.tpl_inv || getDefaultWATpl('inv');
+          const msg = formatWAMsg(tpl, saved, c, STATE.settings);
+          sendWA(phone, msg, 'invoice_created', saved, c).catch(e => console.warn('WA send failed:', e.message));
+        }
+      }
+    }
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+};
 
 // ── Override: confirmPaid ───────────────────────────────────────
 // confirmPaid: now handled by direct function
 // ── Override: confirmDelete ─────────────────────────────────────
 // confirmDelete: now handled by direct function
 // ── Override: saveNewClient ─────────────────────────────────────
-
-// window.saveNewClient: now handled by the function declaration above
-;
+window.saveNewClient = async function() {
+  const name = (document.getElementById('nc-name')?.value || '').trim();
+  if (!name) { toast('⚠️ Enter name', 'warning'); return; }
+  const payload = {
+    name,
+    person: document.getElementById('nc-person')?.value || '',
+    email:  document.getElementById('nc-email')?.value  || '',
+    wa:     document.getElementById('nc-wa')?.value     || '',
+    gst:    document.getElementById('nc-gst')?.value    || '',
+    color:  document.getElementById('nc-color')?.value  || '#00897B',
+    addr:   document.getElementById('nc-addr')?.value   || ''
+  };
+  try {
+    if (STATE._editCid) {
+      const c = STATE.clients.find(x => x.id === STATE._editCid);
+      await api('api/clients.php?id=' + (parseInt(c?.id) || 0), 'PUT', payload);
+      toast('✅ Client updated!', 'success');
+      STATE._editCid = null;
+      const hdr = document.querySelector('#modal-addclient .modal-header span');
+      if (hdr) hdr.textContent = 'Add New Client';
+    } else {
+      await api('api/clients.php', 'POST', payload);
+      toast('✅ "' + name + '" added!', 'success');
+    }
+    const r = await api('api/clients.php');
+    STATE.clients = Array.isArray(r.data) ? r.data : STATE.clients;
+    updateClientDropdown(); renderClients(); populateWAClientDropdown();
+    closeModal('modal-addclient');
+    ['nc-name','nc-person','nc-wa','nc-email','nc-gst','nc-addr'].forEach(id => {
+      const e = document.getElementById(id); if (e) e.value = '';
+    });
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+};
 
 // ── Override: saveCompanySettings ──────────────────────────────
-
-// window.saveCompanySettings: now handled by the function declaration above
-;
+window.saveCompanySettings = async function() {
+  const payload = {
+    company_name:    document.getElementById('sc-name')?.value    || '',
+    company_gst:     document.getElementById('sc-gst')?.value     || '',
+    company_phone:   document.getElementById('sc-phone')?.value   || '',
+    company_email:   document.getElementById('sc-email')?.value   || '',
+    company_website: document.getElementById('sc-web')?.value     || '',
+    invoice_prefix:  document.getElementById('sc-prefix')?.value  || '',
+    company_upi:     document.getElementById('sc-upi')?.value     || '',
+    company_address: document.getElementById('sc-addr')?.value    || '',
+    company_logo:    document.getElementById('sc-logo')?.value    || STATE.settings.logo || '',
+    company_sign:    document.getElementById('sc-sign')?.value    || STATE.settings.signature || '',
+    company_bank:    document.getElementById('sc-bank')?.value    || STATE.settings.defaultBank  || '',
+  };
+  Object.assign(STATE.settings, {
+    company: payload.company_name, gst: payload.company_gst, phone: payload.company_phone,
+    email: payload.company_email, website: payload.company_website, prefix: payload.invoice_prefix,
+    upi: payload.company_upi, address: payload.company_address,
+    logo: payload.company_logo || STATE.settings.logo,
+    signature: payload.company_sign || STATE.settings.signature,
+    defaultBank: payload.company_bank || STATE.settings.defaultBank
+  });
+  // Also refresh bank field in create form if open
+  const bankEl = document.getElementById('f-bank');
+  if (bankEl && !bankEl.value) bankEl.value = STATE.settings.defaultBank || '';
+  try {
+    await api('api/settings.php', 'POST', payload);
+    livePreview();
+    toast('✅ Settings saved!', 'success');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+};
 
 // ── Override: saveEditProd ──────────────────────────────────────
-
-// window.saveEditProd: now handled by the function declaration above
-;
+window.saveEditProd = async function(id) {
+  const idx = STATE.products.findIndex(x => x.id === id); if (idx < 0) return;
+  const n = document.getElementById('ep-name')?.value?.trim();
+  if (!n) { toast('Name required', 'warning'); return; }
+  const payload = { name:n, category:document.getElementById('ep-cat')?.value||'Other',
+    rate:parseFloat(document.getElementById('ep-rate')?.value)||0,
+    hsn:document.getElementById('ep-hsn')?.value||'998314',
+    gst:(document.getElementById('ep-gst')?.value!==undefined&&document.getElementById('ep-gst')?.value!==''?parseInt(document.getElementById('ep-gst').value):18) };
+  try {
+    await api('api/products.php?id=' + (parseInt(id.replace('p',''))||0), 'PUT', payload);
+    STATE.products[idx] = { ...STATE.products[idx], ...payload };
+    renderProducts(); toast('✅ Updated!', 'success');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+};
 
 // ── Override: saveNewProduct ────────────────────────────────────
-
-// window.saveNewProduct: now handled by the function declaration above
-;
+window.saveNewProduct = async function() {
+  const n = document.getElementById('np-name')?.value?.trim();
+  if (!n) { toast('⚠️ Name required', 'warning'); return; }
+  const payload = { name:n, category:document.getElementById('np-cat')?.value||'Other',
+    rate:parseFloat(document.getElementById('np-rate')?.value)||0,
+    hsn:document.getElementById('np-hsn')?.value||'998314',
+    gst:(document.getElementById('np-gst')?.value!==undefined&&document.getElementById('np-gst')?.value!==''?parseInt(document.getElementById('np-gst').value):18) };
+  try {
+    await api('api/products.php', 'POST', payload);
+    const r = await api('api/products.php');
+    STATE.products = Array.isArray(r.data) ? r.data : STATE.products;
+    document.getElementById('add-product-row')?.remove();
+    renderProducts(); toast('✅ "' + n + '" added!', 'success');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+};
 
 // ── Override: deleteProduct ─────────────────────────────────────
-
-// window.deleteProduct: now handled by the function declaration above
-;
+window.deleteProduct = async function(id) {
+  const p = STATE.products.find(x => x.id === id); if (!p) return;
+  const dbId = parseInt(id.replace('p','')) || 0;
+  try {
+    await api('api/products.php?id=' + dbId, 'DELETE');
+    STATE.products = STATE.products.filter(x => x.id !== id);
+    renderProducts(); toast('🗑️ Deleted', 'info');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+};
 
 // ── Override: handleLogoUpload → server upload ──────────────────
-
-// window.handleLogoUpload: now handled by the function declaration above
-;
+window.handleLogoUpload = async function(input, targetId, previewId) {
+  const file = input.files[0]; if (!file) return;
+  if (file.size > 3*1024*1024) { toast('⚠️ Max 3MB', 'warning'); return; }
+  const typeMap = {
+    'f-company-logo':'logo','sc-logo':'logo',
+    'f-signature':'signature','sc-sign':'signature',
+    'f-client-logo':'client_logo','f-qr':'qr'
+  };
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('type', typeMap[targetId] || 'logo');
+  try {
+    const res  = await fetch('api/upload.php', { method:'POST', body:fd });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch(e) { throw new Error('Upload failed: server returned HTML'); }
+    if (!data.success) throw new Error(data.error || 'Upload failed');
+    const el = document.getElementById(targetId);
+    if (el) { el.value = data.url; el.dispatchEvent(new Event('input')); }
+    if (targetId === 'sc-logo' || targetId === 'f-company-logo') {
+      STATE.settings.logo = data.url;
+      // Immediately update sidebar / topbar if logo shown there
+    }
+    if (targetId === 'sc-sign' || targetId === 'f-signature') STATE.settings.signature = data.url;
+    if (previewId) {
+      const prev = document.getElementById(previewId);
+      if (prev) {
+        const isSign = previewId.includes('sign');
+        prev.innerHTML = `<div style="display:inline-flex;align-items:center;gap:8px;padding:6px 10px;background:${isSign?'#1a1a2e':'var(--teal-bg)'};border-radius:8px;border:1px solid var(--border)">
+          <img src="${data.url}" style="height:${isSign?'36':'32'}px;max-width:120px;object-fit:contain;border-radius:4px">
+          <span style="font-size:11px;color:var(--muted)">${file.name}</span>
+          <button onclick="clearLogoField('${targetId}','${previewId}')" style="border:none;background:none;cursor:pointer;color:var(--red);font-size:13px"><i class="fas fa-times"></i></button>
+        </div>`;
+      }
+    }
+    toast('✅ Uploaded!', 'success');
+  } catch(e) {
+    // Fallback: use base64
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const el = document.getElementById(targetId);
+      if (el) { el.value = ev.target.result; el.dispatchEvent(new Event('input')); }
+      toast('✅ Image loaded', 'success');
+    };
+    reader.readAsDataURL(file);
+    console.warn('Server upload failed, using base64:', e.message);
+  }
+};
 
 // ── Bootstrap: load DB data then init app ──────────────────────
 document.addEventListener('DOMContentLoaded', function() {
@@ -5308,7 +5441,6 @@ document.addEventListener('DOMContentLoaded', function() {
       renderProducts();
       renderPayments();
       renderTemplatesGrid();
-      populateTemplateForm();
       renderNotifications();
       populateSettingsForm();
       populateWAPage();
@@ -5559,6 +5691,14 @@ function populateWAPage() {
     if (nEl) nEl.value = wa['tpl_name_' + t] || '';
     if (lEl) lEl.value = wa['tpl_lang_' + t] || 'en';
   });
+  // Festival campaign fields
+  const setFes = (id,v) => { const e=document.getElementById(id); if(e&&v) e.value=v; };
+  setFes('wa-tpl-festival',      wa.festival_tpl    || wa.tpl_festival || getDefaultWATpl('festival'));
+  setFes('wa-send-to',           wa.festival_sendto || 'all');
+  setFes('wa-festival-img',      wa.festival_img    || '');
+  setFes('wa-festival-schedule', wa.festival_schedule || '');
+  setFes('wa-festival-repeat',   wa.festival_repeat   || '');
+  setFes('wa-festival',          wa.festival_name     || 'diwali');
 }
 
 
@@ -5916,31 +6056,6 @@ function setTplColor(inputId, color) {
   if (hexInput)   hexInput.value   = color;
 }
 
-// Sync TPL_CUSTOM → template customization form fields on page load
-function populateTemplateForm() {
-  const C = window.TPL_CUSTOM || {};
-  const setV = (id,v) => { const e=document.getElementById(id); if(e&&v!==undefined) e.value=String(v); };
-  setV('tpl-color1',       C.color1        || '#1A2332');
-  setV('tpl-color1-hex',   C.color1        || '#1A2332');
-  setV('tpl-color2',       C.color2        || '#4DB6AC');
-  setV('tpl-color2-hex',   C.color2        || '#4DB6AC');
-  setV('tpl-font',         C.font          || "'Public Sans',sans-serif");
-  setV('tpl-header-style', C.headerStyle   || 'gradient');
-  setV('tpl-table-style',  C.tableStyle    || 'dark');
-  setV('tpl-footer-text',  C.footerText    || '');
-  setV('tpl-tagline',      C.tagline       || '');
-  setV('tpl-watermark-text',C.watermarkText|| 'PAID');
-  setV('tpl-name-size',    C.companyNameSize   || '28');
-  setV('tpl-name-color',   C.companyNameColor  || '#ffffff');
-  setV('tpl-name-style',   C.companyNameWeight || '800');
-  setV('tpl-logo-pos',     C.logoPosition  || 'left');
-  // Sync range slider too
-  const rs = document.getElementById('tpl-r-name-size');
-  if (rs) { rs.value = C.companyNameSize||'28'; }
-  const rsLbl = document.getElementById('tpl-r-name-size-val');
-  if (rsLbl) rsLbl.textContent = (C.companyNameSize||'28')+'px';
-}
-
 window.applyTplCustomization = function() {
   TPL_CUSTOM.color1       = document.getElementById('tpl-color1')?.value      || TPL_CUSTOM.color1;
   TPL_CUSTOM.color2       = document.getElementById('tpl-color2')?.value      || TPL_CUSTOM.color2;
@@ -5952,12 +6067,7 @@ window.applyTplCustomization = function() {
   TPL_CUSTOM.watermarkText  = document.getElementById('tpl-watermark-text')?.value || 'PAID';
   TPL_CUSTOM.companyNameSize  = document.getElementById('tpl-name-size')?.value    || '28';
   TPL_CUSTOM.companyNameColor = document.getElementById('tpl-name-color')?.value   || '#ffffff';
-  TPL_CUSTOM.companyNameWeight= document.getElementById('tpl-name-style')?.value   || '800';
-  // Sync range slider from number input
-  const _rSize = document.getElementById('tpl-r-name-size');
-  if (_rSize) _rSize.value = TPL_CUSTOM.companyNameSize;
-  const _rLbl = document.getElementById('tpl-r-name-size-val');
-  if (_rLbl) _rLbl.textContent = TPL_CUSTOM.companyNameSize + 'px';
+  TPL_CUSTOM.companyNameWeight= document.getElementById('tpl-name-style')?.value   || '800';  // tpl-name-style stores weight
   TPL_CUSTOM.companyNameStyle = 'normal';  // italic toggle reserved
   TPL_CUSTOM.logoPosition     = document.getElementById('tpl-logo-pos')?.value     || 'left';
   // Sync color hex inputs with color pickers
@@ -6009,9 +6119,14 @@ window.resetTplCustomization = function() {
 
 // Override tplLogoHTML to use custom font
 const _origTplLogoHTML = window.tplLogoHTML;
-
-// tplLogoHTML: see function declaration above
-;
+window.tplLogoHTML = function(d, sc) {
+  const font = TPL_CUSTOM.font || "'Public Sans',sans-serif";
+  const tag  = TPL_CUSTOM.tagline || '';
+  if (!d.popt.logo) return `<div style="font-size:28px;font-weight:800;letter-spacing:-1px;font-family:${font}">${sc.company}</div>${tag?`<div style="font-size:11px;opacity:.7;margin-top:2px">${tag}</div>`:''}`;
+  const logo = d.companyLogo || sc.logo;
+  if (logo) return `<img src="${logo}" style="height:52px;max-width:180px;object-fit:contain;display:block" onerror="this.style.display='none'">`;
+  return `<div style="font-size:28px;font-weight:800;letter-spacing:-1px;font-family:${font}">${sc.company}</div>${tag?`<div style="font-size:11px;opacity:.7;margin-top:2px">${tag}</div>`:''}`;
+};
 
 
 // ── WA Template Mode ───────────────────────────────────────────
@@ -6083,6 +6198,52 @@ window.clearFestivalCampaign = async function() {
   } catch(e) { toast('❌ '+e.message,'error'); }
 };
 
+
+// ── Festival auto-save (debounced) ────────────────────────────
+let _festivalSaveTimer = null;
+function debounceFestivalSave() {
+  // Show a subtle "saving..." indicator
+  const log = document.getElementById('wa-bulk-log');
+  clearTimeout(_festivalSaveTimer);
+  _festivalSaveTimer = setTimeout(async () => {
+    const payload = {
+      wa_festival_tpl:      document.getElementById('wa-tpl-festival')?.value    || '',
+      wa_festival_sendto:   document.getElementById('wa-send-to')?.value         || 'all',
+      wa_festival_img:      document.getElementById('wa-festival-img')?.value    || '',
+      wa_festival_schedule: document.getElementById('wa-festival-schedule')?.value || '',
+      wa_festival_repeat:   document.getElementById('wa-festival-repeat')?.value || '',
+      wa_festival_name:     document.getElementById('wa-festival')?.value         || 'custom',
+    };
+    try {
+      await api('api/settings.php', 'POST', payload);
+      if (!STATE.settings.wa) STATE.settings.wa = {};
+      Object.assign(STATE.settings.wa, {
+        festival_tpl:      payload.wa_festival_tpl,
+        festival_sendto:   payload.wa_festival_sendto,
+        festival_img:      payload.wa_festival_img,
+        festival_schedule: payload.wa_festival_schedule,
+        festival_repeat:   payload.wa_festival_repeat,
+        festival_name:     payload.wa_festival_name,
+      });
+      renderFestivalCampaigns();
+      // Brief visual feedback — tiny teal dot on the textarea
+      const ta = document.getElementById('wa-tpl-festival');
+      if (ta) {
+        ta.style.borderColor = 'var(--teal)';
+        ta.style.boxShadow   = '0 0 0 3px rgba(0,137,123,.15)';
+        setTimeout(() => { ta.style.borderColor=''; ta.style.boxShadow=''; }, 1200);
+      }
+    } catch(e) {
+      console.warn('Festival auto-save failed:', e.message);
+    }
+  }, 900); // 900ms debounce
+}
+
+// Festival fields restored inside populateWAPage directly (see the function)
+
+
+// autoSaveFestivalMsg: merged into debounceFestivalSave above
+function autoSaveFestivalMsg() { debounceFestivalSave(); }
 
 </script>
 
