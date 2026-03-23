@@ -3887,8 +3887,8 @@ function openPreviewModal(id) {
     disc: inv.disc || 0,
     discAmt: inv.subtotal ? inv.subtotal * (inv.disc||0) / 100 : 0,
     notes: inv.notes || '',
-    bank: inv.bank || '',
-    tnc: inv.tnc || '',
+    bank: inv.bank || inv.bank_details || STATE.settings.defaultBank || '',
+    tnc: inv.tnc || inv.terms || '',
     status: inv.status,
     sym: inv.currency || '₹',
     sub: inv.subtotal || inv.amount,
@@ -3948,8 +3948,8 @@ function loadInvoiceIntoForm(inv) {
   document.getElementById('f-due').value      = inv.due;
   document.getElementById('f-disc').value     = inv.disc||0;
   document.getElementById('f-notes').value    = inv.notes||'';
-  document.getElementById('f-bank').value     = inv.bank||inv.bank_details||'';
-  if (document.getElementById('f-tnc')) document.getElementById('f-tnc').value = inv.tnc||inv.terms||'';
+  const _bankEl = document.getElementById('f-bank'); if(_bankEl) _bankEl.value = inv.bank||inv.bank_details||STATE.settings.defaultBank||'';
+  const _tncEl  = document.getElementById('f-tnc');  if(_tncEl)  _tncEl.value  = inv.tnc||inv.terms||STATE.settings.defaultTnC||'';
   // f-bank and f-tnc set above
   document.getElementById('f-template').value = inv.template||1;
   document.getElementById('f-currency').value = inv.currency||'₹';
@@ -4037,20 +4037,43 @@ ${sc.phone||''}`);
 }
 
 function sendEmailForInvoice(inv) {
-  const c = STATE.clients.find(x=>x.id===inv.client);
-  const d = getFormData();
-  sendEmailForClient(c?.email||'', c?.name||'Client', inv.num, fmt_money(inv.amount), inv.due, inv.service, d);
+  const c = STATE.clients.find(x=>String(x.id)===String(inv.client)) || {};
+  const num = inv.num || inv.invoice_number || '';
+  const amt = fmt_money(inv.amount || inv.grand_total || 0, inv.currency||'₹');
+  const due = inv.due || inv.due_date || '';
+  const svc = inv.service || inv.service_type || '';
+  const d   = {
+    bank: inv.bank || inv.bank_details || STATE.settings.defaultBank || '',
+    notes: inv.notes || '', tnc: inv.tnc || inv.terms || '',
+    sym: inv.currency||'₹', grand: inv.amount||0,
+    companyLogo: STATE.settings.logo||''
+  };
+  sendEmailForClient(c.email||'', c.name||'Client', num, amt, due, svc, d);
 }
 
 function sendEmailForClient(email, name, num, amount, due, service, d) {
-  if (!email) { toast('⚠️ No email for this client', 'warning'); return; }
-  const subjTpl = document.getElementById('em-subj')?.value || 'Invoice #{invoice_no} from OPTMS Tech – {amount}';
-  const bodyTpl = document.getElementById('em-body')?.value || 'Dear {client_name}, Please find your invoice #{invoice_no}.';
-  const bank = document.getElementById('f-bank')?.value || STATE.settings.upi;
-  const subj = subjTpl.replace('{invoice_no}',num).replace('{amount}',amount).replace('{client_name}',name);
-  const body = bodyTpl.replace(/{client_name}/g,name).replace(/{invoice_no}/g,num).replace(/{amount}/g,amount).replace(/{due_date}/g,due).replace(/{service}/g,service).replace(/{bank_details}/g,bank);
-  window.open(`mailto:${email}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`,'_blank');
-  toast(`📧 Email client opened for ${name}`, 'success');
+  if (!email) { toast('⚠️ No email address for this client', 'warning'); return; }
+  const sc      = STATE.settings;
+  const company = sc.company || '';
+  const phone   = sc.phone   || '';
+  const upi     = sc.upi     || '';
+  const bank    = (d && d.bank) || sc.defaultBank || '';
+  const subjTpl = document.getElementById('em-subj')?.value || 'Invoice #{invoice_no} from {company_name}';
+  const bodyTpl = document.getElementById('em-body')?.value ||
+    'Dear {client_name},\n\nPlease find Invoice #{invoice_no} for {amount} due on {due_date}.\n\nService: {service}\n\nPay via UPI: {upi}\n{bank_details}\n\nThank you!\n{company_name}\n{company_phone}';
+  const subj = subjTpl
+    .replace(/{invoice_no}/g, num).replace(/{amount}/g, amount)
+    .replace(/{client_name}/g, name).replace(/{company_name}/g, company)
+    .replace(/{due_date}/g, due).replace(/{service}/g, service);
+  const body = bodyTpl
+    .replace(/{invoice_no}/g, num).replace(/{amount}/g, amount)
+    .replace(/{client_name}/g, name).replace(/{company_name}/g, company)
+    .replace(/{due_date}/g, due).replace(/{service}/g, service)
+    .replace(/{upi}/g, upi).replace(/{bank_details}/g, bank)
+    .replace(/{company_phone}/g, phone);
+  const mailto = `mailto:${email}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+  window.open(mailto, '_blank');
+  toast('📧 Email client opened for ' + name, 'success');
 }
 
 // ══════════════════════════════════════════
@@ -5258,11 +5281,31 @@ async function loadAllData() {
         if (s.tpl_font)          TPL_CUSTOM.font           = s.tpl_font;
         if (s.tpl_name_size)     TPL_CUSTOM.companyNameSize= String(parseInt(s.tpl_name_size)||28);
         if (s.tpl_name_color)    TPL_CUSTOM.companyNameColor=s.tpl_name_color;
-        if (s.tpl_name_style)    TPL_CUSTOM.companyNameStyle=s.tpl_name_style;
+        if (s.tpl_name_weight)   TPL_CUSTOM.companyNameWeight=s.tpl_name_weight;
+        if (s.tpl_name_style)    TPL_CUSTOM.companyNameStyle=s.tpl_name_style||'normal';
         if (s.tpl_logo_position) TPL_CUSTOM.logoPosition   = s.tpl_logo_position;
         if (s.tpl_footer_text)   TPL_CUSTOM.footerText     = s.tpl_footer_text;
         if (s.tpl_tagline)       TPL_CUSTOM.tagline        = s.tpl_tagline;
         if (s.tpl_watermark_text)TPL_CUSTOM.watermarkText  = s.tpl_watermark_text;
+        // Sync UI controls to restored values (done after DOM ready)
+        setTimeout(() => {
+          const sync = (id, val) => { const e=document.getElementById(id); if(e) e.value=val; };
+          sync('tpl-color1',      TPL_CUSTOM.color1);
+          sync('tpl-color1-hex',  TPL_CUSTOM.color1);
+          sync('tpl-color2',      TPL_CUSTOM.color2);
+          sync('tpl-color2-hex',  TPL_CUSTOM.color2);
+          sync('tpl-font',        TPL_CUSTOM.font);
+          sync('tpl-name-size',   TPL_CUSTOM.companyNameSize);
+          sync('tpl-name-color',  TPL_CUSTOM.companyNameColor);
+          sync('tpl-name-style',  TPL_CUSTOM.companyNameWeight);
+          sync('tpl-header-style',TPL_CUSTOM.headerStyle);
+          sync('tpl-table-style', TPL_CUSTOM.tableStyle);
+          sync('tpl-footer-text', TPL_CUSTOM.footerText);
+          sync('tpl-tagline',     TPL_CUSTOM.tagline);
+          sync('tpl-watermark-text', TPL_CUSTOM.watermarkText);
+          const sv = document.getElementById('tpl-name-size-val');
+          if (sv) sv.textContent = TPL_CUSTOM.companyNameSize + 'px';
+        }, 200);
       }
       STATE.settings.company   = s.company_name    || STATE.settings.company;
       STATE.settings.gst       = s.company_gst     || STATE.settings.gst;
@@ -5832,9 +5875,14 @@ function testWA() {
 
 // ── Send WA for an invoice ────────────────────────────────────
 async function sendWAForInvoice(inv) {
-  const c     = STATE.clients.find(x => String(x.id) === String(inv.client)) || {};
-  const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g, '');
-  if (!phone) { toast('⚠️ No WhatsApp number for this client', 'warning'); return; }
+  // Try client lookup by multiple field names
+  const clientId = inv.client || inv.client_id;
+  const c = STATE.clients.find(x => String(x.id) === String(clientId)) || {};
+  // Also try by name if id not found
+  const cByName = !c.id ? (STATE.clients.find(x => x.name === (inv.clientName||inv.client_name)) || {}) : c;
+  const client = c.id ? c : cByName;
+  const phone = (client.wa || client.whatsapp || client.phone || '').replace(/\D/g, '');
+  if (!phone) { toast('⚠️ No WhatsApp number for client "' + (client.name||'Unknown') + '"', 'warning'); return; }
   const wa  = STATE.settings.wa || {};
   const tpl = wa.tpl_inv || getDefaultWATpl('inv');
   const msg = formatWAMsg(tpl, inv, c, STATE.settings);
@@ -6009,12 +6057,20 @@ window.applyTplCustomization = function() {
   TPL_CUSTOM.companyNameStyle = 'normal';
   const _rLogoPosEl = document.getElementById('tpl-r-logo-pos');
   TPL_CUSTOM.logoPosition = (_rLogoPosEl?.value) || document.getElementById('tpl-logo-pos')?.value || 'left';
-  // Sync color hex inputs with color pickers
+  // Sync size display
+  const sizeVal = document.getElementById('tpl-name-size-val');
+  if (sizeVal) sizeVal.textContent = TPL_CUSTOM.companyNameSize + 'px';
+  const sizeRange = document.getElementById('tpl-name-size');
+  if (sizeRange) sizeRange.value = TPL_CUSTOM.companyNameSize;
+  // Sync color hex inputs
   const c1hex = document.getElementById('tpl-color1-hex');
   const c2hex = document.getElementById('tpl-color2-hex');
   if (c1hex) { c1hex.value = TPL_CUSTOM.color1; document.getElementById('tpl-color1').value = TPL_CUSTOM.color1; }
   if (c2hex) { c2hex.value = TPL_CUSTOM.color2; document.getElementById('tpl-color2').value = TPL_CUSTOM.color2; }
-  // Preview the active template with new colors
+  // Sync name color picker
+  const nc = document.getElementById('tpl-name-color');
+  if (nc) nc.value = TPL_CUSTOM.companyNameColor;
+  // Preview the active template with updated TPL_CUSTOM
   const n = STATE.settings.activeTemplate || 1;
   previewTemplate(n);
   // Also update live preview on create page
@@ -6036,7 +6092,6 @@ window.saveTplCustomization = async function() {
     tpl_name_size:     TPL_CUSTOM.companyNameSize,
     tpl_name_color:    TPL_CUSTOM.companyNameColor,
     tpl_name_weight:   TPL_CUSTOM.companyNameWeight,
-    tpl_name_style:    TPL_CUSTOM.companyNameStyle,
     tpl_logo_pos:      TPL_CUSTOM.logoPosition,
   };
   try {
