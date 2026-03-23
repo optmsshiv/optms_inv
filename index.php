@@ -2617,7 +2617,7 @@ function renderDashRecent() {
   const recent = [...STATE.invoices].reverse().slice(0,8);
   if (!recent.length) { el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted)">No invoices yet</div>'; return; }
   el.innerHTML = recent.map(inv => {
-    const c = STATE.clients.find(x=>x.id===inv.client)||{name:inv.clientName||inv.client||'Unknown',color:'#00897B'};
+    const c = STATE.clients.find(x=>String(x.id)===String(inv.client))||{name:inv.clientName||inv.client||'Unknown',color:'#00897B'};
     const initials = getInitials(c.name);
     const pmt = STATE.payments.find(p=>p.inv===inv.num);
     const pmtTag = pmt ? `<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:var(--teal-bg);color:var(--teal);font-weight:700;margin-left:4px">${pmt.method.split(' ')[0]}</span>` : '';
@@ -2694,7 +2694,7 @@ function applyFiltersAndRender() {
   const page  = STATE.filteredInvoices.slice(start, end);
 
   tbody.innerHTML = page.map(inv => {
-    const c = STATE.clients.find(x=>x.id===inv.client) || { name:'Unknown', color:'#607D8B' };
+    const c = STATE.clients.find(x=>String(x.id)===String(inv.client)) || { name:'Unknown', color:'#607D8B' };
     const initials = getInitials(c.name);
     const avatar = c.image
       ? `<div class="cc-avatar" style="background:${c.color}"><img src="${c.image}" alt="${c.name}"></div>`
@@ -2744,7 +2744,7 @@ function gotoPage(p) {
 function filterInvoices(val) {
   const v = val.toLowerCase();
   STATE.filteredInvoices = STATE.invoices.filter(inv => {
-    const c = STATE.clients.find(x=>x.id===inv.client);
+    const c = STATE.clients.find(x=>String(x.id)===String(inv.client));
     return inv.num.toLowerCase().includes(v) ||
       (c && c.name.toLowerCase().includes(v)) ||
       inv.service.toLowerCase().includes(v) ||
@@ -3884,7 +3884,7 @@ function openPreviewModal(id) {
   const inv = STATE.invoices.find(i=>String(i.id)===String(id));
   if (!inv) return;
   STATE.activeMenuInvoiceId = id;
-  const c = STATE.clients.find(x=>x.id===inv.client) || {};
+  const c = STATE.clients.find(x=>String(x.id)===String(inv.client)) || {};
   const sc = STATE.settings;
   // Build data object directly from invoice — no form manipulation needed
   const d = {
@@ -3956,7 +3956,7 @@ function openPreviewModal(id) {
 }
 
 function loadInvoiceIntoForm(inv) {
-  const c = STATE.clients.find(x=>x.id===inv.client);
+  const c = STATE.clients.find(x=>String(x.id)===String(inv.client));
   document.getElementById('f-num').value      = inv.num || inv.invoice_number || '';
   document.getElementById('f-service').value  = inv.service || '';
   document.getElementById('f-date').value     = inv.issued;
@@ -3994,9 +3994,9 @@ function sendWAFromForm() {
 
 function sendWAFromModal() {
   const id = document.getElementById('mp-title').dataset.invId;
-  const inv = STATE.invoices.find(i=>i.id===id);
+  const inv = STATE.invoices.find(i=>String(i.id)===String(id));
   if (!inv) return;
-  const c = STATE.clients.find(x=>x.id===inv.client);
+  const c = STATE.clients.find(x=>String(x.id)===String(inv.client));
   sendWAMessage(c?.wa||'', c?.name||inv.clientName||'Client', inv.num, fmt_money(inv.amount), inv.due);
 }
 
@@ -4029,9 +4029,9 @@ function sendEmailFromForm() {
 
 function sendEmailFromModal() {
   const id = document.getElementById('mp-title').dataset.invId;
-  const inv = STATE.invoices.find(i=>i.id===id);
+  const inv = STATE.invoices.find(i=>String(i.id)===String(id));
   if (!inv) return;
-  const c = STATE.clients.find(x=>x.id===inv.client);
+  const c = STATE.clients.find(x=>String(x.id)===String(inv.client));
   const d = getFormData();
   sendEmailForClient(c?.email||'', c?.name||'Client', inv.num, fmt_money(inv.amount), inv.due, inv.service, d);
 }
@@ -4233,7 +4233,7 @@ function saveNewClient() {
 }
 
 function editClient(id) {
-  const c=STATE.clients.find(x=>x.id===id); if(!c) return;
+  const c=STATE.clients.find(x=>String(x.id)===String(id)); if(!c) return;
   STATE._editCid=id;
   ['nc-name','nc-person','nc-wa','nc-email','nc-gst','nc-addr'].forEach(fid=>{
     const f=document.getElementById(fid); if(f) f.value=c[{'nc-name':'name','nc-person':'person','nc-wa':'wa','nc-email':'email','nc-gst':'gst','nc-addr':'addr'}[fid]]||'';
@@ -4521,7 +4521,7 @@ function applyRptFilter(){
 function filterRptTable(v){
   const s=v.toLowerCase();
   RPT.list=STATE.invoices.filter(i=>{
-    const c=STATE.clients.find(x=>x.id===i.client);
+    const c=STATE.clients.find(x=>String(x.id)===String(i.client));
     if(RPT.from&&i.issued<RPT.from)return false;
     if(RPT.to&&i.issued>RPT.to)return false;
     return i.num.toLowerCase().includes(s)||(c&&c.name.toLowerCase().includes(s))||i.service.toLowerCase().includes(s);
@@ -4530,7 +4530,7 @@ function filterRptTable(v){
 }
 function exportRptCSV(){
   const h=['Invoice','Client','Service','Date','Amount','Status'];
-  const r=RPT.list.map(i=>{const c=STATE.clients.find(x=>x.id===i.client)||{name:'Unknown'};return[i.num,c.name,i.service,i.issued,i.amount,i.status].map(v=>`"${v}"`).join(',');});
+  const r=RPT.list.map(i=>{const c=STATE.clients.find(x=>String(x.id)===String(i.client))||{name:'Unknown'};return[i.num,c.name,i.service,i.issued,i.amount,i.status].map(v=>`"${v}"`).join(',');});
   downloadFile('report.csv',[h.join(','),...r].join('\n'),'text/csv');
   toast('✅ Exported!','success');
 }
@@ -4554,7 +4554,7 @@ function _renderRptTable(){
   const tbody=document.getElementById('rptTbody');if(!tbody)return;
   const s=(RPT.page-1)*RPT.per,e=s+RPT.per,pg=RPT.list.slice(s,e);
   tbody.innerHTML=pg.map(inv=>{
-    const c=STATE.clients.find(x=>x.id===inv.client)||{name:'Unknown'};
+    const c=STATE.clients.find(x=>String(x.id)===String(inv.client))||{name:'Unknown'};
     const df=inv.issued?new Date(inv.issued).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):inv.issued;
     return `<tr><td><code style="font-family:var(--mono);color:var(--teal);font-weight:700">${inv.num}</code></td><td><strong>${c.name}</strong></td><td>${inv.service}</td><td style="font-size:12px">${df}</td><td><strong style="font-family:var(--mono)">${fmt_money(inv.amount)}</strong></td><td><span class="badge badge-${inv.status.toLowerCase()}">${inv.status}</span></td></tr>`;
   }).join('')||'<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted)">No transactions in this period</td></tr>';
@@ -4804,7 +4804,7 @@ function exportAllJSON() {
 function exportCSV() {
   const headers = ['Invoice#','Client','Service','Issue Date','Due Date','Amount','Status'];
   const rows = STATE.invoices.map(inv => {
-    const c = STATE.clients.find(x=>x.id===inv.client);
+    const c = STATE.clients.find(x=>String(x.id)===String(inv.client));
     return [inv.num, c?.name||'', inv.service, inv.issued, inv.due, inv.amount, inv.status].map(v=>`"${v}"`).join(',');
   });
   downloadFile('optms_invoices.csv', [headers.join(','),...rows].join('\n'), 'text/csv');
@@ -4844,12 +4844,12 @@ function globalSearchFn(val) {
   if (!val || val.length < 2) { el.classList.remove('open'); return; }
   const v = val.toLowerCase();
   const results = STATE.invoices.filter(i => {
-    const c = STATE.clients.find(x=>x.id===i.client);
+    const c = STATE.clients.find(x=>String(x.id)===String(i.client));
     return i.num.toLowerCase().includes(v) || (c&&c.name.toLowerCase().includes(v)) || i.service.toLowerCase().includes(v);
   }).slice(0,6);
   if (!results.length) { el.classList.remove('open'); return; }
   el.innerHTML = results.map(inv => {
-    const c = STATE.clients.find(x=>x.id===inv.client);
+    const c = STATE.clients.find(x=>String(x.id)===String(inv.client));
     return `<div class="sr-item" onclick="openPreviewModal('${inv.id}');document.getElementById('globalSearch').value='';document.getElementById('searchResults').classList.remove('open')">
       <i class="fas fa-file-invoice" style="color:var(--teal)"></i>
       <div><strong>${inv.num}</strong> – ${c?.name||'Unknown'}<br><small style="color:var(--muted)">${inv.service} · ${fmt_money(inv.amount)} · ${inv.status}</small></div>
@@ -4916,7 +4916,7 @@ function editInvoice(id) {
 }
 
 function viewClientInvoices(id) {
-  const c=STATE.clients.find(x=>x.id===id); if(!c) return;
+  const c=STATE.clients.find(x=>String(x.id)===String(id)); if(!c) return;
   showPage('invoices',null);
   STATE.filteredInvoices=STATE.invoices.filter(i=>i.client===id);
   STATE.currentPage=1; applyFiltersAndRender();
@@ -5964,15 +5964,7 @@ window.sendManualWA = async function() {
 };
 
 // ── Auto-fill phone when client selected ─────────────────────
-window.fillWaManualPhone = function() {
-  const sel = document.getElementById('wa-manual-client');
-  const c   = STATE.clients.find(x => String(x.id) === String(sel?.value));
-  if (!c) return;
-  const ph  = document.getElementById('wa-manual-phone');
-  if (ph)   ph.value = c.wa || c.whatsapp || c.phone || '';
-  const msg = document.getElementById('wa-manual-msg');
-  if (msg && !msg.value) msg.value = `Hi ${c.name}! `;
-};
+;
 
 // ── Festival bulk sender ──────────────────────────────────────
 window.sendFestivalBulk = async function() {
@@ -6036,14 +6028,7 @@ window.fillWaManualPhone = function() {
   }
 };
 
-window.sendManualWA = function() {
-  const phone = (document.getElementById('wa-manual-phone')?.value||'').replace(/\D/g,'');
-  const msg   = document.getElementById('wa-manual-msg')?.value || '';
-  if (!phone) { toast('⚠️ Enter phone number', 'warning'); return; }
-  if (!msg)   { toast('⚠️ Enter message', 'warning'); return; }
-  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-  toast('📱 Opening WhatsApp...', 'success');
-};
+;
 
 // Populate WA client dropdown when navigating to WA page
 
