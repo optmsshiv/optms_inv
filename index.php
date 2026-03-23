@@ -969,6 +969,8 @@ const SERVER = {
           <span id="dashDueSoonAlert" style="display:none;padding:5px 12px;border-radius:20px;background:var(--amber-bg);color:var(--amber);font-size:12px;font-weight:700"></span>
         </div>
       </div>
+      <!-- WhatsApp Automation Card -->
+      <div id="dashWACard" style="margin-bottom:16px"></div>
       <div class="dash-stats-row">
         <div class="stat-card" data-color="teal">
           <div class="stat-icon" style="background:#e0f2f1;color:#00897B"><i class="fas fa-rupee-sign"></i></div>
@@ -1056,7 +1058,6 @@ const SERVER = {
         <div class="dash-card" style="flex:0 0 200px;min-width:0">
           <div class="card-header"><span class="card-title">Quick Insights</span></div>
           <div id="dashQuickKpis"></div>
-        <div class="dash-card" id="dashWACard" style="margin-top:0"></div>
         </div>
         <!-- Recent Activity -->
         <div class="dash-card" style="flex:1;min-width:0">
