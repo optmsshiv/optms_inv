@@ -4345,12 +4345,34 @@ function confirmPaid() {
       if (waP.auto_paid !== '0' && waP.token && waP.pid) {
         const paidInv = STATE.invoices.find(i => String(i.id) === String(mid));
         if (paidInv) {
-          const cP = STATE.clients.find(x => String(x.id) === String(paidInv.client)) || {};
+          const cP     = STATE.clients.find(x => String(x.id) === String(paidInv.client)) || {};
           const phoneP = (cP.wa || cP.whatsapp || cP.phone || '').replace(/\D/g,'');
           if (phoneP) {
-            const tplP = waP.tpl_paid || getDefaultWATpl('paid');
-            const msgP = formatWAMsg(tplP, paidInv, cP, STATE.settings);
-            sendWA(phoneP, msgP, 'payment_received', paidInv, cP).catch(e => console.warn('WA paid failed:', e.message));
+            // Choose template based on payment type
+            const isSplitPmt = payload.method && payload.method.startsWith('Split');
+            let tplKey, tplDefault;
+            if (wasPartial) {
+              tplKey     = waP.tpl_partial;
+              tplDefault = getDefaultWATpl('partial_receipt');
+            } else if (isSplitPmt) {
+              tplKey     = waP.tpl_split || waP.tpl_paid;
+              tplDefault = getDefaultWATpl('split_receipt');
+            } else {
+              tplKey     = waP.tpl_paid;
+              tplDefault = getDefaultWATpl('paid');
+            }
+            const tplP = tplKey || tplDefault;
+            // Enrich inv with payment-specific data for template variables
+            const invWithPmt = Object.assign({}, paidInv, {
+              _paidAmt:      payload.amount,
+              _remainingAmt: payload.remaining_amt || 0,
+              _payMethod:    payload.method,
+              _instalmentNo: pr&&pr.data ? pr.data.filter(p=>String(p.invoice_id)===mid).length : 1,
+            });
+            const msgP = formatWAMsg(tplP, invWithPmt, cP, STATE.settings);
+            const tplName = wasPartial ? 'partial_payment' : isSplitPmt ? 'split_payment' : 'payment_received';
+            sendWA(phoneP, msgP, tplName, invWithPmt, cP)
+              .catch(e => console.warn('WA payment msg failed:', e.message));
           }
         }
       }
@@ -5065,7 +5087,11 @@ function formatWAMsg(tpl, inv, client, settings) {
     .replace(/{days_overdue}/g, String(daysOverdue))
     .replace(/{item_list}/g,    items||'')
     .replace(/{status}/g,       inv.status||'')
-    .replace(/{invoice_link}/g, '');
+    .replace(/{invoice_link}/g, '')
+    .replace(/{paid_amount}/g,      inv._paidAmt     !== undefined ? fmt_money(inv._paidAmt,    inv.currency||'₹') : '')
+    .replace(/{remaining_amount}/g, inv._remainingAmt !== undefined ? fmt_money(inv._remainingAmt, inv.currency||'₹') : '')
+    .replace(/{payment_method}/g,   inv._payMethod   || '')
+    .replace(/{instalment_no}/g,    String(inv._instalmentNo || ''));
 }
 
 
