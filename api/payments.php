@@ -2,6 +2,10 @@
 require_once __DIR__ . '/../includes/auth.php';
 requireLogin();
 $db = getDB(); $method = $_SERVER['REQUEST_METHOD'];
+// Auto-migrate: add Partial status if not exists
+try {
+  $db->exec("ALTER TABLE invoices MODIFY COLUMN status ENUM('Draft','Pending','Partial','Paid','Overdue','Cancelled') DEFAULT 'Draft'");
+} catch(Exception $e) { /* already migrated */ }
 
 switch ($method) {
   case 'GET':

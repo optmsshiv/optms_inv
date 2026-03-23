@@ -1082,7 +1082,7 @@ const SERVER = {
           <input type="text" class="table-search" placeholder="Search invoices…" oninput="filterInvoices(this.value)" id="invSearch">
           <select class="table-filter" onchange="filterByStatus(this.value)" id="statusFilter">
             <option value="">All Status</option>
-            <option>Paid</option><option>Pending</option><option>Overdue</option><option>Draft</option>
+            <option>Paid</option><option>Pending</option><option>Partial</option><option>Overdue</option><option>Draft</option>
           </select>
           <select class="table-filter" onchange="filterByService(this.value)" id="serviceFilter">
             <option value="">All Services</option>
@@ -3280,8 +3280,10 @@ function totalsRows(d, accentColor, borderColor='#eee', mainColor='#000', mutedC
   // Calculate total already paid for this invoice
   const invId = d.invId || d.id || '';
   const paymentsForInv = invId
-    ? STATE.payments.filter(p => String(p.invoice_id||p.inv_id||p.invoice_number) === String(invId) ||
-                                  p.invoice_number === (d.num||d.invoice_number||''))
+    ? STATE.payments.filter(p => 
+        String(p.invoice_id) === String(invId) ||
+        (d.num && p.invoice_number === d.num)
+      )
     : [];
   const totalPaid = paymentsForInv.reduce((s,p) => s + parseFloat(p.amount||0), 0);
   const remaining = Math.max(0, (d.grand||0) - totalPaid);
@@ -4174,7 +4176,8 @@ function openPaidModal(id) {
   const amt = inv ? parseFloat(inv.amount||0) : parseFloat(getFormData().grand||0);
   // Calculate already paid amount for this invoice
   const alreadyPaid = STATE.payments
-    .filter(p => String(p.invoice_id||p.inv_id) === STATE.activeMenuInvoiceId)
+    .filter(p => String(p.invoice_id) === STATE.activeMenuInvoiceId ||
+                 (inv && p.invoice_number === (inv.num||inv.invoice_number)))
     .reduce((s,p) => s + parseFloat(p.amount||0), 0);
   const remaining = Math.max(0, amt - alreadyPaid);
   document.getElementById('paid-amt').value = remaining.toFixed(2);
@@ -4230,9 +4233,9 @@ function confirmPaid() {
   api('api/payments.php','POST',payload)
     .then(() => Promise.all([api('api/invoices.php'),api('api/payments.php')]))
     .then(([ir,pr]) => {
-      if (ir.data) { STATE.invoices=ir.data; STATE.filteredInvoices=[...ir.data]; }
-      if (pr.data)   STATE.payments=pr.data;
-      renderInvoicesTable(); renderDonutChart(); renderDashRecent(); renderPayments(); updateDashStats();
+      if (ir&&ir.data) { STATE.invoices=ir.data; STATE.filteredInvoices=[...ir.data]; }
+      if (pr&&pr.data)   STATE.payments=pr.data;
+      renderInvoicesTable(); renderDonutChart(); renderDashRecent(); renderPayments(); updateDashStats(); renderDashKpis();
       const partialCheck = document.getElementById('paid-collect-remaining');
       const wasPartial = partialCheck && partialCheck.checked && payload.partial;
       if (wasPartial) {
