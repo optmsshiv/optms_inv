@@ -2310,6 +2310,7 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
           <button onclick="addSplitRow()" style="padding:6px 12px;background:#E8F5E9;color:#2E7D32;border:1.5px solid #A5D6A7;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">+ Add Method</button>
           <div style="font-size:12px">Split Total: <strong id="split-total" style="color:#E65100;font-family:var(--mono)">₹0.00</strong></div>
         </div>
+        <div id="split-mismatch-warn" style="display:none;margin-top:8px;font-size:11px;color:#C62828;background:#FFEBEE;border-radius:6px;padding:6px 10px;font-weight:600"></div>
       </div>
       <div class="field" style="margin-top:10px"><label>Notes (optional)</label>
         <input id="paid-notes" placeholder="e.g. First instalment received">
@@ -2977,8 +2978,8 @@ function openRowMenu(e, id) {
   const canEdit      = isDraft;
   const editDisabled = !canEdit;
   const editReason   = isPaid ? '(paid)' : isCancelled ? '(cancelled)' : !isDraft ? '(locked)' : '';
-  // Mark paid not allowed for Paid or Cancelled
-  const canMarkPaid  = !isPaid && !isCancelled;
+  // Mark paid not allowed for Paid, Cancelled, or Draft (must be made Pending first)
+  const canMarkPaid  = !isPaid && !isCancelled && !isDraft;
   // Cancel: not for Paid or already Cancelled
   const canCancel    = !isPaid && !isCancelled;
   const menu = document.getElementById('rowMenu');
@@ -2995,7 +2996,7 @@ function openRowMenu(e, id) {
     <div class="rm-item" onclick="rowMenuAction('wa')"><i class="fab fa-whatsapp"></i> Send WhatsApp</div>
     <div class="rm-item" onclick="rowMenuAction('email')"><i class="fas fa-envelope"></i> Send Email</div>
     <div class="rm-item ${canMarkPaid?'':'rm-disabled'}" onclick="${_paidOnclick}" style="${canMarkPaid?'':'opacity:.4;cursor:not-allowed'}">
-      <i class="fas fa-check-circle"></i> Mark as Paid ${isPaid?'(already paid)':isCancelled?'(cancelled)':''}
+      <i class="fas fa-check-circle"></i> Mark as Paid ${isPaid?'(already paid)':isCancelled?'(cancelled)':isDraft?'(make pending first)':''}
     </div>
     ${canCancel ? `<div class="rm-item" onclick="rowMenuAction('cancel')" style="color:#E65100"><i class="fas fa-ban"></i> Cancel Invoice</div>` : ''}
     <div class="rm-item rm-danger" onclick="rowMenuAction('delete')"><i class="fas fa-trash"></i> Delete</div>`;
@@ -4497,7 +4498,11 @@ function openPaidModal(id) {
 // Called when user types directly in Amount Received — ignored when split mode is active
 function onPaidAmtInput() {
   const isSplit = document.getElementById('paid-method')?.value === 'Split';
-  if (isSplit) return; // split total drives paid-amt, not the other way
+  if (isSplit) {
+    // In split mode, also update the mismatch warning
+    updateSplitTotal();
+    return;
+  }
   updatePaidRemaining();
 }
 
@@ -4514,13 +4519,14 @@ function updatePaidRemaining() {
   const totalReceived = prevPaid + received;
   const remaining     = Math.max(0, total - totalReceived);
   const remBox        = document.getElementById('paid-remaining-box');
-  if (remaining > 0.01 && received > 0 && received < total) {
+  // Show box whenever there is a partial situation (prev payments exist, or current < total)
+  // NEVER hide it just because payment method changed
+  const hasPartialSituation = prevPaid > 0.01 || (received > 0 && remaining > 0.01);
+  if (hasPartialSituation) {
     remBox.style.display = 'block';
     document.getElementById('paid-rem-total').textContent    = fmt_money(total, sym);
     document.getElementById('paid-rem-received').textContent = fmt_money(totalReceived, sym);
     document.getElementById('paid-rem-due').textContent      = fmt_money(remaining, sym);
-  } else {
-    remBox.style.display = 'none';
   }
 }
 
@@ -4528,10 +4534,27 @@ function confirmPaid() {
   const mid = String(STATE.activeMenuInvoiceId);
   const inv = STATE.invoices.find(i=>String(i.id)===mid);
   if (!inv) { closeModal('modal-paid'); return; }
+  // Block save if split payment amounts don't match Amount Received
+  const isSplitMethod = document.getElementById('paid-method')?.value === 'Split';
+  if (isSplitMethod) {
+    const splitRows = document.querySelectorAll('#split-rows .split-amt');
+    const splitSum  = Array.from(splitRows).reduce((s,el) => s + (parseFloat(el.value)||0), 0);
+    const amtFld    = parseFloat(document.getElementById('paid-amt').value) || 0;
+    if (splitSum < 0.01) { toast('⚠️ Enter split amounts for each method', 'warning'); return; }
+    if (Math.abs(splitSum - amtFld) > 0.01) {
+      toast(`⚠️ Split total (${fmt_money(splitSum,'₹')}) must equal Amount Received (${fmt_money(amtFld,'₹')})`, 'warning');
+      return;
+    }
+  }
   const amtReceived = parseFloat(document.getElementById('paid-amt').value)||parseFloat(inv.amount)||0;
   const totalAmt    = parseFloat(inv.amount||0);
-  const isPartial   = (totalAmt - amtReceived) > 0.01 &&
-                      document.getElementById('paid-collect-remaining')?.checked;
+  // Total paid including ALL previous partial payments + this payment
+  const prevPaid = STATE.payments
+    .filter(p => p.invoice_id && String(p.invoice_id) === mid)
+    .reduce((s,p) => s + parseFloat(p.amount||0), 0);
+  const cumulativePaid = prevPaid + amtReceived;
+  const isPartial = (totalAmt - cumulativePaid) > 0.01 &&
+                    document.getElementById('paid-collect-remaining')?.checked;
   const payload = {
     invoice_id:     parseInt(mid)||null,
     invoice_number: inv.num||inv.invoice_number||'',
@@ -4545,7 +4568,7 @@ function confirmPaid() {
     notes:          document.getElementById('paid-notes')?.value || '',
     status:         'Success',
     partial:        isPartial ? 1 : 0,
-    remaining_amt:  isPartial ? (totalAmt - amtReceived) : 0,
+    remaining_amt:  isPartial ? Math.max(0, totalAmt - cumulativePaid) : 0,
   };
   api('api/payments.php','POST',payload)
     .then(() => Promise.all([api('api/invoices.php'),api('api/payments.php')]))
@@ -7058,37 +7081,35 @@ function toggleSplitPayment() {
   if (!panel) return;
   const isSplit = sel?.value === 'Split';
   panel.style.display = isSplit ? 'block' : 'none';
-  if (amtFld) amtFld.style.opacity = isSplit ? '0.5' : '1';
+  if (amtFld) amtFld.style.opacity = isSplit ? '0.6' : '1';
   if (isSplit) {
-    // Clear all split rows — user enters amounts manually, never auto-fill
+    // Clear split rows to zero — user fills manually, never auto-populate
     document.querySelectorAll('#split-rows .split-amt').forEach(el => { el.value = ''; });
     const splitTotalEl = document.getElementById('split-total');
     if (splitTotalEl) splitTotalEl.textContent = '₹0.00';
-    // Do NOT touch paid-amt — it is read-only / driven by split total
-  } else {
-    // Switched back from split — restore paid-amt to invoice remaining
-    const mid = STATE.activeMenuInvoiceId;
-    const inv = STATE.invoices.find(i=>String(i.id)===mid);
-    if (inv) {
-      const amt = parseFloat(inv.amount||0);
-      const alreadyPaid = STATE.payments
-        .filter(p => p.invoice_id && String(p.invoice_id) === mid)
-        .reduce((s,p) => s + parseFloat(p.amount||0), 0);
-      const remaining = Math.max(0, amt - alreadyPaid);
-      document.getElementById('paid-amt').value = (remaining > 0 ? remaining : amt).toFixed(2);
-      updatePaidRemaining();
-    }
   }
+  // NEVER reset paid-amt or hide partial info box when changing method
 }
 
 function updateSplitTotal() {
   const rows = document.querySelectorAll('#split-rows .split-amt');
-  const total = Array.from(rows).reduce((s,el) => s + (parseFloat(el.value)||0), 0);
+  const splitSum = Array.from(rows).reduce((s,el) => s + (parseFloat(el.value)||0), 0);
   const el = document.getElementById('split-total');
-  if (el) el.textContent = fmt_money(total, '₹');
-  // Sync to main amount field
-  const amt = document.getElementById('paid-amt');
-  if (amt) { amt.value = total.toFixed(2); updatePaidRemaining(); }
+  if (el) el.textContent = fmt_money(splitSum, '₹');
+  // Show mismatch warning if split total differs from Amount Received
+  const amtReceived = parseFloat(document.getElementById('paid-amt')?.value) || 0;
+  const warnEl = document.getElementById('split-mismatch-warn');
+  if (warnEl) {
+    if (amtReceived > 0 && Math.abs(splitSum - amtReceived) > 0.01) {
+      warnEl.style.display = 'block';
+      warnEl.textContent = splitSum > amtReceived
+        ? `⚠️ Split total (${fmt_money(splitSum,'₹')}) exceeds Amount Received`
+        : `⚠️ Split total (${fmt_money(splitSum,'₹')}) is less than Amount Received`;
+    } else {
+      warnEl.style.display = 'none';
+    }
+  }
+  // Do NOT change paid-amt — Amount Received is the source of truth
 }
 
 function addSplitRow() {
