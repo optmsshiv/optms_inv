@@ -459,11 +459,12 @@ canvas { max-width: 100% !important; }
   padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
   letter-spacing: .3px; font-family: var(--font); display: inline-block;
 }
-.badge-paid    { background: #E8F5E9; color: #2E7D32; }
-.badge-pending { background: #FFF8E1; color: #F57F17; }
-.badge-partial { background: #FFF3E0; color: #E65100; font-weight:700; }
-.badge-overdue { background: #FFEBEE; color: #C62828; }
-.badge-draft   { background: #F5F5F5; color: #616161; }
+.badge-paid      { background: #E8F5E9; color: #2E7D32; }
+.badge-pending   { background: #FFF8E1; color: #F57F17; }
+.badge-partial   { background: #FFF3E0; color: #E65100; font-weight:700; }
+.badge-overdue   { background: #FFEBEE; color: #C62828; }
+.badge-draft     { background: #F5F5F5; color: #616161; }
+.badge-cancelled { background: #FFCDD2; color: #B71C1C; font-weight:700; }
 
 /* ══════════════════════════════════════════
    CREATE INVOICE
@@ -507,14 +508,16 @@ select { cursor: pointer; }
   padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 700;
   border: 2px solid; transition: .2s; display: inline-block; font-family: var(--font);
 }
-.sr-pill.draft   { border-color: #9E9E9E; color: #757575; }
-.sr-pill.pending { border-color: var(--amber); color: #795548; }
-.sr-pill.paid    { border-color: var(--green); color: var(--green); }
-.sr-pill.overdue { border-color: var(--red); color: var(--red); }
-.status-radio input:checked + .sr-pill.draft   { background: #9E9E9E; color: #fff; }
-.status-radio input:checked + .sr-pill.pending { background: var(--amber); color: #fff; }
-.status-radio input:checked + .sr-pill.paid    { background: var(--green); color: #fff; }
-.status-radio input:checked + .sr-pill.overdue { background: var(--red); color: #fff; }
+.sr-pill.draft      { border-color: #9E9E9E; color: #757575; }
+.sr-pill.pending    { border-color: var(--amber); color: #795548; }
+.sr-pill.paid       { border-color: var(--green); color: var(--green); }
+.sr-pill.overdue    { border-color: var(--red); color: var(--red); }
+.sr-pill.cancelled  { border-color: #B71C1C; color: #B71C1C; }
+.status-radio input:checked + .sr-pill.draft      { background: #9E9E9E; color: #fff; }
+.status-radio input:checked + .sr-pill.pending    { background: var(--amber); color: #fff; }
+.status-radio input:checked + .sr-pill.paid       { background: var(--green); color: #fff; }
+.status-radio input:checked + .sr-pill.overdue    { background: var(--red); color: #fff; }
+.status-radio input:checked + .sr-pill.cancelled  { background: #B71C1C; color: #fff; }
 
 .items-head-row {
   display: flex; gap: 6px; padding: 8px 10px;
@@ -841,12 +844,14 @@ const SERVER = {
     max_followup:  <?= json_encode($settings['wa_max_followup'] ?? '3') ?>,
     tpl_inv:       <?= json_encode($settings['wa_tpl_inv']      ?? '') ?>,
     tpl_paid:      <?= json_encode($settings['wa_tpl_paid']     ?? '') ?>,
+    tpl_partial:   <?= json_encode($settings['wa_tpl_partial']  ?? '') ?>,
     tpl_remind:    <?= json_encode($settings['wa_tpl_remind']   ?? '') ?>,
     tpl_overdue:   <?= json_encode($settings['wa_tpl_overdue']  ?? '') ?>,
     tpl_followup:  <?= json_encode($settings['wa_tpl_followup'] ?? '') ?>,
     tpl_festival:  <?= json_encode($settings['wa_tpl_festival'] ?? '') ?>,
     auto_inv:      <?= json_encode($settings['wa_auto_inv']     ?? '0') ?>,
     auto_paid:     <?= json_encode($settings['wa_auto_paid']    ?? '1') ?>,
+    auto_partial:  <?= json_encode($settings['wa_auto_partial'] ?? '1') ?>,
     auto_remind:   <?= json_encode($settings['wa_auto_remind']  ?? '1') ?>,
     auto_overdue:  <?= json_encode($settings['wa_auto_overdue'] ?? '1') ?>,
     auto_followup: <?= json_encode($settings['wa_auto_followup']?? '0') ?>,
@@ -912,6 +917,10 @@ const SERVER = {
     <a class="nav-item" data-page="backup" onclick="showPage('backup',this)">
       <i class="fas fa-database"></i><span>Backup & Export</span>
     </a>
+    <a class="nav-item" data-page="msglog" onclick="showPage('msglog',this)">
+      <i class="fas fa-comments"></i><span>Message Log</span>
+      <span class="nav-badge" id="badge-msglog" style="display:none">0</span>
+    </a>
     <a class="nav-item" href="/auth/logout.php" style="margin-top:6px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1)"><i class="fas fa-sign-out-alt" style="color:#ff8a80"></i><span style="color:#ff8a80">Logout</span></a>
   </nav>
 
@@ -973,13 +982,15 @@ const SERVER = {
       <!-- WhatsApp Automation Card -->
       <div id="dashWACard" style="margin-bottom:16px"></div>
       <div id="dashPartialCard" style="margin-bottom:16px"></div>
+      <!-- Combined Outstanding Card -->
+      <div id="s-outstanding-card" style="margin-bottom:16px;background:var(--card);border:2px solid rgba(183,28,28,.18);border-radius:14px;padding:16px 20px;box-shadow:0 2px 12px rgba(183,28,28,.07)"></div>
       <div class="dash-stats-row">
         <div class="stat-card" data-color="teal">
           <div class="stat-icon" style="background:#e0f2f1;color:#00897B"><i class="fas fa-rupee-sign"></i></div>
           <div class="stat-body">
             <div class="stat-val" id="s-revenue">₹0</div>
             <div class="stat-lbl">Total Revenue</div>
-            <div class="stat-trend up" id="s-revenue-trend"><i class="fas fa-arrow-up"></i> this month</div>
+            <div class="stat-trend up" id="s-revenue-trend"><i class="fas fa-arrow-up"></i> incl. partial received</div>
           </div>
         </div>
         <div class="stat-card" data-color="amber">
@@ -1084,7 +1095,7 @@ const SERVER = {
           <input type="text" class="table-search" placeholder="Search invoices…" oninput="filterInvoices(this.value)" id="invSearch">
           <select class="table-filter" onchange="filterByStatus(this.value)" id="statusFilter">
             <option value="">All Status</option>
-            <option>Paid</option><option>Pending</option><option>Partial</option><option>Overdue</option><option>Draft</option>
+            <option>Paid</option><option>Pending</option><option>Partial</option><option>Overdue</option><option>Draft</option><option>Cancelled</option>
           </select>
           <select class="table-filter" onchange="filterByService(this.value)" id="serviceFilter">
             <option value="">All Services</option>
@@ -1221,12 +1232,9 @@ const SERVER = {
                 <code class="neg" id="tp-disc">-₹0.00</code>
               </div>
               <div class="tp-row">
-                <span>GST
-                  <select id="f-gst" class="inline-sel" onchange="calcTotals()">
-                    <option value="0">0%</option><option value="5">5%</option>
-                    <option value="12">12%</option><option value="18" selected>18%</option>
-                    <option value="28">28%</option>
-                  </select>
+                <span style="display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:11px;color:var(--muted);font-weight:600">Total GST</span>
+                  <span id="tp-gst-breakdown" style="font-size:10px;color:var(--muted)"></span>
                 </span>
                 <code class="pos" id="tp-gst">+₹0.00</code>
               </div>
@@ -1712,7 +1720,8 @@ const SERVER = {
             <div style="padding:8px 12px;margin:-4px 0 8px;background:var(--teal-bg);border-radius:0 0 8px 8px;font-size:11px;color:var(--teal)" id="twa1-hint">
               When ON: sends invoice details, amount, due date, UPI, and item list to client automatically
             </div>
-            <div class="toggle-item"><span><strong>Payment Receipt</strong> — send when marked paid</span><div class="tog <?= (($settings['wa_auto_paid']??'1')!=='0')?'on':'' ?>" id="twa2" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_paid', this)"></div></div>
+            <div class="toggle-item"><span><strong>Payment Receipt</strong> — send when marked fully paid</span><div class="tog <?= (($settings['wa_auto_paid']??'1')!=='0')?'on':'' ?>" id="twa2" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_paid', this)"></div></div>
+            <div class="toggle-item"><span><strong>Partial Payment</strong> — send receipt when partial payment recorded</span><div class="tog <?= (($settings['wa_auto_partial']??'1')!=='0')?'on':'' ?>" id="twa6" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_partial', this)"></div></div>
             <div class="toggle-item"><span><strong>Due Soon</strong> — reminder 3 days before due date</span><div class="tog <?= (($settings['wa_auto_remind']??'1')!=='0')?'on':'' ?>" id="twa3" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_remind', this)"></div></div>
             <div class="toggle-item"><span><strong>Overdue Alert</strong> — send on due date if unpaid</span><div class="tog <?= (($settings['wa_auto_overdue']??'1')!=='0')?'on':'' ?>" id="twa4" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_overdue', this)"></div></div>
             <div class="toggle-item"><span><strong>Overdue Follow-up</strong> — repeat every 7 days while overdue</span><div class="tog <?= (($settings['wa_auto_followup']??'0')==='1')?'on':'' ?>" id="twa5" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_followup', this)"></div></div>
@@ -2149,7 +2158,58 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
           <div class="field" style="margin-top:16px"><label>Last Backup</label><input value="Never" readonly style="background:#f5f5f5"></div>
         </div>
       </div>
-    </div>
+    </div><!-- /page-backup -->
+
+    <!-- ─────────── MESSAGE LOG ─────────── -->
+    <div id="page-msglog" class="page">
+      <div class="page-toolbar">
+        <div class="toolbar-left">
+          <input id="msglog-search" type="text" placeholder="Search by client, invoice, type…" style="padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;width:260px;background:var(--card);color:var(--text)" oninput="renderMsgLog()">
+          <select id="msglog-filter-type" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--card);color:var(--text)" onchange="renderMsgLog()">
+            <option value="">All Types</option>
+            <option value="invoice_created">📄 New Invoice</option>
+            <option value="payment_received">✅ Payment Receipt</option>
+            <option value="partial_payment">💛 Partial Receipt</option>
+            <option value="payment_overdue">🔴 Overdue Alert</option>
+            <option value="payment_reminder">🔔 Due Reminder</option>
+            <option value="split_payment">⚡ Split Payment</option>
+            <option value="invoice_followup">📋 Follow-up</option>
+          </select>
+          <select id="msglog-filter-status" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--card);color:var(--text)" onchange="renderMsgLog()">
+            <option value="">All Status</option>
+            <option value="sent_api">✅ Sent (API)</option>
+            <option value="sent_web">📱 Sent (wa.me)</option>
+            <option value="failed">❌ Failed</option>
+            <option value="sending">⏳ Sending</option>
+          </select>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn btn-outline" onclick="clearMsgLog()"><i class="fas fa-trash"></i> Clear Log</button>
+          <button class="btn btn-outline" onclick="exportMsgLog()"><i class="fas fa-download"></i> Export CSV</button>
+        </div>
+      </div>
+      <!-- Stats row -->
+      <div id="msglog-stats" style="display:flex;gap:12px;flex-wrap:wrap;padding:0 0 16px"></div>
+      <!-- Log table -->
+      <div style="background:var(--card);border-radius:12px;border:1px solid var(--border);overflow:hidden">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="background:var(--bg);border-bottom:2px solid var(--border)">
+              <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Time</th>
+              <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Type</th>
+              <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Client</th>
+              <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Invoice</th>
+              <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Status</th>
+              <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Message</th>
+              <th style="padding:10px 14px;text-align:center;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Action</th>
+            </tr>
+          </thead>
+          <tbody id="msglog-tbody">
+            <tr><td colspan="7" style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-comments" style="font-size:32px;opacity:.2;display:block;margin-bottom:8px"></i>No messages logged yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div><!-- /page-msglog -->
 
   </div><!-- /pages-container -->
 </div><!-- /main-wrap -->
@@ -2178,9 +2238,15 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
     <div class="modal-header"><span>Mark Invoice as Paid</span><button class="modal-close" onclick="closeModal('modal-paid')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body" style="padding:24px">
       <!-- Invoice summary -->
-      <div id="paid-inv-summary" style="background:var(--teal-bg);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;display:flex;justify-content:space-between;align-items:center">
-        <div><span id="paid-inv-num" style="font-weight:700"></span> · <span id="paid-inv-client"></span></div>
-        <div>Total: <strong id="paid-inv-total" style="color:var(--teal);font-family:var(--mono)"></strong></div>
+      <div id="paid-inv-summary" style="background:var(--teal-bg);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><span id="paid-inv-num" style="font-weight:700"></span> · <span id="paid-inv-client"></span></div>
+          <div>Total: <strong id="paid-inv-total" style="color:var(--teal);font-family:var(--mono)"></strong></div>
+        </div>
+        <div id="paid-inv-remaining-row" style="display:none;margin-top:5px;padding-top:5px;border-top:1px solid var(--border);display:flex;justify-content:space-between">
+          <span style="color:#E65100;font-size:11px">Already Paid: <strong id="paid-inv-already" style="font-family:var(--mono)"></strong></span>
+          <span style="color:#C62828;font-size:11px;font-weight:700">Remaining Due: <strong id="paid-inv-remaining" style="font-family:var(--mono)"></strong></span>
+        </div>
       </div>
       <div class="form-grid g2" style="gap:10px">
         <div class="field"><label>Payment Date</label><input type="date" id="paid-date"></div>
@@ -2194,8 +2260,8 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
             <option value="Split">⚡ Split Payment (multiple methods)</option>
           </select>
         </div>
-        <div class="field"><label>Amount Received (₹)</label>
-          <input type="number" id="paid-amt" placeholder="0.00" oninput="updatePaidRemaining()">
+        <div class="field" id="paid-amt-field"><label>Amount Received (₹)</label>
+          <input type="number" id="paid-amt" placeholder="0.00" oninput="onPaidAmtInput()">
         </div>
         <div class="field"><label>Transaction ID / UTR</label>
           <input id="paid-txn" placeholder="Ref / UTR Number">
@@ -2226,7 +2292,7 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
               <option>Bank Transfer (NEFT/RTGS)</option>
               <option>Cash</option><option>Cheque</option><option>Credit Card</option>
             </select>
-            <input type="number" class="split-amt" placeholder="0.00" style="width:100px;padding:7px 8px;border-radius:8px;border:1px solid var(--border);font-size:12px" oninput="updateSplitTotal()">
+            <input type="number" class="split-amt" placeholder="0.00" value="" style="width:100px;padding:7px 8px;border-radius:8px;border:1px solid var(--border);font-size:12px" oninput="updateSplitTotal()">
             <button onclick="removeSplitRow(this)" style="padding:6px 10px;background:#FFEBEE;color:#C62828;border:none;border-radius:7px;cursor:pointer;font-size:12px">✕</button>
           </div>
           <div class="split-row" style="display:flex;gap:8px;align-items:center">
@@ -2236,7 +2302,7 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
               <option>Bank Transfer (NEFT/RTGS)</option>
               <option>Cheque</option><option>Credit Card</option>
             </select>
-            <input type="number" class="split-amt" placeholder="0.00" style="width:100px;padding:7px 8px;border-radius:8px;border:1px solid var(--border);font-size:12px" oninput="updateSplitTotal()">
+            <input type="number" class="split-amt" placeholder="0.00" value="" style="width:100px;padding:7px 8px;border-radius:8px;border:1px solid var(--border);font-size:12px" oninput="updateSplitTotal()">
             <button onclick="removeSplitRow(this)" style="padding:6px 10px;background:#FFEBEE;color:#C62828;border:none;border-radius:7px;cursor:pointer;font-size:12px">✕</button>
           </div>
         </div>
@@ -2464,7 +2530,8 @@ const breadcrumbs = {
   dashboard:'Dashboard', invoices:'Invoices', create:'Create Invoice',
   clients:'Clients', products:'Services & Products', payments:'Payments',
   reports:'Reports', templates:'PDF Templates', whatsapp:'WhatsApp Setup',
-  'email-setup':'Email Setup', settings:'Settings', backup:'Backup & Export'
+  'email-setup':'Email Setup', settings:'Settings', backup:'Backup & Export',
+  msglog:'Message Log'
 };
 
 function showPage(name, el) {
@@ -2479,7 +2546,7 @@ function showPage(name, el) {
   }
   document.getElementById('breadcrumb').textContent = breadcrumbs[name] || name;
   if (name === 'reports') renderReports();
-  if (name === 'create') { STATE.editingInvoiceId = null; resetCreateForm(); setTimeout(livePreview,50); }
+  if (name === 'create') { if (!STATE._editingNext) { STATE.editingInvoiceId = null; resetCreateForm(); setTimeout(livePreview,50); } STATE._editingNext = false; }
   if (name === 'payments') renderPayments();
   if (name === 'products') renderProducts();
   if (name === 'clients') { updateClientDropdown(); renderClients(); }
@@ -2487,6 +2554,7 @@ function showPage(name, el) {
   if (name === 'templates') { renderTemplatesGrid(); setTimeout(populateTemplateForm,100); }
   if (name === 'whatsapp')  { setTimeout(populateWAPage, 100); setTimeout(renderFestivalCampaigns, 200); }
   if (name === 'settings')  populateSettingsForm();
+  if (name === 'msglog')    renderMsgLog();
 }
 
 // ══════════════════════════════════════════
@@ -2511,10 +2579,22 @@ function updateDashStats() {
   const lastYear  = thisMonth === 0 ? thisYear - 1 : thisYear;
 
   const paid    = STATE.invoices.filter(i=>i.status==='Paid').reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  // Include partial payments actually received (from payments table)
+  const partialReceived = STATE.payments
+    .filter(p => { const inv = STATE.invoices.find(i=>String(i.id)===String(p.invoice_id)); return inv && inv.status !== 'Paid'; })
+    .reduce((s,p)=>s+(parseFloat(p.amount)||0),0);
+  const totalRevenue = paid + partialReceived;
   const pend    = STATE.invoices.filter(i=>i.status==='Pending').reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
   const over    = STATE.invoices.filter(i=>i.status==='Overdue').reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  // Partial remaining (unpaid portion of partial invoices)
+  const partialRemaining = STATE.invoices.filter(i=>i.status==='Partial').reduce((s,i)=>{
+    const pmts = STATE.payments.filter(p=>String(p.invoice_id)===String(i.id));
+    const alreadyPaid = pmts.reduce((a,p)=>a+parseFloat(p.amount||0),0);
+    return s + Math.max(0, (parseFloat(i.amount)||0) - alreadyPaid);
+  },0);
   const pendCnt = STATE.invoices.filter(i=>i.status==='Pending').length;
   const overCnt = STATE.invoices.filter(i=>i.status==='Overdue').length;
+  const partialCnt = STATE.invoices.filter(i=>i.status==='Partial').length;
 
   // This month vs last month revenue
   const revThisM = STATE.invoices.filter(i=>{
@@ -2535,11 +2615,41 @@ function updateDashStats() {
     return d.getMonth()===thisMonth && d.getFullYear()===thisYear;
   }).length;
 
-  if(e('s-revenue')) e('s-revenue').textContent = fmt_money(paid);
+  if(e('s-revenue')) e('s-revenue').textContent = fmt_money(totalRevenue);
   if(e('s-pending')) e('s-pending').textContent = fmt_money(pend);
   if(e('s-overdue')) e('s-overdue').textContent = fmt_money(over);
   if(e('s-total'))   e('s-total').textContent   = STATE.invoices.length;
   if(e('s-clients')) e('s-clients').textContent = STATE.clients.length;
+
+  // Combined outstanding card (pending + overdue + partial remaining)
+  const combinedOutstanding = pend + over + partialRemaining;
+  const combinedCount = pendCnt + overCnt + partialCnt;
+  const outEl = e('s-outstanding-card');
+  if (outEl) {
+    const urgColor = over > 0 ? '#B71C1C' : combinedOutstanding > 0 ? '#E65100' : '#388E3C';
+    outEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="flex:1;min-width:160px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${urgColor};opacity:.8;margin-bottom:2px">Total Outstanding</div>
+          <div style="font-size:26px;font-weight:900;color:${urgColor};font-family:var(--mono);line-height:1">${fmt_money(combinedOutstanding)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">${combinedCount} invoice${combinedCount!==1?'s':''} need attention</div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div style="text-align:center;padding:8px 14px;background:rgba(230,81,0,.08);border:1.5px solid rgba(230,81,0,.2);border-radius:10px">
+            <div style="font-size:18px;font-weight:800;color:#E65100">${fmt_money(pend)}</div>
+            <div style="font-size:10px;color:var(--muted);font-weight:700">🕐 Pending (${pendCnt})</div>
+          </div>
+          <div style="text-align:center;padding:8px 14px;background:rgba(183,28,28,.08);border:1.5px solid rgba(183,28,28,.2);border-radius:10px">
+            <div style="font-size:18px;font-weight:800;color:#B71C1C">${fmt_money(over)}</div>
+            <div style="font-size:10px;color:var(--muted);font-weight:700">🔴 Overdue (${overCnt})</div>
+          </div>
+          <div style="text-align:center;padding:8px 14px;background:rgba(255,152,0,.08);border:1.5px solid rgba(255,152,0,.25);border-radius:10px">
+            <div style="font-size:18px;font-weight:800;color:#E65100">${fmt_money(partialRemaining)}</div>
+            <div style="font-size:10px;color:var(--muted);font-weight:700">💛 Partial Due (${partialCnt})</div>
+          </div>
+        </div>
+      </div>`;
+  }
 
   // Update trend texts
   if(e('s-revenue-trend')) {
@@ -2859,19 +2969,48 @@ function openRowMenu(e, id) {
   e.stopPropagation();
   STATE.activeMenuInvoiceId = id;
   const inv = STATE.invoices.find(i=>String(i.id)===String(id));
-  const isPaid = inv && inv.status === 'Paid';
+  const st  = inv ? inv.status : '';
+  const isPaid       = st === 'Paid';
+  const isDraft      = st === 'Draft';
+  const isCancelled  = st === 'Cancelled';
+  // Edit only allowed for Draft invoices
+  const canEdit      = isDraft;
+  const editDisabled = !canEdit;
+  const editReason   = isPaid ? '(paid)' : isCancelled ? '(cancelled)' : !isDraft ? '(locked)' : '';
+  // Mark paid not allowed for Paid or Cancelled
+  const canMarkPaid  = !isPaid && !isCancelled;
+  // Cancel: not for Paid or already Cancelled
+  const canCancel    = !isPaid && !isCancelled;
   const menu = document.getElementById('rowMenu');
+  const _editOnclick = editDisabled ? '' : "rowMenuAction('edit')";
+  const _paidOnclick = canMarkPaid  ? "rowMenuAction('paid')" : '';
   menu.innerHTML = `
     <div class="rm-item" onclick="rowMenuAction('preview')"><i class="fas fa-eye"></i> Preview</div>
-    <div class="rm-item ${isPaid ? 'rm-disabled' : ''}" onclick="${isPaid ? '' : "rowMenuAction('edit')"}" style="${isPaid ? 'opacity:.4;cursor:not-allowed;' : ''}"><i class="fas fa-edit"></i> Edit Invoice ${isPaid ? '<small style="font-size:9px">(paid)</small>' : ''}</div>
+    <div class="rm-item ${editDisabled?'rm-disabled':''}" onclick="${_editOnclick}" style="${editDisabled?'opacity:.4;cursor:not-allowed;':''}">
+      <i class="fas fa-edit"></i> Edit Invoice ${editDisabled?`<small style="font-size:9px">${editReason}</small>`:''}
+    </div>
+    ${isDraft ? `<div class="rm-item" onclick="rowMenuAction('make-pending')" style="color:#E65100"><i class="fas fa-paper-plane"></i> Make Pending</div>` : ''}
     <div class="rm-item" onclick="rowMenuAction('download')"><i class="fas fa-download"></i> Download PDF</div>
     <div class="rm-item" onclick="rowMenuAction('duplicate')"><i class="fas fa-copy"></i> Duplicate</div>
     <div class="rm-item" onclick="rowMenuAction('wa')"><i class="fab fa-whatsapp"></i> Send WhatsApp</div>
     <div class="rm-item" onclick="rowMenuAction('email')"><i class="fas fa-envelope"></i> Send Email</div>
-    <div class="rm-item ${isPaid ? 'rm-disabled' : ''}" onclick="${isPaid ? '' : "rowMenuAction('paid')"}" style="${isPaid ? 'opacity:.4;cursor:not-allowed' : ''}"><i class="fas fa-check-circle"></i> Mark as Paid ${isPaid ? '(already paid)' : ''}</div>
+    <div class="rm-item ${canMarkPaid?'':'rm-disabled'}" onclick="${_paidOnclick}" style="${canMarkPaid?'':'opacity:.4;cursor:not-allowed'}">
+      <i class="fas fa-check-circle"></i> Mark as Paid ${isPaid?'(already paid)':isCancelled?'(cancelled)':''}
+    </div>
+    ${canCancel ? `<div class="rm-item" onclick="rowMenuAction('cancel')" style="color:#E65100"><i class="fas fa-ban"></i> Cancel Invoice</div>` : ''}
     <div class="rm-item rm-danger" onclick="rowMenuAction('delete')"><i class="fas fa-trash"></i> Delete</div>`;
-  menu.style.top  = (e.clientY + 4) + 'px';
-  menu.style.left = Math.min(e.clientX - 160, window.innerWidth - 200) + 'px';
+  // Smart positioning: flip upward if near screen bottom
+  menu.style.visibility = 'hidden';
+  menu.style.display = 'block';
+  const menuH = menu.offsetHeight || 320;
+  const menuW = menu.offsetWidth  || 190;
+  menu.style.display = '';
+  menu.style.visibility = '';
+  const spaceBelow = window.innerHeight - e.clientY;
+  const top  = spaceBelow < menuH + 10 ? Math.max(4, e.clientY - menuH - 4) : e.clientY + 4;
+  const left = Math.min(e.clientX - 160, window.innerWidth - menuW - 8);
+  menu.style.top  = top  + 'px';
+  menu.style.left = Math.max(4, left) + 'px';
   menu.classList.add('open');
 }
 
@@ -2881,12 +3020,14 @@ function rowMenuAction(action) {
   closeAllDropdowns();
   if (!inv) return;
   if (action === 'preview' || action === 'download') { openPreviewModal(id); return; }
-  if (action === 'edit') { editInvoice(id); return; }
-  if (action === 'duplicate') { duplicateInvoice(id); return; }
-  if (action === 'wa') { sendWAForInvoice(inv); return; }
-  if (action === 'email') { sendEmailForInvoice(inv); return; }
-  if (action === 'paid') { openPaidModal(id); return; }
-  if (action === 'delete') { openDeleteModal(id); return; }
+  if (action === 'edit')         { editInvoice(id); return; }
+  if (action === 'duplicate')    { duplicateInvoice(id); return; }
+  if (action === 'wa')           { sendWAForInvoice(inv); return; }
+  if (action === 'email')        { sendEmailForInvoice(inv); return; }
+  if (action === 'paid')         { openPaidModal(id); return; }
+  if (action === 'delete')       { openDeleteModal(id); return; }
+  if (action === 'make-pending') { changeInvoiceStatus(id, 'Pending'); return; }
+  if (action === 'cancel')       { confirmCancelInvoice(id); return; }
 }
 
 function closeAllDropdowns(e) {
@@ -2910,8 +3051,21 @@ function closeAllDropdowns(e) {
 // ══════════════════════════════════════════
 function resetCreateForm() {
   const prefix = STATE.settings.prefix || 'INV-';
-  const nextNum = (STATE.invoices.length + 1).toString().padStart(3,'0');
-  document.getElementById('f-num').value = prefix + nextNum;
+  // Find highest existing numeric suffix for this prefix to avoid collisions
+  let nextSeq = 1;
+  if (STATE.invoices.length > 0) {
+    STATE.invoices.forEach(inv => {
+      const num = inv.num || inv.invoice_number || '';
+      if (num.startsWith(prefix)) {
+        const suffix = num.slice(prefix.length);
+        const n = parseInt(suffix, 10);
+        if (!isNaN(n) && n >= nextSeq) nextSeq = n + 1;
+      }
+    });
+    // If no invoices matched the current prefix, still fall back to total count + 1
+    if (nextSeq === 1 && STATE.invoices.length > 0) nextSeq = STATE.invoices.length + 1;
+  }
+  document.getElementById('f-num').value = prefix + String(nextSeq).padStart(3,'0');
   // Load defaults from settings
   const bankEl = document.getElementById('f-bank');
   if (bankEl) bankEl.value = STATE.settings.defaultBank || '';
@@ -2946,7 +3100,10 @@ function renderFormItems() {
   const el = document.getElementById('itemsList');
   if (!el) return;
   el.innerHTML = formItems.map(item => {
-    const lineTotal = (item.qty||1)*(item.rate||0);
+    const base     = (item.qty||1)*(item.rate||0);
+    const gstRate  = parseFloat(item.gst ?? 0);
+    const gstAmt   = base * gstRate / 100;
+    const lineTotal = base + gstAmt;   // GST-inclusive total
     return `
     <div class="item-row" id="item-${item.id}">
       <input class="item-desc" value="${item.desc}" placeholder="Service / item description" oninput="updateItem(${item.id},'desc',this.value)">
@@ -2959,7 +3116,7 @@ function renderFormItems() {
         <option value="28" ${item.gst==28?'selected':''}>28%</option>
       </select>
       <input class="item-rate" type="number" value="${item.rate}" min="0" placeholder="0" oninput="updateItem(${item.id},'rate',this.value)">
-      <div class="item-total" id="itot-${item.id}">${fmt_money(lineTotal)}</div>
+      <div class="item-total" id="itot-${item.id}" title="Incl. GST">${fmt_money(lineTotal)}</div>
       <button class="item-del" onclick="removeItem(${item.id})" title="Remove"><i class="fas fa-times"></i></button>
     </div>`;
   }).join('');
@@ -2969,9 +3126,17 @@ function renderFormItems() {
 function updateItem(id, field, val) {
   const item = formItems.find(i=>i.id===id);
   if (!item) return;
-  item[field] = field==='desc' ? val : (parseFloat(val)||0);
+  if (field === 'gst') {
+    item.gst = (val !== '' && val !== null && val !== undefined) ? parseFloat(val) : 0;
+  } else {
+    item[field] = field==='desc' ? val : (parseFloat(val)||0);
+  }
   const tot = document.getElementById('itot-'+id);
-  if (tot) tot.textContent = fmt_money((item.qty||1)*(item.rate||0));
+  if (tot) {
+    const base    = (item.qty||1)*(item.rate||0);
+    const gstAmt  = base * (parseFloat(item.gst ?? 0)/100);
+    tot.textContent = fmt_money(base + gstAmt);  // GST-inclusive
+  }
   calcTotals();
 }
 
@@ -3000,6 +3165,18 @@ function calcTotals() {
   set('tp-sub',   fmt_money(sub));
   set('tp-disc',  '-'+fmt_money(discAmt));
   set('tp-gst',   '+'+fmt_money(gstAfterDisc));
+  // Show GST breakdown per item
+  const bd = document.getElementById('tp-gst-breakdown');
+  if (bd) {
+    const rates = [...new Set(formItems.filter(i=>parseFloat(i.gst??0)>0).map(i=>parseFloat(i.gst??0)))];
+    if (rates.length <= 1) {
+      bd.textContent = rates.length ? rates[0]+'% on subtotal' : '';
+    } else {
+      bd.textContent = formItems.filter(i=>parseFloat(i.gst??0)>0)
+        .map(i => { const b=(i.qty||1)*(i.rate||0); return parseFloat(i.gst)+'% on '+fmt_money(b); })
+        .join(' + ');
+    }
+  }
   set('tp-grand', fmt_money(grand));
 
   // Update the global GST selector display (show blended or first item rate)
@@ -3109,15 +3286,16 @@ function buildInvoiceHTML(d, forPrint) {
   const showGstCol = d.popt ? d.popt.gstCol : true;
   const itemsHTML = formItems.length
     ? formItems.map(i => {
-        const line = (i.qty||1)*(i.rate||0);
+        const line    = (i.qty||1)*(i.rate||0);
         const itemGst = parseFloat(i.gst ?? 0);
-        const gstAmt = line * itemGst / 100;
+        const gstAmt  = line * itemGst / 100;
+        const lineInclGst = line + gstAmt;
         return `<tr>
           <td style="padding:9px 12px;border-bottom:1px solid #eee">${i.desc||'—'}</td>
           <td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">${i.qty}</td>
           ${showGstCol ? `<td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">${itemGst}%</td>` : ''}
           <td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(i.rate,d.sym)}</td>
-          <td style="padding:9px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">${fmt_money(line,d.sym)}</td>
+          <td style="padding:9px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">${fmt_money(lineInclGst,d.sym)}</td>
         </tr>`;
       }).join('')
     : `<tr><td colspan="${showGstCol?5:4}" style="padding:20px;text-align:center;color:#aaa">No items added</td></tr>`;
@@ -3179,6 +3357,8 @@ function tplWatermark(d) {
     wText  = (window.TPL_CUSTOM && TPL_CUSTOM.watermarkText) ? TPL_CUSTOM.watermarkText : 'PAID';
     wColor = 'rgba(0,150,0,.12)';
     if (!d.popt || !d.popt.watermark) return '';
+  } else if (d.status === 'Cancelled') {
+    wText = 'CANCELLED'; wColor = 'rgba(183,28,28,.15)';
   } else if (d.status === 'Partial') {
     wText = 'PARTIAL'; wColor = 'rgba(255,152,0,.13)';
   } else if (d.status === 'Pending') {
@@ -3410,7 +3590,7 @@ function footerBar(d, sc, bg='#1A2332', col='rgba(255,255,255,.4)') {
 }
 
 function statusColor(s) {
-  return { Paid:'#388E3C', Pending:'#F57F17', Overdue:'#C62828', Draft:'#757575' }[s] || '#757575';
+  return { Paid:'#388E3C', Pending:'#F57F17', Overdue:'#C62828', Draft:'#757575', Partial:'#E65100', Cancelled:'#B71C1C' }[s] || '#757575';
 }
 
 // ── Helper: resolve company settings (merge STATE if sc is sparse) ──
@@ -3852,12 +4032,13 @@ function openPrintWindow(d, items) {
     ? items.map(i => {
         const line = (i.qty||1)*(i.rate||0);
         const gstR = parseFloat(i.gst)||0;
+        const lineInclGst = line + (line * gstR / 100);
         return `<tr>
           <td style="padding:10px 12px;border-bottom:1px solid #eee">${i.desc||'—'}</td>
           <td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${i.qty}</td>
           ${showGst ? `<td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${gstR}%</td>` : ''}
           <td style="padding:10px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(i.rate,d.sym)}</td>
-          <td style="padding:10px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">${fmt_money(line,d.sym)}</td>
+          <td style="padding:10px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">${fmt_money(lineInclGst,d.sym)}</td>
         </tr>`;
       }).join('')
     : `<tr><td colspan="${showGst?5:4}" style="padding:20px;text-align:center;color:#aaa">No items</td></tr>`;
@@ -3903,14 +4084,15 @@ function printInvoiceById(inv) {
     ? items.map(i=>{
         const qty  = parseFloat(i.qty||i.quantity||1);
         const rate = parseFloat(i.rate||0);
-        const gst  = (i.gst!==undefined&&i.gst!==null&&i.gst!==''?parseFloat(i.gst):i.gst_rate!==undefined&&i.gst_rate!==''?parseFloat(i.gst_rate):18);
-        const line = qty*rate;
+        const gst         = (i.gst!==undefined&&i.gst!==null&&i.gst!==''?parseFloat(i.gst):i.gst_rate!==undefined&&i.gst_rate!==''?parseFloat(i.gst_rate):18);
+        const line        = qty*rate;
+        const lineInclGst = line + (line * gst / 100);
         return `<tr>
           <td style="padding:10px 12px;border-bottom:1px solid #eee">${i.desc||i.description||'—'}</td>
           <td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${qty}</td>
           <td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${gst}%</td>
           <td style="padding:10px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(rate,sym)}</td>
-          <td style="padding:10px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">${fmt_money(line,sym)}</td>
+          <td style="padding:10px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">${fmt_money(lineInclGst,sym)}</td>
         </tr>`;
       }).join('')
     : `<tr><td colspan="5" style="padding:20px;text-align:center;color:#aaa">No items</td></tr>`;
@@ -3998,7 +4180,7 @@ async function saveInvoice() {
     if (badge) badge.textContent = STATE.invoices.length;
     // Auto-send WA if automation toggle is ON
     const wa = STATE.settings.wa || {};
-    if (wa.auto_inv === '1' && wa.token && wa.pid) {
+    if (wa.auto_inv === '1') {
       const saved = STATE.invoices.find(i => (i.num||i.invoice_number) === d.num);
       if (saved) {
         const c = STATE.clients.find(x => String(x.id) === String(saved.client)) || {};
@@ -4006,7 +4188,10 @@ async function saveInvoice() {
         if (phone) {
           const tpl = wa.tpl_inv || getDefaultWATpl('inv');
           const msg = formatWAMsg(tpl, saved, c, STATE.settings);
-          sendWA(phone, msg, 'invoice_created', saved, c).catch(e => console.warn('WA send failed:', e.message));
+          logWAMessage({ inv: saved, client: c, type: 'invoice_created', msg, status: 'sending' });
+          sendWA(phone, msg, 'invoice_created', saved, c)
+            .then(r => logWAMessage({ inv: saved, client: c, type: 'invoice_created', msg, status: r ? 'sent_api' : 'sent_web' }))
+            .catch(e => { logWAMessage({ inv: saved, client: c, type: 'invoice_created', msg, status: 'failed', error: e.message }); console.warn('WA send failed:', e.message); });
         }
       }
     }
@@ -4038,7 +4223,7 @@ function openPreviewModal(id) {
     caddr: c.addr || '',
     disc: inv.disc || 0,
     discAmt: inv.subtotal ? inv.subtotal * (inv.disc||0) / 100 : 0,
-    notes: inv.notes || '',
+    notes: (inv.notes||'').replace(/\s*\|?\s*Partial payment received\..*$/i,'').trim(),
     bank: inv.bank || inv.bank_details || STATE.settings.defaultBank || '',
     tnc: inv.tnc || inv.terms || '',
     status: inv.status,
@@ -4070,13 +4255,14 @@ function openPreviewModal(id) {
         const rate = parseFloat(i.rate||0);
         const gstR = (i.gst!==undefined&&i.gst!==null&&i.gst!==''?parseFloat(i.gst):i.gstRate!==undefined&&i.gstRate!==''?parseFloat(i.gstRate):i.gst_rate!==undefined&&i.gst_rate!==''?parseFloat(i.gst_rate):18);
         const desc = i.desc||i.description||'—';
-        const line = qty*rate;
+        const line        = qty*rate;
+        const lineInclGst = line + (line * gstR / 100);
         return `<tr>
           <td style="padding:9px 12px;border-bottom:1px solid #eee">${desc}</td>
           <td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">${qty}</td>
           <td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">${gstR}%</td>
           <td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(rate,d.sym)}</td>
-          <td style="padding:9px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">${fmt_money(line,d.sym)}</td>
+          <td style="padding:9px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">${fmt_money(lineInclGst,d.sym)}</td>
         </tr>`;
       }).join('')
     : `<tr><td colspan="5" style="padding:20px;text-align:center;color:#aaa">No items</td></tr>`;
@@ -4100,7 +4286,7 @@ function loadInvoiceIntoForm(inv) {
   document.getElementById('f-date').value     = inv.issued;
   document.getElementById('f-due').value      = inv.due;
   document.getElementById('f-disc').value     = inv.disc||0;
-  document.getElementById('f-notes').value    = inv.notes||'';
+  document.getElementById('f-notes').value    = (inv.notes||'').replace(/\s*\|?\s*Partial payment received\..*$/i,'').trim();
   const _bankEl = document.getElementById('f-bank'); if(_bankEl) _bankEl.value = inv.bank||inv.bank_details||STATE.settings.defaultBank||'';
   const _tncEl  = document.getElementById('f-tnc');  if(_tncEl)  _tncEl.value  = inv.tnc||inv.terms||STATE.settings.defaultTnC||'';
   // f-bank and f-tnc set above
@@ -4239,23 +4425,51 @@ function openPaidModal(id) {
   document.getElementById('paid-txn').value  = '';
   document.getElementById('paid-notes').value = '';
   document.getElementById('paid-remaining-box').style.display = 'none';
+  // Reset split payment panel — clear amounts to zero, hide panel
+  const splitPanel = document.getElementById('split-payment-panel');
+  if (splitPanel) splitPanel.style.display = 'none';
+  document.querySelectorAll('#split-rows .split-amt').forEach(el => { el.value = ''; });
+  const splitTotal = document.getElementById('split-total');
+  if (splitTotal) splitTotal.textContent = '₹0.00';
+  const methodSel = document.getElementById('paid-method');
+  if (methodSel) methodSel.selectedIndex = 0;
+  // Re-enable amount field (may have been dimmed by split mode)
+  const amtFld = document.getElementById('paid-amt-field');
+  if (amtFld) amtFld.style.opacity = '1';
+
   const inv = STATE.invoices.find(i=>String(i.id)===String(STATE.activeMenuInvoiceId));
   const c   = inv ? (STATE.clients.find(x=>String(x.id)===String(inv.client))||{}) : {};
   const amt = inv ? parseFloat(inv.amount||0) : parseFloat(getFormData().grand||0);
-  // Calculate already paid amount for this invoice
-  // Only match by numeric invoice_id — no string fallback to avoid false matches
+  const sym = inv ? (inv.currency||'₹') : '₹';
+
+  // Calculate already paid for this invoice
   const alreadyPaid = STATE.payments
     .filter(p => p.invoice_id && String(p.invoice_id) === STATE.activeMenuInvoiceId)
     .reduce((s,p) => s + parseFloat(p.amount||0), 0);
   const remaining = Math.max(0, amt - alreadyPaid);
-  // Show full amount if no prior payments, remaining if partial payments exist
+
+  // Pre-fill amount with what's still due
   document.getElementById('paid-amt').value = (remaining > 0 ? remaining : amt).toFixed(2);
-  // If already partially paid, show it in the box immediately
+
+  // Show already-paid + remaining in summary bar
+  const remRow = document.getElementById('paid-inv-remaining-row');
+  const alreadyEl = document.getElementById('paid-inv-already');
+  const remainingEl = document.getElementById('paid-inv-remaining');
+  if (remRow) {
+    if (alreadyPaid > 0.01) {
+      remRow.style.display = 'flex';
+      if (alreadyEl) alreadyEl.textContent = fmt_money(alreadyPaid, sym);
+      if (remainingEl) remainingEl.textContent = fmt_money(remaining, sym);
+    } else {
+      remRow.style.display = 'none';
+    }
+  }
+
+  // If already partially paid, show partial box with checkbox pre-checked
   if (alreadyPaid > 0.01 && remaining > 0.01) {
     const rb = document.getElementById('paid-remaining-box');
     if (rb) {
       rb.style.display = 'block';
-      const sym = inv ? (inv.currency||'₹') : '₹';
       const rt = document.getElementById('paid-rem-total');
       const rr = document.getElementById('paid-rem-received');
       const rd = document.getElementById('paid-rem-due');
@@ -4263,20 +4477,28 @@ function openPaidModal(id) {
       if (rr) rr.textContent = fmt_money(alreadyPaid, sym);
       if (rd) rd.textContent = fmt_money(remaining, sym);
       const cb = document.getElementById('paid-collect-remaining');
-      if (cb) cb.checked = true; // Default to partial for Partial invoices
+      if (cb) cb.checked = true;
     }
   }
+
   // Summary bar
   const numEl = document.getElementById('paid-inv-num');
   const cliEl = document.getElementById('paid-inv-client');
   const totEl = document.getElementById('paid-inv-total');
   if (numEl) numEl.textContent = inv ? (inv.num||inv.invoice_number||'') : '';
   if (cliEl) cliEl.textContent = c.name || (inv&&inv.client_name) || '';
-  if (totEl) totEl.textContent = fmt_money(amt, inv&&(inv.currency||'₹')||'₹');
-  // Update modal title based on status
+  if (totEl) totEl.textContent = fmt_money(amt, sym);
+
   const hdr = document.querySelector('#modal-paid .modal-header span');
   if (hdr) hdr.textContent = inv&&inv.status==='Partial' ? 'Collect Remaining Payment' : 'Mark Invoice as Paid';
   openModal('modal-paid');
+}
+
+// Called when user types directly in Amount Received — ignored when split mode is active
+function onPaidAmtInput() {
+  const isSplit = document.getElementById('paid-method')?.value === 'Split';
+  if (isSplit) return; // split total drives paid-amt, not the other way
+  updatePaidRemaining();
 }
 
 function updatePaidRemaining() {
@@ -4286,7 +4508,6 @@ function updatePaidRemaining() {
   const sym       = inv.currency || '₹';
   const total     = parseFloat(inv.amount || 0);
   const received  = parseFloat(document.getElementById('paid-amt').value) || 0;
-  // Add any previously recorded partial payments
   const prevPaid  = STATE.payments
     .filter(p => p.invoice_id && String(p.invoice_id) === mid)
     .reduce((s,p) => s + parseFloat(p.amount||0), 0);
@@ -4296,7 +4517,6 @@ function updatePaidRemaining() {
   if (remaining > 0.01 && received > 0 && received < total) {
     remBox.style.display = 'block';
     document.getElementById('paid-rem-total').textContent    = fmt_money(total, sym);
-    // Show cumulative received (prev + current)
     document.getElementById('paid-rem-received').textContent = fmt_money(totalReceived, sym);
     document.getElementById('paid-rem-due').textContent      = fmt_money(remaining, sym);
   } else {
@@ -4342,15 +4562,40 @@ function confirmPaid() {
       }
       // Auto-send WA receipt if toggle ON
       const waP = STATE.settings.wa || {};
-      if (waP.auto_paid !== '0' && waP.token && waP.pid) {
+      // Determine if we should send: paid uses auto_paid, partial uses auto_partial
+      const shouldSendWA = wasPartial ? (waP.auto_partial !== '0') : (waP.auto_paid !== '0');
+      if (shouldSendWA) {
         const paidInv = STATE.invoices.find(i => String(i.id) === String(mid));
         if (paidInv) {
-          const cP = STATE.clients.find(x => String(x.id) === String(paidInv.client)) || {};
+          const cP     = STATE.clients.find(x => String(x.id) === String(paidInv.client)) || {};
           const phoneP = (cP.wa || cP.whatsapp || cP.phone || '').replace(/\D/g,'');
           if (phoneP) {
-            const tplP = waP.tpl_paid || getDefaultWATpl('paid');
-            const msgP = formatWAMsg(tplP, paidInv, cP, STATE.settings);
-            sendWA(phoneP, msgP, 'payment_received', paidInv, cP).catch(e => console.warn('WA paid failed:', e.message));
+            // Choose template based on payment type
+            const isSplitPmt = payload.method && payload.method.startsWith('Split');
+            let tplKey, tplDefault, tplName;
+            if (wasPartial) {
+              tplKey = waP.tpl_partial; tplDefault = getDefaultWATpl('partial_receipt');
+              tplName = 'partial_payment';
+            } else if (isSplitPmt) {
+              tplKey = waP.tpl_split || waP.tpl_paid; tplDefault = getDefaultWATpl('split_receipt');
+              tplName = 'split_payment';
+            } else {
+              tplKey = waP.tpl_paid; tplDefault = getDefaultWATpl('paid');
+              tplName = 'payment_received';
+            }
+            const tplP = tplKey || tplDefault;
+            // Enrich inv with payment-specific data for template variables
+            const invWithPmt = Object.assign({}, paidInv, {
+              _paidAmt:      payload.amount,
+              _remainingAmt: payload.remaining_amt || 0,
+              _payMethod:    payload.method,
+              _instalmentNo: pr&&pr.data ? pr.data.filter(p=>String(p.invoice_id)===mid).length : 1,
+            });
+            const msgP = formatWAMsg(tplP, invWithPmt, cP, STATE.settings);
+            logWAMessage({ inv: invWithPmt, client: cP, type: tplName, msg: msgP, status: 'sending' });
+            sendWA(phoneP, msgP, tplName, invWithPmt, cP)
+              .then(r => logWAMessage({ inv: invWithPmt, client: cP, type: tplName, msg: msgP, status: r ? 'sent_api' : 'sent_web' }))
+              .catch(e => { logWAMessage({ inv: invWithPmt, client: cP, type: tplName, msg: msgP, status: 'failed', error: e.message }); console.warn('WA payment msg failed:', e.message); });
           }
         }
       }
@@ -4386,8 +4631,27 @@ function confirmDelete() {
 
 
 // ══════════════════════════════════════════
-// DUPLICATE
+// STATUS CHANGE (Make Pending / Cancel)
 // ══════════════════════════════════════════
+async function changeInvoiceStatus(id, newStatus) {
+  const inv = STATE.invoices.find(i=>String(i.id)===String(id));
+  if (!inv) return;
+  const label = newStatus === 'Pending' ? '📤 Made Pending' : newStatus === 'Cancelled' ? '🚫 Cancelled' : newStatus;
+  try {
+    await api('api/invoices.php?id=' + parseInt(id), 'PATCH', { status: newStatus });
+    inv.status = newStatus;
+    STATE.filteredInvoices = [...STATE.invoices];
+    renderInvoicesTable(); renderDonutChart(); renderDashRecent(); updateDashStats();
+    toast(`${label}: ${inv.num||inv.invoice_number}`, 'success');
+  } catch(e) { toast('❌ Failed: ' + e.message, 'error'); }
+}
+
+function confirmCancelInvoice(id) {
+  const inv = STATE.invoices.find(i=>String(i.id)===String(id));
+  if (!inv) return;
+  if (!confirm(`Cancel invoice ${inv.num||inv.invoice_number}?\n\nThis will mark the invoice as Cancelled and add a CANCELLED watermark. This action cannot be undone easily.`)) return;
+  changeInvoiceStatus(id, 'Cancelled');
+}
 function duplicateInvoice(id) {
   const inv = STATE.invoices.find(i=>String(i.id)===String(id));
   if (!inv) return;
@@ -5004,12 +5268,14 @@ window.saveWASettings = async function() {
     wa_max_followup:  val('wa-max-followup') || '3',
     wa_tpl_inv:       val('wa-tpl-inv'),
     wa_tpl_paid:      val('wa-tpl-paid'),
+    wa_tpl_partial:   val('wa-tpl-partial'),
     wa_tpl_remind:    val('wa-tpl-remind'),
     wa_tpl_overdue:   val('wa-tpl-overdue'),
     wa_tpl_followup:  val('wa-tpl-followup'),
     wa_tpl_festival:  val('wa-tpl-festival'),
     wa_auto_inv:      tog('twa1'),
     wa_auto_paid:     tog('twa2'),
+    wa_auto_partial:  tog('twa6'),
     wa_auto_remind:   tog('twa3'),
     wa_auto_overdue:  tog('twa4'),
     wa_auto_followup: tog('twa5'),
@@ -5021,9 +5287,11 @@ window.saveWASettings = async function() {
     test_phone: payload.wa_test_phone,
     remind_days: payload.wa_remind_days, max_followup: payload.wa_max_followup,
     tpl_inv: payload.wa_tpl_inv, tpl_paid: payload.wa_tpl_paid,
+    tpl_partial: payload.wa_tpl_partial,
     tpl_remind: payload.wa_tpl_remind, tpl_overdue: payload.wa_tpl_overdue,
     tpl_followup: payload.wa_tpl_followup, tpl_festival: payload.wa_tpl_festival,
     auto_inv: payload.wa_auto_inv, auto_paid: payload.wa_auto_paid,
+    auto_partial: payload.wa_auto_partial,
     auto_remind: payload.wa_auto_remind, auto_overdue: payload.wa_auto_overdue,
     auto_followup: payload.wa_auto_followup,
   });
@@ -5046,14 +5314,51 @@ function formatWAMsg(tpl, inv, client, settings) {
   const dueDate = inv.due || inv.due_date || '';
   const dueFmt  = dueDate ? new Date(dueDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '';
   const issuedFmt = (inv.issued||inv.issued_date) ? new Date(inv.issued||inv.issued_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : today;
-  const amount    = fmt_money(parseFloat(inv.amount||inv.grand_total)||0, inv.currency||'₹');
+  const sym       = inv.currency || '₹';
+  const grandTotal = parseFloat(inv.amount||inv.grand_total)||0;
+  const amount    = fmt_money(grandTotal, sym);
   const daysOverdue = dueDate ? Math.max(0,Math.floor((new Date()-new Date(dueDate))/86400000)) : 0;
-  const items = (inv.items||[]).map(i=>`  • ${i.desc||i.description||''}: ${fmt_money((parseFloat(i.qty)||1)*(parseFloat(i.rate)||0), inv.currency||'₹')}`).join('\n');
+  // Item list with GST-inclusive line totals
+  const items = (inv.items||[]).map(i=>{
+    const qty  = parseFloat(i.qty||i.quantity||1);
+    const rate = parseFloat(i.rate||0);
+    const gst  = parseFloat(i.gst||i.gst_rate||i.gstRate||0);
+    const line = qty * rate;
+    const lineInclGst = line + (line * gst / 100);
+    return `  • ${i.desc||i.description||''}: ${fmt_money(lineInclGst, sym)}`;
+  }).join('\n');
+
+  // Resolve _paidAmt and _remainingAmt for partial/paid invoices when not explicitly set
+  // (e.g. when sending from action menu for an already-Partial invoice)
+  let paidAmt      = inv._paidAmt;
+  let remainingAmt = inv._remainingAmt;
+  if (paidAmt === undefined || remainingAmt === undefined) {
+    // Try every possible invoice ID field
+    const invId = String(inv.id || inv._dbId || inv.invId || '');
+    const invNum = String(inv.num || inv.invoice_number || '');
+    if (STATE.payments && (invId || invNum)) {
+      // Match by invoice_id (numeric) first; fall back to invoice_number string match.
+      // Use only ONE match strategy per payment to prevent double-counting.
+      let pmts = invId
+        ? STATE.payments.filter(p => p.invoice_id && String(p.invoice_id) === invId)
+        : [];
+      if (pmts.length === 0 && invNum) {
+        pmts = STATE.payments.filter(p => p.invoice_number && String(p.invoice_number) === invNum);
+      }
+      const totalPaidFromDB = pmts.reduce((s,p) => s + parseFloat(p.amount||0), 0);
+      paidAmt      = paidAmt      !== undefined ? paidAmt      : totalPaidFromDB;
+      remainingAmt = remainingAmt !== undefined ? remainingAmt : Math.max(0, grandTotal - totalPaidFromDB);
+    } else {
+      paidAmt      = paidAmt      !== undefined ? paidAmt      : 0;
+      remainingAmt = remainingAmt !== undefined ? remainingAmt : grandTotal;
+    }
+  }
+
   return (tpl||'')
     .replace(/{client_name}/g,  c.name||inv.clientName||inv.client_name||'Valued Client')
     .replace(/{invoice_no}/g,   inv.num||inv.invoice_number||'')
     .replace(/{amount}/g,       amount)
-    .replace(/{currency}/g,     inv.currency||'₹')
+    .replace(/{currency}/g,     sym)
     .replace(/{due_date}/g,     dueFmt)
     .replace(/{issue_date}/g,   issuedFmt)
     .replace(/{service}/g,      inv.service||inv.service_type||'')
@@ -5065,11 +5370,199 @@ function formatWAMsg(tpl, inv, client, settings) {
     .replace(/{days_overdue}/g, String(daysOverdue))
     .replace(/{item_list}/g,    items||'')
     .replace(/{status}/g,       inv.status||'')
-    .replace(/{invoice_link}/g, '');
+    .replace(/{invoice_link}/g, '')
+    .replace(/{paid_amount}/g,      fmt_money(paidAmt, sym))
+    .replace(/{remaining_amount}/g, fmt_money(remainingAmt, sym))
+    .replace(/{payment_method}/g,   inv._payMethod   || '')
+    .replace(/{instalment_no}/g,    String(inv._instalmentNo || ''));
 }
 
 
 
+
+// ══════════════════════════════════════════
+// MESSAGE LOG
+// ══════════════════════════════════════════
+const MSG_LOG_KEY = 'optms_msg_log';
+const MSG_LOG_MAX = 500;
+
+function getMsgLog() {
+  try { return JSON.parse(localStorage.getItem(MSG_LOG_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveMsgLog(log) {
+  try { localStorage.setItem(MSG_LOG_KEY, JSON.stringify(log.slice(-MSG_LOG_MAX))); } catch(e) {}
+}
+
+function logWAMessage({ inv, client, type, msg, status, error }) {
+  const log = getMsgLog();
+  const entry = {
+    id:       Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    ts:       new Date().toISOString(),
+    type:     type || 'unknown',
+    status:   status || 'sent_web',
+    client:   (client && client.name) || (inv && (inv.clientName||inv.client_name)) || '—',
+    phone:    (client && (client.wa||client.whatsapp||client.phone)) || '—',
+    inv_num:  inv ? (inv.num||inv.invoice_number||'') : '',
+    inv_amt:  inv ? fmt_money(parseFloat(inv.amount||inv.grand_total||0), inv.currency||'₹') : '',
+    inv_status: inv ? (inv.status||'') : '',
+    msg:      msg || '',
+    error:    error || '',
+  };
+  log.push(entry);
+  saveMsgLog(log);
+  // Update badge
+  const failed = log.filter(e=>e.status==='failed').length;
+  const badge = document.getElementById('badge-msglog');
+  if (badge) {
+    if (failed > 0) { badge.style.display=''; badge.textContent = failed; badge.style.background='var(--red)'; }
+    else { badge.style.display='none'; }
+  }
+}
+
+const MSG_TYPE_META = {
+  invoice_created:  { icon:'📄', label:'New Invoice',      color:'#1565C0' },
+  payment_received: { icon:'✅', label:'Payment Receipt',  color:'#2E7D32' },
+  partial_payment:  { icon:'💛', label:'Partial Receipt',  color:'#E65100' },
+  payment_overdue:  { icon:'🔴', label:'Overdue Alert',    color:'#C62828' },
+  payment_reminder: { icon:'🔔', label:'Due Reminder',     color:'#F57F17' },
+  split_payment:    { icon:'⚡', label:'Split Payment',    color:'#7B1FA2' },
+  invoice_followup: { icon:'📋', label:'Follow-up',        color:'#546E7A' },
+  unknown:          { icon:'💬', label:'Message',          color:'#757575' },
+};
+const MSG_STATUS_META = {
+  sent_api:  { icon:'✅', label:'Sent (API)',  color:'#2E7D32' },
+  sent_web:  { icon:'📱', label:'Opened wa.me',color:'#1565C0' },
+  failed:    { icon:'❌', label:'Failed',      color:'#C62828' },
+  sending:   { icon:'⏳', label:'Sending…',   color:'#F57F17' },
+};
+
+function renderMsgLog() {
+  const log   = getMsgLog();
+  const tbody = document.getElementById('msglog-tbody');
+  const stats = document.getElementById('msglog-stats');
+  if (!tbody) return;
+
+  const search  = (document.getElementById('msglog-search')?.value||'').toLowerCase();
+  const fType   = document.getElementById('msglog-filter-type')?.value  || '';
+  const fStatus = document.getElementById('msglog-filter-status')?.value || '';
+
+  // Stats bar
+  if (stats) {
+    const total   = log.length;
+    const sentApi = log.filter(e=>e.status==='sent_api').length;
+    const sentWeb = log.filter(e=>e.status==='sent_web').length;
+    const failed  = log.filter(e=>e.status==='failed').length;
+    const today   = log.filter(e=>e.ts && e.ts.startsWith(new Date().toISOString().slice(0,10))).length;
+    const statItems = [
+      { icon:'💬', label:'Total Sent',    val:total,   col:'var(--teal)' },
+      { icon:'✅', label:'Via API',       val:sentApi, col:'#2E7D32' },
+      { icon:'📱', label:'Via wa.me',     val:sentWeb, col:'#1565C0' },
+      { icon:'❌', label:'Failed',        val:failed,  col:'#C62828' },
+      { icon:'📅', label:"Today",         val:today,   col:'#7B1FA2' },
+    ];
+    stats.innerHTML = statItems.map(s=>`
+      <div style="display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:10px 18px;min-width:120px">
+        <span style="font-size:20px">${s.icon}</span>
+        <div><div style="font-size:20px;font-weight:800;color:${s.col};line-height:1">${s.val}</div><div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px">${s.label}</div></div>
+      </div>`).join('');
+  }
+
+  // Filter
+  let filtered = [...log].reverse().filter(e => {
+    if (fType   && e.type   !== fType)   return false;
+    if (fStatus && e.status !== fStatus) return false;
+    if (search) {
+      const hay = (e.client+e.inv_num+e.type+e.status+e.msg).toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="padding:40px;text-align:center;color:var(--muted)">
+      <i class="fas fa-search" style="font-size:28px;opacity:.2;display:block;margin-bottom:8px"></i>No messages match filters</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(e => {
+    const tm = MSG_TYPE_META[e.type]   || MSG_TYPE_META.unknown;
+    const sm = MSG_STATUS_META[e.status] || { icon:'?', label:e.status, color:'#999' };
+    const ts = e.ts ? new Date(e.ts).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true}) : '—';
+    const shortMsg = e.msg ? (e.msg.length>80 ? e.msg.slice(0,80)+'…' : e.msg) : '—';
+    const errBadge = e.error ? `<div style="font-size:10px;color:var(--red);margin-top:2px">⚠ ${e.error.slice(0,60)}</div>` : '';
+    return `<tr style="border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+      <td style="padding:10px 14px;color:var(--muted);font-size:12px;white-space:nowrap">${ts}</td>
+      <td style="padding:10px 14px">
+        <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:${tm.color}15;color:${tm.color}">
+          ${tm.icon} ${tm.label}
+        </span>
+      </td>
+      <td style="padding:10px 14px;font-weight:600">${e.client}<div style="font-size:10px;color:var(--muted)">${e.phone||''}</div></td>
+      <td style="padding:10px 14px">
+        <span style="font-weight:700;font-family:var(--mono)">${e.inv_num||'—'}</span>
+        <div style="font-size:10px;color:var(--muted)">${e.inv_amt||''} ${e.inv_status?'· '+e.inv_status:''}</div>
+      </td>
+      <td style="padding:10px 14px">
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:${sm.color}15;color:${sm.color}">
+          ${sm.icon} ${sm.label}
+        </span>
+        ${errBadge}
+      </td>
+      <td style="padding:10px 14px;font-size:12px;color:var(--muted);max-width:260px">
+        <div style="cursor:pointer" onclick="this.style.whiteSpace=this.style.whiteSpace?'':'pre-wrap';this.title=this.style.whiteSpace?'Click to collapse':'Click to expand'"
+          title="Click to expand" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${shortMsg}</div>
+      </td>
+      <td style="padding:10px 14px;text-align:center">
+        <button onclick="resendMsgLogEntry('${e.id}')" title="Resend" style="background:none;border:1.5px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer;color:var(--teal);font-size:11px">↩ Resend</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function clearMsgLog() {
+  if (!confirm('Clear all message log entries? This cannot be undone.')) return;
+  localStorage.removeItem(MSG_LOG_KEY);
+  renderMsgLog();
+  const badge = document.getElementById('badge-msglog');
+  if (badge) badge.style.display = 'none';
+  toast('🗑️ Message log cleared', 'info');
+}
+
+function exportMsgLog() {
+  const log = getMsgLog();
+  if (!log.length) { toast('⚠️ No messages to export', 'warning'); return; }
+  const header = ['Time','Type','Client','Phone','Invoice','Amount','Inv Status','Msg Status','Message','Error'];
+  const rows   = log.map(e => [
+    e.ts ? new Date(e.ts).toLocaleString('en-IN') : '',
+    e.type, e.client, e.phone, e.inv_num, e.inv_amt, e.inv_status, e.status,
+    '"'+(e.msg||'').replace(/"/g,'""')+'"',
+    '"'+(e.error||'').replace(/"/g,'""')+'"',
+  ].join(','));
+  const csv  = [header.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = 'message_log_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  toast('📥 Message log exported', 'success');
+}
+
+function resendMsgLogEntry(id) {
+  const log   = getMsgLog();
+  const entry = log.find(e => e.id === id);
+  if (!entry) { toast('⚠️ Entry not found', 'warning'); return; }
+  const inv = STATE.invoices.find(i => (i.num||i.invoice_number) === entry.inv_num) ||
+              STATE.invoices.find(i => String(i.id) === String(entry.inv_id));
+  if (!inv) { toast('⚠️ Original invoice not found — sending message manually', 'warning'); }
+  // Re-use message text and open wa.me with it
+  const phone = entry.phone ? entry.phone.replace(/\D/g,'') : '';
+  if (!phone) { toast('⚠️ No phone number to resend to', 'warning'); return; }
+  const clean = phone.length === 10 ? '91' + phone : phone;
+  window.open('https://wa.me/' + clean + '?text=' + encodeURIComponent(entry.msg || ''), '_blank');
+  logWAMessage({ inv: inv||{num:entry.inv_num,amount:0}, client:{name:entry.client,wa:entry.phone}, type: entry.type, msg: entry.msg, status:'sent_web' });
+  toast('📱 Resend opened in WhatsApp', 'success');
+  renderMsgLog();
+}
 
 // Send message via Meta WhatsApp Business API
 
@@ -5207,9 +5700,18 @@ function updateClientDropdown() {
 }
 
 function editInvoice(id) {
-  const inv=STATE.invoices.find(i=>String(i.id)===String(id)); if(!inv) return;
-  showPage('create',null);
-  setTimeout(()=>{ STATE.editingInvoiceId=id; updateClientDropdown(); loadInvoiceIntoForm(inv); const s=document.getElementById('f-client-select');if(s)s.value=inv.client; livePreview(); toast(`✏️ Editing ${inv.num}`,'info'); },80);
+  const inv = STATE.invoices.find(i=>String(i.id)===String(id)); if(!inv) return;
+  STATE._editingNext = true;           // tell showPage not to resetCreateForm
+  STATE.editingInvoiceId = id;
+  showPage('create', null);
+  setTimeout(() => {
+    updateClientDropdown();
+    loadInvoiceIntoForm(inv);
+    const s = document.getElementById('f-client-select');
+    if (s) s.value = inv.client;
+    livePreview();
+    toast(`✏️ Editing ${inv.num||inv.invoice_number}`, 'info');
+  }, 80);
 }
 
 function viewClientInvoices(id) {
@@ -5249,7 +5751,7 @@ function renderDashKpis() {
   const wa     = STATE.settings.wa || {};
   const hasAPI = !!(wa.token && wa.pid);
   const mode   = wa.msg_mode === 'template' ? '✅ Template Mode' : '💬 Session Mode';
-  const onCount = [wa.auto_inv==='1', wa.auto_paid!=='0', wa.auto_remind!=='0', wa.auto_overdue!=='0', wa.auto_followup==='1'].filter(Boolean).length;
+  const onCount = [wa.auto_inv==='1', wa.auto_paid!=='0', wa.auto_partial!=='0', wa.auto_remind!=='0', wa.auto_overdue!=='0', wa.auto_followup==='1'].filter(Boolean).length;
 
   const pendWA   = STATE.invoices.filter(i => i.status==='Pending' || i.status==='Overdue').length;
   const overWA   = STATE.invoices.filter(i => i.status==='Overdue').length;
@@ -5281,7 +5783,8 @@ function renderDashKpis() {
 
   const toggles = [
     {key:'auto_inv',      label:'New Invoice',     icon:'📄', val: wa.auto_inv==='1'},
-    {key:'auto_paid',     label:'Payment Receipt', icon:'✅', val: wa.auto_paid!=='0'},
+    {key:'auto_paid',     label:'Receipt',         icon:'✅', val: wa.auto_paid!=='0'},
+    {key:'auto_partial',  label:'Partial',         icon:'💛', val: wa.auto_partial!=='0'},
     {key:'auto_remind',   label:'Due Reminder',    icon:'🔔', val: wa.auto_remind!=='0'},
     {key:'auto_overdue',  label:'Overdue Alert',   icon:'⚠️', val: wa.auto_overdue!=='0'},
     {key:'auto_followup', label:'Follow-up',       icon:'📋', val: wa.auto_followup==='1'},
@@ -5511,12 +6014,14 @@ async function loadAllData() {
         max_followup:  s.wa_max_followup || '3',
         tpl_inv:       s.wa_tpl_inv      || '',
         tpl_paid:      s.wa_tpl_paid     || '',
+        tpl_partial:   s.wa_tpl_partial  || '',
         tpl_remind:    s.wa_tpl_remind   || '',
         tpl_overdue:   s.wa_tpl_overdue  || '',
         tpl_followup:  s.wa_tpl_followup || '',
         tpl_festival:  s.wa_tpl_festival || '',
         auto_inv:      s.wa_auto_inv      !== undefined ? s.wa_auto_inv      : '0',
         auto_paid:     s.wa_auto_paid     !== undefined ? s.wa_auto_paid     : '1',
+        auto_partial:  s.wa_auto_partial  !== undefined ? s.wa_auto_partial  : '1',
         auto_remind:   s.wa_auto_remind   !== undefined ? s.wa_auto_remind   : '1',
         auto_overdue:  s.wa_auto_overdue  !== undefined ? s.wa_auto_overdue  : '1',
         auto_followup: s.wa_auto_followup !== undefined ? s.wa_auto_followup : '0',
@@ -5893,6 +6398,7 @@ function populateWAPage() {
   // Toggles
   setTog('twa1', wa.auto_inv     === '1');
   setTog('twa2', wa.auto_paid    !== '0');
+  setTog('twa6', wa.auto_partial !== '0');
   setTog('twa3', wa.auto_remind  !== '0');
   setTog('twa4', wa.auto_overdue !== '0');
   setTog('twa5', wa.auto_followup === '1');
@@ -6004,9 +6510,9 @@ Kindly process the payment immediately or contact us to discuss.
 
 *Partial Payment Received* for Invoice #{invoice_no}
 
-✅ Paid: *{currency}{paid_amount}*
-⏳ Remaining: *{currency}{remaining_amount}*
-📋 Invoice Total: {currency}{amount}
+✅ Paid: *{paid_amount}*
+⏳ Remaining: *{remaining_amount}*
+📋 Invoice Total: {amount}
 📅 Date: {issue_date}
 📋 Service: {service}
 
@@ -6169,18 +6675,40 @@ async function sendWAForInvoice(inv) {
   // Try client lookup by multiple field names
   const clientId = inv.client || inv.client_id;
   const c = STATE.clients.find(x => String(x.id) === String(clientId)) || {};
-  // Also try by name if id not found
   const cByName = !c.id ? (STATE.clients.find(x => x.name === (inv.clientName||inv.client_name)) || {}) : c;
   const client = c.id ? c : cByName;
   const phone = (client.wa || client.whatsapp || client.phone || '').replace(/\D/g, '');
   if (!phone) { toast('⚠️ No WhatsApp number for client "' + (client.name||'Unknown') + '"', 'warning'); return; }
-  const wa  = STATE.settings.wa || {};
-  const tpl = wa.tpl_inv || getDefaultWATpl('inv');
-  const msg = formatWAMsg(tpl, inv, c, STATE.settings);
+  // Pick the correct template based on invoice status
+  // (same logic as auto-send, so manual send always matches automated send)
+  const wa = STATE.settings.wa || {};
+  let tplKey, tplDefault, tplName, statusLabel;
+  const status = inv.status || '';
+  if (status === 'Paid') {
+    tplKey = wa.tpl_paid; tplDefault = getDefaultWATpl('paid');
+    tplName = 'payment_received'; statusLabel = 'Payment Receipt';
+  } else if (status === 'Partial') {
+    tplKey = wa.tpl_partial; tplDefault = getDefaultWATpl('partial_receipt');
+    tplName = 'partial_payment'; statusLabel = 'Partial Receipt';
+  } else if (status === 'Overdue') {
+    tplKey = wa.tpl_overdue; tplDefault = getDefaultWATpl('overdue');
+    tplName = 'payment_overdue'; statusLabel = 'Overdue Alert';
+  } else {
+    tplKey = wa.tpl_inv; tplDefault = getDefaultWATpl('inv');
+    tplName = 'invoice_created'; statusLabel = 'Invoice';
+  }
+  const tpl = tplKey || tplDefault;
+  const msg = formatWAMsg(tpl, inv, client, STATE.settings);
+  // Log message
+  logWAMessage({ inv, client, type: tplName, msg, status: 'sending' });
   try {
-    const result = await sendWA(phone, msg, 'invoice_created', inv, c);
-    toast(result ? '✅ WhatsApp sent to ' + c.name + '!' : '📱 WhatsApp opened', 'success');
-  } catch(e) { toast('❌ ' + e.message, 'error'); }
+    const result = await sendWA(phone, msg, tplName, inv, client);
+    logWAMessage({ inv, client, type: tplName, msg, status: result ? 'sent_api' : 'sent_web' });
+    toast(result ? `✅ ${statusLabel} sent to ${client.name}!` : `📱 WhatsApp opened for ${client.name}`, 'success');
+  } catch(e) {
+    logWAMessage({ inv, client, type: tplName, msg, status: 'failed', error: e.message });
+    toast('❌ ' + e.message, 'error');
+  }
 }
 
 // ── Manual send from WA page ──────────────────────────────────
@@ -6482,13 +7010,22 @@ window.clearFestivalCampaign = async function() {
 // ── Auto-save invoice draft (tnc / notes / bank changes) ──────
 let _draftSaveTimer = null;
 function debounceSaveInvoiceDraft() {
-  // Only auto-save if editing an existing invoice (has an ID)
+  // Show glow feedback immediately regardless of editing state
+  ['f-tnc','f-notes','f-bank'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && document.activeElement === el) {
+      el.style.borderColor = 'var(--teal)';
+      el.style.boxShadow   = '0 0 0 3px rgba(0,137,123,.15)';
+      setTimeout(() => { el.style.borderColor=''; el.style.boxShadow=''; }, 1500);
+    }
+  });
+  // Only auto-save if editing an existing invoice
   if (!STATE.editingInvoiceId) return;
   clearTimeout(_draftSaveTimer);
   _draftSaveTimer = setTimeout(() => {
     const d = getFormData();
     const payload = { notes: d.notes, bank_details: d.bank, terms: d.tnc };
-    api('api/invoices.php?id=' + parseInt(STATE.editingInvoiceId), 'PUT', payload)
+    api('api/invoices.php?id=' + parseInt(STATE.editingInvoiceId), 'PATCH', payload)
       .then(() => {
         // Brief teal glow on the textarea
         ['f-tnc','f-notes','f-bank'].forEach(id => {
@@ -6517,12 +7054,31 @@ function debounceSaveInvoiceDraft() {
 function toggleSplitPayment() {
   const sel    = document.getElementById('paid-method');
   const panel  = document.getElementById('split-payment-panel');
-  const amtFld = document.getElementById('paid-amt')?.parentElement;
+  const amtFld = document.getElementById('paid-amt-field');
   if (!panel) return;
   const isSplit = sel?.value === 'Split';
   panel.style.display = isSplit ? 'block' : 'none';
   if (amtFld) amtFld.style.opacity = isSplit ? '0.5' : '1';
-  if (isSplit) updateSplitTotal();
+  if (isSplit) {
+    // Clear all split rows — user enters amounts manually, never auto-fill
+    document.querySelectorAll('#split-rows .split-amt').forEach(el => { el.value = ''; });
+    const splitTotalEl = document.getElementById('split-total');
+    if (splitTotalEl) splitTotalEl.textContent = '₹0.00';
+    // Do NOT touch paid-amt — it is read-only / driven by split total
+  } else {
+    // Switched back from split — restore paid-amt to invoice remaining
+    const mid = STATE.activeMenuInvoiceId;
+    const inv = STATE.invoices.find(i=>String(i.id)===mid);
+    if (inv) {
+      const amt = parseFloat(inv.amount||0);
+      const alreadyPaid = STATE.payments
+        .filter(p => p.invoice_id && String(p.invoice_id) === mid)
+        .reduce((s,p) => s + parseFloat(p.amount||0), 0);
+      const remaining = Math.max(0, amt - alreadyPaid);
+      document.getElementById('paid-amt').value = (remaining > 0 ? remaining : amt).toFixed(2);
+      updatePaidRemaining();
+    }
+  }
 }
 
 function updateSplitTotal() {
