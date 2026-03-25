@@ -3374,15 +3374,18 @@ function buildInvoiceHTML(d, forPrint) {
         const itemGst = parseFloat(i.gst ?? 0);
         const gstAmt  = line * itemGst / 100;
         const lineInclGst = line + gstAmt;
+        const itype = i.itemType||'Service';
         return `<tr>
           <td style="padding:9px 12px;border-bottom:1px solid #eee">${i.desc||'—'}</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee;font-size:11px;color:#666">${itype}</td>
           <td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">${i.qty}</td>
-          ${showGstCol ? `<td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">${itemGst}%</td>` : ''}
           <td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(i.rate,d.sym)}</td>
+          <td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(line,d.sym)}</td>
+          ${showGstCol ? `<td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">${itemGst}%</td>` : ''}
           <td style="padding:9px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">${fmt_money(lineInclGst,d.sym)}</td>
         </tr>`;
       }).join('')
-    : `<tr><td colspan="${showGstCol?5:4}" style="padding:20px;text-align:center;color:#aaa">No items added</td></tr>`;
+    : `<tr><td colspan="${showGstCol?7:6}" style="padding:20px;text-align:center;color:#aaa">No items added</td></tr>`;
 
   const gstColHeader = showGstCol ? `<th style="padding:10px 12px;text-align:center">GST%</th>` : '';
 
@@ -3560,9 +3563,11 @@ function buildTpl1(d, sc, itemsHTML, gstColHeader) {
     <table style="width:100%;border-collapse:collapse;margin-bottom:18px">
       <thead><tr style="background:${(window.TPL_CUSTOM&&TPL_CUSTOM.color1)||'#1A2332'}">
         <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:rgba(255,255,255,.8);text-transform:uppercase">Description</th>
+        <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;color:rgba(255,255,255,.8)">Type</th>
         <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;color:rgba(255,255,255,.8)">Qty</th>
-        ${gstColHeader.replace(/style="([^"]+)"/,'style="$1;color:rgba(255,255,255,.8);font-size:11px;font-weight:700;text-transform:uppercase"')||''}
         <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:rgba(255,255,255,.8)">Rate</th>
+        <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:rgba(255,255,255,.8)">Amount</th>
+        ${gstColHeader.replace(/style="([^"]+)"/,'style="$1;color:rgba(255,255,255,.8);font-size:11px;font-weight:700;text-transform:uppercase"')||''}
         <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:rgba(255,255,255,.8)">Total</th>
       </tr></thead>
       <tbody>${itemsHTML}</tbody>
@@ -3654,7 +3659,12 @@ function totalsRows(d, accentColor, borderColor='#eee', mainColor='#000', mutedC
       <span style="color:${mutedColor}">Subtotal</span>
       <span style="font-family:monospace;font-weight:600;color:${mainColor}">${fmt_money(d.sub,d.sym)}</span>
     </div>
-    ${discRow}${gstRow}
+    ${discRow}
+    <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid ${borderColor}">
+      <span style="font-weight:700;color:${mainColor}">Amount</span>
+      <span style="font-family:monospace;font-weight:700;color:${mainColor}">${fmt_money((d.sub||0)-(d.discAmt||0),d.sym)}</span>
+    </div>
+    ${gstRow}
     <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;padding:8px 0 0;margin-top:4px;color:${accentColor}">
       <span>Grand Total</span><span style="font-family:monospace">${fmt_money(d.grand||0,d.sym)}</span>
     </div>
@@ -3734,7 +3744,7 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader) {
       </div>
     </div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
-      <thead><tr style="background:#00897B"><th style="padding:9px 12px;text-align:left;color:#fff;font-size:11px">Description</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Qty</th>${gstColHeader.replace('style="','style="color:#fff;font-size:11px;')}<th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Rate</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Total</th></tr></thead>
+      <thead><tr style="background:#00897B"><th style="padding:9px 12px;text-align:left;color:#fff;font-size:11px">Description</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Type</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Qty</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Rate</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Amount</th>${gstColHeader.replace('style="','style="color:#fff;font-size:11px;')}<th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Total</th></tr></thead>
       <tbody>${itemsHTML}</tbody>
     </table>
     <div style="display:flex;gap:16px;align-items:flex-start">
@@ -3783,9 +3793,11 @@ function buildTpl3(d, sc, itemsHTML, gstColHeader) {
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
       <thead><tr style="background:rgba(56,189,248,.12);border-bottom:1px solid rgba(56,189,248,.3)">
         <th style="padding:10px 12px;text-align:left;color:#38BDF8;font-size:11px">Description</th>
+        <th style="padding:10px 12px;text-align:center;color:#38BDF8;font-size:11px">Type</th>
         <th style="padding:10px 12px;text-align:center;color:#38BDF8;font-size:11px">Qty</th>
-        ${gstColHeader.replace('style="','style="color:#38BDF8;font-size:11px;')}
         <th style="padding:10px 12px;text-align:right;color:#38BDF8;font-size:11px">Rate</th>
+        <th style="padding:10px 12px;text-align:right;color:#38BDF8;font-size:11px">Amount</th>
+        ${gstColHeader.replace('style="','style="color:#38BDF8;font-size:11px;')}
         <th style="padding:10px 12px;text-align:right;color:#38BDF8;font-size:11px">Total</th>
       </tr></thead>
       <tbody>${itemsHTML.replace(/border-bottom:1px solid #eee/g,'border-bottom:1px solid rgba(255,255,255,.07)').replace(/color:#[0-9a-fA-F]{3,6}/g,'color:rgba(255,255,255,.8)')}</tbody>
@@ -3837,9 +3849,11 @@ function buildTpl4(d, sc, itemsHTML, gstColHeader) {
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
       <thead><tr style="border-bottom:2px solid #111">
         <th style="padding:8px 0;text-align:left;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">Description</th>
+        <th style="padding:8px 0;text-align:center;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">Type</th>
         <th style="padding:8px 0;text-align:center;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">Qty</th>
-        ${gstColHeader.replace('style="','style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;')}
         <th style="padding:8px 0;text-align:right;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">Rate</th>
+        <th style="padding:8px 0;text-align:right;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">Amount</th>
+        ${gstColHeader.replace('style="','style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;')}
         <th style="padding:8px 0;text-align:right;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">Total</th>
       </tr></thead>
       <tbody>${itemsHTML}</tbody>
@@ -3890,7 +3904,7 @@ function buildTpl5(d, sc, itemsHTML, gstColHeader) {
       </div>
     </div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
-      <thead><tr style="background:#1565C0"><th style="padding:9px 12px;text-align:left;color:#fff;font-size:11px">Description</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Qty</th>${gstColHeader.replace('style="','style="color:#fff;font-size:11px;')}<th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Rate</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Total</th></tr></thead>
+      <thead><tr style="background:#1565C0"><th style="padding:9px 12px;text-align:left;color:#fff;font-size:11px">Description</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Type</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Qty</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Rate</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Amount</th>${gstColHeader.replace('style="','style="color:#fff;font-size:11px;')}<th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Total</th></tr></thead>
       <tbody>${itemsHTML}</tbody>
     </table>
     <div style="display:flex;gap:16px;align-items:flex-start">
@@ -3937,7 +3951,7 @@ function buildTpl6(d, sc, itemsHTML, gstColHeader) {
       </div>
     </div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
-      <thead><tr style="background:#E64A19"><th style="padding:9px 12px;text-align:left;color:#fff;font-size:11px">Description</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Qty</th>${gstColHeader.replace('style="','style="color:#fff;font-size:11px;')}<th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Rate</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Total</th></tr></thead>
+      <thead><tr style="background:#E64A19"><th style="padding:9px 12px;text-align:left;color:#fff;font-size:11px">Description</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Type</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Qty</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Rate</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Amount</th>${gstColHeader.replace('style="','style="color:#fff;font-size:11px;')}<th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Total</th></tr></thead>
       <tbody>${itemsHTML}</tbody>
     </table>
     <div style="display:flex;gap:16px;align-items:flex-start">
@@ -3984,7 +3998,7 @@ function buildTpl7(d, sc, itemsHTML, gstColHeader) {
       </div>
     </div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
-      <thead><tr style="background:linear-gradient(135deg,#7B1FA2,#AB47BC)"><th style="padding:9px 12px;text-align:left;color:#fff;font-size:11px">Description</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Qty</th>${gstColHeader.replace('style="','style="color:#fff;font-size:11px;')}<th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Rate</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Total</th></tr></thead>
+      <thead><tr style="background:linear-gradient(135deg,#7B1FA2,#AB47BC)"><th style="padding:9px 12px;text-align:left;color:#fff;font-size:11px">Description</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Type</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Qty</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Rate</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Amount</th>${gstColHeader.replace('style="','style="color:#fff;font-size:11px;')}<th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Total</th></tr></thead>
       <tbody>${itemsHTML}</tbody>
     </table>
     <div style="display:flex;gap:16px;align-items:flex-start">
@@ -4031,7 +4045,7 @@ function buildTpl8(d, sc, itemsHTML, gstColHeader) {
       </div>
     </div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
-      <thead><tr style="background:#388E3C"><th style="padding:9px 12px;text-align:left;color:#fff;font-size:11px">Description</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Qty</th>${gstColHeader.replace('style="','style="color:#fff;font-size:11px;')}<th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Rate</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Total</th></tr></thead>
+      <thead><tr style="background:#388E3C"><th style="padding:9px 12px;text-align:left;color:#fff;font-size:11px">Description</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Type</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Qty</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Rate</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Amount</th>${gstColHeader.replace('style="','style="color:#fff;font-size:11px;')}<th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Total</th></tr></thead>
       <tbody>${itemsHTML}</tbody>
     </table>
     <div style="display:flex;gap:16px;align-items:flex-start">
@@ -4081,7 +4095,7 @@ function buildTpl9(d, sc, itemsHTML, gstColHeader) {
       </div>
     </div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
-      <thead><tr style="background:#B71C1C"><th style="padding:9px 12px;text-align:left;color:#fff;font-size:11px">Description</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Qty</th>${gstColHeader.replace('style="','style="color:#fff;font-size:11px;')}<th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Rate</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Total</th></tr></thead>
+      <thead><tr style="background:#B71C1C"><th style="padding:9px 12px;text-align:left;color:#fff;font-size:11px">Description</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Type</th><th style="padding:9px 12px;text-align:center;color:#fff;font-size:11px">Qty</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Rate</th><th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Amount</th>${gstColHeader.replace('style="','style="color:#fff;font-size:11px;')}<th style="padding:9px 12px;text-align:right;color:#fff;font-size:11px">Total</th></tr></thead>
       <tbody>${itemsHTML}</tbody>
     </table>
     <div style="display:flex;gap:16px;align-items:flex-start">
@@ -4117,16 +4131,20 @@ function openPrintWindow(d, items) {
     ? items.map(i => {
         const line = (i.qty||1)*(i.rate||0);
         const gstR = parseFloat(i.gst)||0;
-        const lineInclGst = line + (line * gstR / 100);
+        const gstAmt = line * gstR / 100;
+        const lineInclGst = line + gstAmt;
+        const itype = i.itemType||'Service';
         return `<tr>
           <td style="padding:10px 12px;border-bottom:1px solid #eee">${i.desc||'—'}</td>
+          <td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee;font-size:11px;color:#666">${itype}</td>
           <td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${i.qty}</td>
-          ${showGst ? `<td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${gstR}%</td>` : ''}
           <td style="padding:10px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(i.rate,d.sym)}</td>
+          <td style="padding:10px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(line,d.sym)}</td>
+          ${showGst ? `<td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${gstR}%</td>` : ''}
           <td style="padding:10px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">${fmt_money(lineInclGst,d.sym)}</td>
         </tr>`;
       }).join('')
-    : `<tr><td colspan="${showGst?5:4}" style="padding:20px;text-align:center;color:#aaa">No items</td></tr>`;
+    : `<tr><td colspan="${showGst?7:6}" style="padding:20px;text-align:center;color:#aaa">No items</td></tr>`;
   const gstColHeader = showGst ? `<th style="padding:10px 12px;text-align:center">GST%</th>` : '';
   const templates = { 1:buildTpl1,2:buildTpl2,3:buildTpl3,4:buildTpl4,5:buildTpl5,6:buildTpl6,7:buildTpl7,8:buildTpl8,9:buildTpl9 };
   const fn = templates[d.tpl]||buildTpl1;
@@ -4171,16 +4189,20 @@ function printInvoiceById(inv) {
         const rate = parseFloat(i.rate||0);
         const gst         = (i.gst!==undefined&&i.gst!==null&&i.gst!==''?parseFloat(i.gst):i.gst_rate!==undefined&&i.gst_rate!==''?parseFloat(i.gst_rate):18);
         const line        = qty*rate;
-        const lineInclGst = line + (line * gst / 100);
+        const gstAmt      = line * gst / 100;
+        const lineInclGst = line + gstAmt;
+        const itype       = i.itemType||i.item_type||'Service';
         return `<tr>
           <td style="padding:10px 12px;border-bottom:1px solid #eee">${i.desc||i.description||'—'}</td>
+          <td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee;font-size:11px;color:#666">${itype}</td>
           <td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${qty}</td>
-          <td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${gst}%</td>
           <td style="padding:10px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(rate,sym)}</td>
+          <td style="padding:10px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(line,sym)}</td>
+          <td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${gst}%</td>
           <td style="padding:10px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">${fmt_money(lineInclGst,sym)}</td>
         </tr>`;
       }).join('')
-    : `<tr><td colspan="5" style="padding:20px;text-align:center;color:#aaa">No items</td></tr>`;
+    : `<tr><td colspan="7" style="padding:20px;text-align:center;color:#aaa">No items</td></tr>`;
   const gstHdr = `<th style="padding:10px 12px;text-align:center">GST%</th>`;
   const d = {
     tpl: parseInt(inv.template)||STATE.settings.activeTemplate||1,
@@ -4341,16 +4363,20 @@ function openPreviewModal(id) {
         const gstR = (i.gst!==undefined&&i.gst!==null&&i.gst!==''?parseFloat(i.gst):i.gstRate!==undefined&&i.gstRate!==''?parseFloat(i.gstRate):i.gst_rate!==undefined&&i.gst_rate!==''?parseFloat(i.gst_rate):18);
         const desc = i.desc||i.description||'—';
         const line        = qty*rate;
-        const lineInclGst = line + (line * gstR / 100);
+        const gstAmt      = line * gstR / 100;
+        const lineInclGst = line + gstAmt;
+        const itype       = i.itemType||i.item_type||'Service';
         return `<tr>
           <td style="padding:9px 12px;border-bottom:1px solid #eee">${desc}</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee;font-size:11px;color:#666">${itype}</td>
           <td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">${qty}</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">${gstR}%</td>
           <td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(rate,d.sym)}</td>
+          <td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(line,d.sym)}</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">${gstR}%</td>
           <td style="padding:9px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">${fmt_money(lineInclGst,d.sym)}</td>
         </tr>`;
       }).join('')
-    : `<tr><td colspan="5" style="padding:20px;text-align:center;color:#aaa">No items</td></tr>`;
+    : `<tr><td colspan="7" style="padding:20px;text-align:center;color:#aaa">No items</td></tr>`;
   const gstColHeader = `<th style="padding:10px 12px;text-align:center">GST%</th>`;
   const templates = { 1:buildTpl1,2:buildTpl2,3:buildTpl3,4:buildTpl4,5:buildTpl5,6:buildTpl6,7:buildTpl7,8:buildTpl8,9:buildTpl9 };
   const fn = templates[d.tpl] || buildTpl1;
