@@ -519,32 +519,116 @@ select { cursor: pointer; }
 .status-radio input:checked + .sr-pill.overdue    { background: var(--red); color: #fff; }
 .status-radio input:checked + .sr-pill.cancelled  { background: #B71C1C; color: #fff; }
 
+/* ── REDESIGNED LINE ITEMS ── */
 .items-head-row {
-  display: flex; gap: 6px; padding: 8px 10px;
-  background: var(--bg); border-radius: 7px; margin-bottom: 6px;
-  font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .7px;
+  display: grid;
+  grid-template-columns: 1fr 90px 54px 80px 80px 62px 82px 32px;
+  gap: 0;
+  padding: 7px 14px;
+  background: linear-gradient(135deg, var(--sidebar-bg) 0%, #243447 100%);
+  border-radius: 10px 10px 0 0;
+  margin-bottom: 0;
+  font-size: 9.5px; font-weight: 700; color: rgba(255,255,255,.55);
+  text-transform: uppercase; letter-spacing: .9px;
+  border: 1px solid rgba(255,255,255,.06);
 }
+.items-head-row span { padding: 2px 6px; }
+
+#itemsList { border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; overflow: hidden; }
+
 .item-row {
-  display: flex; gap: 6px; align-items: center;
-  padding: 6px 4px; border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 1fr 90px 54px 80px 80px 62px 82px 32px;
+  gap: 0;
+  align-items: center;
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  transition: background .15s;
+  position: relative;
 }
-.item-row:last-child { border: none; }
-.item-row input { padding: 7px 8px; font-size: 12.5px; }
-.item-desc  { flex: 1.8; min-width: 0; }
-.item-type  { flex: .8; min-width: 70px; font-size: 11.5px; padding: 6px 4px; }
-.item-qty   { flex: .4; min-width: 40px; }
-.item-rate  { flex: .75; min-width: 65px; }
-.item-amount { flex: .75; font-weight: 600; font-family: var(--mono); font-size: 12px; color: var(--text); text-align: right; padding-right: 4px; min-width: 65px; }
-.item-gst   { flex: .55; min-width: 50px; }
-.item-total { flex: .8; font-weight: 700; font-family: var(--mono); font-size: 12px; color: var(--teal); text-align: right; padding-right: 4px; min-width: 68px; }
-.item-del { width: 28px; height: 28px; border-radius: 7px; border: none; background: var(--red-bg); color: var(--red); cursor: pointer; font-size: 11px; flex-shrink: 0; transition: .2s; display:flex;align-items:center;justify-content:center; }
-.item-del:hover { background: var(--red); color: #fff; }
+.item-row:last-child { border-bottom: none; }
+.item-row:hover { background: #fafbff; }
+.item-row::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: transparent;
+  transition: background .2s;
+}
+.item-row:hover::before { background: var(--teal); }
+
+.item-row input,
+.item-row select {
+  border: none;
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  padding: 10px 10px;
+  font-size: 12.5px;
+  height: 100%;
+  width: 100%;
+  outline: none;
+  transition: background .15s;
+}
+.item-row input:focus,
+.item-row select:focus {
+  background: #f0faf9;
+  border-color: var(--border);
+  box-shadow: none;
+  border-radius: 0;
+}
+.item-row select { cursor: pointer; font-size: 12px; }
+
+.item-desc  { min-width: 0; border-right: 1px solid var(--border); }
+.item-desc input { border-right: none; font-weight: 500; }
+.item-type  { border-right: 1px solid var(--border); }
+.item-type select { padding: 10px 6px; }
+.item-qty   { border-right: 1px solid var(--border); }
+.item-qty input { text-align: center; }
+.item-rate  { border-right: 1px solid var(--border); }
+.item-rate input { text-align: right; }
+
+.item-amount {
+  font-weight: 600; font-family: var(--mono); font-size: 12px;
+  color: var(--text2); text-align: right;
+  padding: 0 10px; border-right: 1px solid var(--border);
+  height: 100%; display: flex; align-items: center; justify-content: flex-end;
+  background: var(--bg);
+}
+.item-gst { border-right: 1px solid var(--border); }
+.item-gst select { padding: 10px 6px; text-align: center; font-size: 11.5px; }
+
+.item-total {
+  font-weight: 700; font-family: var(--mono); font-size: 12.5px;
+  color: var(--teal); text-align: right;
+  padding: 0 10px; border-right: 1px solid var(--border);
+  height: 100%; display: flex; align-items: center; justify-content: flex-end;
+  background: var(--teal-bg);
+}
+
+.item-del {
+  width: 32px; height: 100%; border-radius: 0;
+  border: none; background: transparent;
+  color: var(--muted2); cursor: pointer; font-size: 11px;
+  flex-shrink: 0; transition: .2s;
+  display: flex; align-items: center; justify-content: center;
+}
+.item-del:hover { background: var(--red-bg); color: var(--red); }
+
+.items-actions {
+  display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;
+}
 .add-line-btn {
-  padding: 9px 16px; border: 2px dashed var(--border2); background: transparent;
-  color: var(--muted); border-radius: 8px; cursor: pointer; font-size: 12.5px;
-  font-weight: 600; font-family: var(--font); transition: .2s; margin-top: 10px;
+  padding: 8px 16px;
+  border: 1.5px dashed var(--border2);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px; cursor: pointer; font-size: 12.5px;
+  font-weight: 600; font-family: var(--font); transition: .2s;
 }
-.add-line-btn:hover { border-color: var(--teal); color: var(--teal); background: var(--teal-bg); }
+.add-line-btn:hover { border-color: var(--teal); color: var(--teal); background: var(--teal-bg); border-style: solid; }
 
 /* Totals panel */
 .totals-panel {
@@ -1225,18 +1309,20 @@ const SERVER = {
           <div class="form-section">
             <div class="fs-title"><i class="fas fa-list-ul"></i> Line Items</div>
             <div class="items-head-row">
-              <span style="flex:1.8">Description</span>
-              <span style="flex:.8">Type</span>
-              <span style="flex:.4;text-align:center">Qty</span>
-              <span style="flex:.75;text-align:right">Rate</span>
-              <span style="flex:.75;text-align:right">Amount</span>
-              <span style="flex:.55;text-align:center">GST%</span>
-              <span style="flex:.8;text-align:right">Total</span>
-              <span style="width:28px"></span>
+              <span>Description</span>
+              <span>Type</span>
+              <span style="text-align:center">Qty</span>
+              <span style="text-align:right">Rate</span>
+              <span style="text-align:right">Amount</span>
+              <span style="text-align:center">GST%</span>
+              <span style="text-align:right">Total</span>
+              <span></span>
             </div>
             <div id="itemsList"></div>
-            <button class="add-line-btn" onclick="addItem()"><i class="fas fa-plus"></i> Add Line Item</button>
-            <button class="add-line-btn" style="margin-left:8px;border-color:#1976D2;color:#1976D2" onclick="openProductPicker()"><i class="fas fa-box"></i> Pick from Services</button>
+            <div class="items-actions">
+              <button class="add-line-btn" onclick="addItem()"><i class="fas fa-plus"></i> Add Line Item</button>
+              <button class="add-line-btn" style="border-color:#1976D2;color:#1976D2" onclick="openProductPicker()"><i class="fas fa-box"></i> Pick from Services</button>
+            </div>
 
             <!-- Totals -->
             <div class="totals-panel">
@@ -3217,20 +3303,20 @@ function renderFormItems() {
     const itemType = item.itemType || 'Service';
     return `
     <div class="item-row" id="item-${item.id}">
-      <input class="item-desc" value="${item.desc}" placeholder="Service / item description" oninput="updateItem(${item.id},'desc',this.value)">
-      <select class="item-type" onchange="updateItem(${item.id},'itemType',this.value)" style="padding:7px 5px;font-size:12px">
+      <div class="item-desc"><input value="${item.desc}" placeholder="Service / item description" oninput="updateItem(${item.id},'desc',this.value)"></div>
+      <div class="item-type"><select onchange="updateItem(${item.id},'itemType',this.value)">
         ${(STATE.itemTypes||[{name:'Service'},{name:'Product'},{name:'Labour'},{name:'Other'}]).map(t=>`<option value="${t.name}" ${itemType===t.name?'selected':''}>${t.name}</option>`).join('')}
-      </select>
-      <input class="item-qty" type="number" value="${item.qty}" min="1" oninput="updateItem(${item.id},'qty',this.value)">
-      <input class="item-rate" type="number" value="${item.rate}" min="0" placeholder="0" oninput="updateItem(${item.id},'rate',this.value)">
+      </select></div>
+      <div class="item-qty"><input type="number" value="${item.qty}" min="1" oninput="updateItem(${item.id},'qty',this.value)"></div>
+      <div class="item-rate"><input type="number" value="${item.rate}" min="0" placeholder="0" oninput="updateItem(${item.id},'rate',this.value)"></div>
       <div class="item-amount" id="iamt-${item.id}" title="Amount (excl. GST)">${fmt_money(base)}</div>
-      <select class="item-gst" onchange="updateItem(${item.id},'gst',this.value)" style="padding:7px 5px;font-size:12px">
+      <div class="item-gst"><select onchange="updateItem(${item.id},'gst',this.value)">
         <option value="0" ${item.gst==0?'selected':''}>0%</option>
         <option value="5" ${item.gst==5?'selected':''}>5%</option>
         <option value="12" ${item.gst==12?'selected':''}>12%</option>
         <option value="18" ${item.gst==18?'selected':''}>18%</option>
         <option value="28" ${item.gst==28?'selected':''}>28%</option>
-      </select>
+      </select></div>
       <div class="item-total" id="itot-${item.id}" title="Total (incl. GST)">${fmt_money(lineTotal)}</div>
       <button class="item-del" onclick="removeItem(${item.id})" title="Remove"><i class="fas fa-times"></i></button>
     </div>`;
