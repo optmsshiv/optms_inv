@@ -1226,12 +1226,12 @@ const SERVER = {
             <div class="fs-title"><i class="fas fa-list-ul"></i> Line Items</div>
             <div class="items-head-row">
               <span style="flex:1.8">Description</span>
+              <span style="flex:.8">Type</span>
               <span style="flex:.4;text-align:center">Qty</span>
               <span style="flex:.75;text-align:right">Rate</span>
               <span style="flex:.75;text-align:right">Amount</span>
               <span style="flex:.55;text-align:center">GST%</span>
               <span style="flex:.8;text-align:right">Total</span>
-              <span style="flex:.8">Type</span>
               <span style="width:28px"></span>
             </div>
             <div id="itemsList"></div>
