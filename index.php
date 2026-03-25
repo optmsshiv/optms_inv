@@ -600,8 +600,8 @@ select { cursor: pointer; }
 .btn-whatsapp  { background: #25D366; color: #fff; }
 .btn-whatsapp:hover { background: #1DA851; }
 @keyframes waGlow {
-  0%,100% { box-shadow: 0 0 10px #25D36650, 0 0 24px #25D36620; border-color: #25D36699; }
-  50%      { box-shadow: 0 0 18px #25D36690, 0 0 40px #25D36645; border-color: #25D366; }
+  0%,100% { box-shadow: 0 0 8px #25D36638, 0 0 18px #25D36615; border-color: #25D36688; }
+  50%      { box-shadow: 0 0 16px #25D36670, 0 0 32px #25D36630; border-color: #25D366; }
 }
 @keyframes statusGlow-due {
   0%,100% { box-shadow: 0 0 6px #00897B55; } 50% { box-shadow: 0 0 14px #00897B99; }
@@ -3274,6 +3274,7 @@ function getFormData() {
   const caddr   = document.getElementById('f-caddr')?.value||'';
   const disc    = parseFloat(document.getElementById('f-disc')?.value) || 0;
   const discType = document.getElementById('f-disc-type')?.value || 'pct';
+  const notes   = document.getElementById('f-notes')?.value||'';
   const bank    = document.getElementById('f-bank')?.value||'';
   const tnc     = document.getElementById('f-tnc')?.value||'';
   const generatedBy = document.getElementById('f-generated-by')?.value || 'OPTMS Tech Invoice Manager';
@@ -5903,12 +5904,12 @@ function renderDashKpis() {
 
   waEl.innerHTML = `
     <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">${miniCards}</div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#0d1f14;border:1.5px solid #25D366;border-radius:10px;padding:10px 14px;box-shadow:0 0 12px #25D36650,0 0 28px #25D36625;animation:waGlow 2.5s ease-in-out infinite">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#e8f5e9;border:1.5px solid #25D366;border-radius:10px;padding:10px 14px;box-shadow:0 0 12px #25D36640,0 0 28px #25D36618;animation:waGlow 2.5s ease-in-out infinite">
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
         <div style="width:32px;height:32px;background:#25D366;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px">📱</div>
         <div>
-          <div style="color:#e0f2e9;font-size:13px;font-weight:800;line-height:1.2">WhatsApp</div>
-          <div style="color:#7ec99a;font-size:10px">${mode}</div>
+          <div style="color:#1b5e20;font-size:13px;font-weight:800;line-height:1.2">WhatsApp</div>
+          <div style="color:#388E3C;font-size:10px">${mode}</div>
         </div>
       </div>
       <div style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;flex-shrink:0;background:${hasAPI?'#25D36615':'#f5f5f5'};color:${hasAPI?'#1a7a3c':'#999'};border:1px solid ${hasAPI?'#25D36635':'#e0e0e0'}">
@@ -5917,7 +5918,7 @@ function renderDashKpis() {
       <div style="width:1px;height:28px;background:var(--border);flex-shrink:0"></div>
       ${pillsHTML}
       <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0">
-        <span style="font-size:11px;color:#7ec99a;font-weight:600">${onCount}/6 active</span>
+        <span style="font-size:11px;color:#2e7d32;font-weight:600">${onCount}/6 active</span>
         <button onclick="showPage('whatsapp',null)" style="padding:5px 12px;background:#25D36615;color:#1a7a3c;border:1px solid #25D36635;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
           <i class="fas fa-cog"></i> Manage
         </button>
