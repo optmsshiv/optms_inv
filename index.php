@@ -610,7 +610,7 @@ select { cursor: pointer; }
   text-overflow: ellipsis;
 }
 .item-gst { border-right: 1px solid var(--border); min-width: 0; }
-.item-gst select { padding: 10px 18px; font-size: 11.5px; width: 88%; }
+.item-gst select { padding: 10px 18px; font-size: 11.5px; width: 90%; }
 
 .item-total {
   font-weight: 700; font-family: var(--mono); font-size: 12px;
