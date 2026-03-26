@@ -24,7 +24,7 @@ try {
     $db = getDB();
 
     // ── Auto-create table if migration not run ────────────────────
-    $db->exec("CREATE TABLE IF NOT EXISTS `activity_log` (
+    $db->exec("CREATE TABLE IF NOT EXISTS `activitys_log` (
         `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
         `type`       VARCHAR(60)     NOT NULL,
         `label`      VARCHAR(255)    NOT NULL,
@@ -69,14 +69,14 @@ try {
         $limit  = min((int)($_GET['limit']  ?? 200), 500);
         $offset = max((int)($_GET['offset'] ?? 0), 0);
 
-        $sql  = 'SELECT * FROM activity_log WHERE ' . implode(' AND ', $where)
+        $sql  = 'SELECT * FROM activitys_log WHERE ' . implode(' AND ', $where)
               . ' ORDER BY created_at DESC LIMIT ' . $limit . ' OFFSET ' . $offset;
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Total count for pagination
-        $cSql   = 'SELECT COUNT(*) FROM activity_log WHERE ' . implode(' AND ', $where);
+        $cSql   = 'SELECT COUNT(*) FROM activitys_log WHERE ' . implode(' AND ', $where);
         $cStmt  = $db->prepare($cSql);
         $cStmt->execute($params);
         $total = (int)$cStmt->fetchColumn();
@@ -106,7 +106,7 @@ try {
         $uid   = $user['id'] ?? null;
         $ip    = $_SERVER['REMOTE_ADDR'] ?? null;
         $stmt  = $db->prepare(
-            'INSERT INTO activity_log (type, label, detail, invoice_id, user_id, ip)
+            'INSERT INTO activitys_log (type, label, detail, invoice_id, user_id, ip)
              VALUES (:type, :label, :detail, :inv, :uid, :ip)'
         );
         $stmt->execute([
@@ -123,7 +123,7 @@ try {
 
     // ── DELETE: clear log ─────────────────────────────────────────
     if ($method === 'DELETE') {
-        $db->exec('DELETE FROM activity_log');
+        $db->exec('DELETE FROM activitys_log');
         echo json_encode(['success'=>true]);
         exit;
     }
