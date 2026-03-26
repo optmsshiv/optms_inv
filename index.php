@@ -1358,7 +1358,36 @@ const SERVER = {
                 <code id="tp-sub">₹0.00</code>
               </div>
               <div class="tp-row">
-                <span>Discount <input type="number" id="f-disc" value="0" min="0" class="inline-num" oninput="calcTotals()"> <select id="f-disc-type" onchange="calcTotals()" style="font-size:12px;padding:2px 4px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text)"><option value="pct">%</option><option value="fixed">₹</option></select></span>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+
+  <label style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap">
+    Discount
+  </label>
+            <!-- Input -->
+             <input type="number" id="f-disc" value="0" min="0"
+               class="inline-num"
+               oninput="calcTotals()"
+               style="width:100px;padding:6px 8px;
+               border:1px solid var(--border);
+               border-radius:6px;
+               background:var(--card);
+               color:var(--text);">
+           
+             <!-- Type Selector -->
+             <select id="f-disc-type"
+               onchange="calcTotals()"
+               style="width:70px;padding:6px 6px;
+               border:1px solid var(--border);
+               border-radius:6px;
+               background:var(--card);
+               color:var(--text);
+               cursor:pointer;">
+           
+               <option value="pct">%</option>
+               <option value="fixed">₹</option>
+             </select>
+           
+           </div>
                 <code class="neg" id="tp-disc">-₹0.00</code>
               </div>
               <div class="tp-row">
