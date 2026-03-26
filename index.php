@@ -528,7 +528,7 @@ select { cursor: pointer; }
   background: #EEF0F4;
   border-radius: 10px 10px 0 0;
   margin-bottom: 0;
-  font-size: 9.5px; font-weight: 700; color: #6B7280;
+  font-size: 10.5px; font-weight: 700; color: #6B7280;
   text-transform: uppercase; letter-spacing: .9px;
   border: 1px solid var(--border);
   overflow: hidden;
@@ -593,7 +593,7 @@ select { cursor: pointer; }
 .item-desc  { border-right: 1px solid var(--border); min-width: 0; overflow: hidden; }
 .item-desc input { font-weight: 500; padding-left: 14px; }
 .item-type  { border-right: 1px solid var(--border); min-width: 0; overflow: hidden; }
-.item-type select { padding: 10px 6px; }
+.item-type select { padding: 10px 12px; width: 95%; }
 .item-qty   { border-right: 1px solid var(--border); }
 .item-qty input { text-align: center; padding: 10px 6px; }
 .item-rate  { border-right: 1px solid var(--border); }
@@ -610,7 +610,7 @@ select { cursor: pointer; }
   text-overflow: ellipsis;
 }
 .item-gst { border-right: 1px solid var(--border); min-width: 0; }
-.item-gst select { padding: 10px 10px; font-size: 11.5px; width: 100%; }
+.item-gst select { padding: 10px 18px; font-size: 11.5px; width: 88%; }
 
 .item-total {
   font-weight: 700; font-family: var(--mono); font-size: 12px;
