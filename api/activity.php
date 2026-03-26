@@ -23,6 +23,22 @@ $method = $_SERVER['REQUEST_METHOD'];
 try {
     $db = getDB();
 
+    // ── Auto-create table if migration not run ────────────────────
+    $db->exec("CREATE TABLE IF NOT EXISTS `activity_log` (
+        `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `type`       VARCHAR(60)     NOT NULL,
+        `label`      VARCHAR(255)    NOT NULL,
+        `detail`     VARCHAR(500)    NULL,
+        `invoice_id` INT UNSIGNED    NULL,
+        `user_id`    INT UNSIGNED    NULL,
+        `ip`         VARCHAR(45)     NULL,
+        `created_at` DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        INDEX `idx_actlog_type`    (`type`),
+        INDEX `idx_actlog_inv`     (`invoice_id`),
+        INDEX `idx_actlog_created` (`created_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
     // ── GET ──────────────────────────────────────────────────────
     if ($method === 'GET') {
         $where  = ['1=1'];

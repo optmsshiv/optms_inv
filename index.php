@@ -2491,7 +2491,7 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
               </select>
             </div>
             <div class="field"><label>Portal Base URL</label>
-              <input id="portal-base-url" placeholder="https://invcs.optms.co.in/portal" value="https://invcs.optms.co.in/portal">
+              <input id="portal-base-url" placeholder="https://inv.optms.co.in/portal" value="https://inv.optms.co.in/portal">
             </div>
           </div>
           <div id="portal-link-box" style="display:none;background:var(--bg);border-radius:10px;padding:16px;border:1.5px solid var(--teal)">
@@ -3662,7 +3662,8 @@ function resetCreateForm() {
     // If no invoices matched the current prefix, still fall back to total count + 1
     if (nextSeq === 1 && STATE.invoices.length > 0) nextSeq = STATE.invoices.length + 1;
   }
-  document.getElementById('f-num').value = prefix + String(nextSeq).padStart(3,'0');
+  const _fnumEl = document.getElementById('f-num');
+  if (_fnumEl) _fnumEl.value = prefix + String(nextSeq).padStart(3,'0');
   // Load defaults from settings
   const bankEl = document.getElementById('f-bank');
   if (bankEl) bankEl.value = STATE.settings.defaultBank || '';
@@ -3673,14 +3674,11 @@ function resetCreateForm() {
     '1. All prices are inclusive of applicable taxes.\n2. Disputes must be raised within 7 days.\n3. Computer-generated invoice. Subject to Patna jurisdiction.';
   setTodayDates();
   // Clear client fields
-  document.getElementById('f-cname').value = '';
-  document.getElementById('f-cperson').value = '';
-  document.getElementById('f-cwa').value = '';
-  document.getElementById('f-cemail').value = '';
-  document.getElementById('f-cgst').value = '';
-  document.getElementById('f-caddr').value = '';
+  const _sv = (id, val) => { const e = document.getElementById(id); if (e) e.value = val; };
+  _sv('f-cname', ''); _sv('f-cperson', ''); _sv('f-cwa', '');
+  _sv('f-cemail', ''); _sv('f-cgst', ''); _sv('f-caddr', '');
   // Clear other form fields
-  document.getElementById('f-disc').value = '0';
+  _sv('f-disc', '0');
   const discTypeEl = document.getElementById('f-disc-type'); if (discTypeEl) discTypeEl.value = 'pct';
   document.getElementById('f-gst').value = String(STATE.settings.defaultGST ?? 18);
   const notesEl = document.getElementById('f-notes'); if (notesEl) notesEl.value = '';
@@ -3690,7 +3688,8 @@ function resetCreateForm() {
   const clientSelEl = document.getElementById('f-client'); if (clientSelEl) clientSelEl.value = '';
   // Reset company logo, qr to defaults
   const qrEl = document.getElementById('f-qr'); if (qrEl) qrEl.value = '';
-  document.querySelectorAll('input[name="inv-status"]')[0].checked = true;
+  const _radios = document.querySelectorAll('input[name="inv-status"]');
+  if (_radios.length) _radios[0].checked = true;
   formItems = [];
   addItem();
 }
@@ -8039,20 +8038,32 @@ async function saveActivityState()  { /* data written per-operation via api() */
 
 // ── Load new feature data from DB ─────────────────────────────
 async function loadFeatureData() {
-  try {
-    const [expR, remR, actR] = await Promise.all([
-      api('api/expenses.php'),
-      api('api/reminders.php'),
-      api('api/activity.php?limit=200'),
-    ]);
-    if (expR && expR.data)            STATE.expenses  = expR.data;
-    if (remR && remR.log)             STATE.reminders = remR.log;
-    if (remR && remR.settings)        STATE._remSettings = remR.settings;
-    if (actR && actR.data)            STATE.activity  = actR.data.map(r => ({
+  // Use allSettled so one failing endpoint doesn't crash the rest
+  const [expR, remR, actR] = await Promise.allSettled([
+    api('api/expenses.php'),
+    api('api/reminders.php'),
+    api('api/activity.php?limit=200'),
+  ]);
+  if (expR.status === 'fulfilled' && expR.value?.data)
+    STATE.expenses = expR.value.data;
+  else if (expR.status === 'rejected')
+    console.warn('expenses API unavailable (run migration?):', expR.reason?.message);
+
+  if (remR.status === 'fulfilled') {
+    if (remR.value?.log)      STATE.reminders    = remR.value.log;
+    if (remR.value?.settings) STATE._remSettings = remR.value.settings;
+  } else {
+    console.warn('reminders API unavailable (run migration?):', remR.reason?.message);
+  }
+
+  if (actR.status === 'fulfilled' && actR.value?.data) {
+    STATE.activity = actR.value.data.map(r => ({
       id: r.id, type: r.type, label: r.label, detail: r.detail,
       invoiceId: r.invoice_id, ts: r.created_at
     }));
-  } catch(e) { console.warn('loadFeatureData failed:', e.message); }
+  } else {
+    console.warn('activity API unavailable (run migration?):', actR.reason?.message);
+  }
 }
 
 // ── Activity logger (called from other features) ──────────────

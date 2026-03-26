@@ -21,6 +21,32 @@ $isLog  = isset($_GET['log']);
 try {
     $db = getDB();
 
+    // ── Auto-create tables if migration not run ──────────────────
+    $db->exec("CREATE TABLE IF NOT EXISTS `reminder_settings` (
+        `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `before_days`  TINYINT      NOT NULL DEFAULT 3,
+        `on_due`       TINYINT(1)   NOT NULL DEFAULT 1,
+        `overdue_freq` TINYINT      NOT NULL DEFAULT 7,
+        `max_overdue`  TINYINT      NOT NULL DEFAULT 3,
+        `channel`      VARCHAR(20)  NOT NULL DEFAULT 'whatsapp',
+        `updated_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    $db->exec("INSERT IGNORE INTO `reminder_settings` (id,before_days,on_due,overdue_freq,max_overdue,channel) VALUES (1,3,1,7,3,'whatsapp')");
+    $db->exec("CREATE TABLE IF NOT EXISTS `reminder_log` (
+        `id`          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+        `invoice_id`  INT UNSIGNED  NULL,
+        `invoice_num` VARCHAR(40)   NULL,
+        `client_name` VARCHAR(200)  NULL,
+        `type`        VARCHAR(40)   NOT NULL DEFAULT 'due_reminder',
+        `channel`     VARCHAR(20)   NOT NULL DEFAULT 'whatsapp',
+        `status`      VARCHAR(20)   NOT NULL DEFAULT 'sent',
+        `message`     TEXT          NULL,
+        `sent_at`     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        INDEX `idx_remlog_inv` (`invoice_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
     // ── GET ──────────────────────────────────────────────────────
     if ($method === 'GET') {
         if ($isLog) {
