@@ -1,7 +1,7 @@
 <?php
 // ================================================================
 //  OPTMS Tech Invoice Manager — index.php (Production, domain root)
-//  Works at: http://inv.optms.co.in/
+//  Works at: http://invcs.optms.co.in/
 // ================================================================
 
 // ── Error handling: suppress display, log to file ──────────────
@@ -326,16 +326,16 @@ canvas { max-width: 100% !important; }
   font-weight: 500; color: var(--text2);
 }
 .cal-day.today { background: var(--teal); color: #fff; font-weight: 800; border-radius: 6px; }
-.cal-day.has-due { border: 2px solid var(--teal); border-radius: 6px; color: var(--teal); font-weight: 700; animation: statusGlow-due 2s ease-in-out infinite; }
+.cal-day.has-due { border: 2px solid var(--teal); border-radius: 6px; color: var(--amber); font-weight: 700; animation: statusGlow-due 2s ease-in-out infinite; }
 .cal-day.has-overdue { border: 2px solid var(--red); border-radius: 6px; color: var(--red); font-weight: 700; background: var(--red-bg); animation: statusGlow-overdue 2s ease-in-out infinite; }
 .cal-day.has-paid { border: 2px solid var(--green); border-radius: 6px; color: var(--green); font-weight: 600; animation: statusGlow-paid 2s ease-in-out infinite; }
 .cal-day.has-due::after { content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:4px; height:4px; background:var(--teal); border-radius:50%; }
 .cal-day.has-overdue::after { background: var(--red); content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; }
-.cal-day.has-paid::after { content:'✓'; position:absolute; bottom:0px; left:50%; transform:translateX(-50%); font-size:7px; font-weight:900; color:var(--green); line-height:1; }
+.cal-day.has-paid::after { content:'•'; position:absolute; bottom:0px; left:50%; transform:translateX(-50%); font-size:14px; font-weight:900; color:var(--amber); line-height:1; }
 .cal-day.other-month { color: var(--muted2); }
 .cal-month-title { text-align: center; font-weight: 700; font-size: 13px; margin-bottom: 10px; color: var(--text); }
 .cal-legend { display: flex; align-items: center; margin-top: 10px; font-size: 11px; color: var(--muted); }
-.cal-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+.cal-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
 
 /* Dashboard Recent */
 .dash-recent-item {
@@ -528,7 +528,7 @@ select { cursor: pointer; }
   background: #EEF0F4;
   border-radius: 10px 10px 0 0;
   margin-bottom: 0;
-  font-size: 9.5px; font-weight: 700; color: #6B7280;
+  font-size: 10.5px; font-weight: 700; color: #6B7280;
   text-transform: uppercase; letter-spacing: .9px;
   border: 1px solid var(--border);
   overflow: hidden;
@@ -593,7 +593,7 @@ select { cursor: pointer; }
 .item-desc  { border-right: 1px solid var(--border); min-width: 0; overflow: hidden; }
 .item-desc input { font-weight: 500; padding-left: 14px; }
 .item-type  { border-right: 1px solid var(--border); min-width: 0; overflow: hidden; }
-.item-type select { padding: 10px 6px; }
+.item-type select { padding: 10px 12px; width: 95%; }
 .item-qty   { border-right: 1px solid var(--border); }
 .item-qty input { text-align: center; padding: 10px 6px; }
 .item-rate  { border-right: 1px solid var(--border); }
@@ -610,7 +610,7 @@ select { cursor: pointer; }
   text-overflow: ellipsis;
 }
 .item-gst { border-right: 1px solid var(--border); min-width: 0; }
-.item-gst select { padding: 10px 10px; font-size: 11.5px; width: 100%; }
+.item-gst select { padding: 10px 18px; font-size: 11.5px; width: 90%; }
 
 .item-total {
   font-weight: 700; font-family: var(--mono); font-size: 12px;
@@ -1025,7 +1025,26 @@ const SERVER = {
     <a class="nav-item" data-page="reports" onclick="showPage('reports',this)">
       <i class="fas fa-chart-bar"></i><span>Reports</span>
     </a>
+    <a class="nav-item" data-page="aging" onclick="showPage('aging',this)">
+      <i class="fas fa-hourglass-half"></i><span>Aging Report</span>
+    </a>
+    <a class="nav-item" data-page="expenses" onclick="showPage('expenses',this)">
+      <i class="fas fa-wallet"></i><span>Expenses</span>
+    </a>
+    <a class="nav-item" data-page="tax" onclick="showPage('tax',this)">
+      <i class="fas fa-landmark"></i><span>Tax Summary</span>
+    </a>
     <div class="nav-section-label">TOOLS</div>
+    <a class="nav-item" data-page="reminders" onclick="showPage('reminders',this)">
+      <i class="fas fa-bell"></i><span>Reminders</span>
+      <span class="nav-badge" id="badge-reminders" style="display:none">0</span>
+    </a>
+    <a class="nav-item" data-page="portal" onclick="showPage('portal',this)">
+      <i class="fas fa-link"></i><span>Client Portal</span>
+    </a>
+    <a class="nav-item" data-page="activity" onclick="showPage('activity',this)">
+      <i class="fas fa-history"></i><span>Activity Log</span>
+    </a>
     <a class="nav-item" data-page="templates" onclick="showPage('templates',this)">
       <i class="fas fa-palette"></i><span>PDF Templates</span>
     </a>
@@ -1178,7 +1197,7 @@ const SERVER = {
           </div>
           <div id="calendarWidget"></div>
           <div class="cal-legend">
-            <span class="cal-dot" style="background:#00897B"></span>Due
+            <span class="cal-dot" style="background:#F9A825"></span>Due
             <span class="cal-dot" style="background:#e53935;margin-left:10px"></span>Overdue
             <span class="cal-dot" style="background:#1976D2;margin-left:10px"></span>Paid
           </div>
@@ -1358,7 +1377,36 @@ const SERVER = {
                 <code id="tp-sub">₹0.00</code>
               </div>
               <div class="tp-row">
-                <span>Discount <input type="number" id="f-disc" value="0" min="0" class="inline-num" oninput="calcTotals()"> <select id="f-disc-type" onchange="calcTotals()" style="font-size:12px;padding:2px 4px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text)"><option value="pct">%</option><option value="fixed">₹</option></select></span>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+
+  <label style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap">
+    Discount
+  </label>
+            <!-- Input -->
+             <input type="number" id="f-disc" value="0" min="0"
+               class="inline-num"
+               oninput="calcTotals()"
+               style="width:100px;padding:6px 8px;
+               border:1px solid var(--border);
+               border-radius:6px;
+               background:var(--card);
+               color:var(--text);">
+           
+             <!-- Type Selector -->
+             <select id="f-disc-type"
+               onchange="calcTotals()"
+               style="width:70px;padding:6px 6px;
+               border:1px solid var(--border);
+               border-radius:6px;
+               background:var(--card);
+               color:var(--text);
+               cursor:pointer;">
+           
+               <option value="pct">%</option>
+               <option value="fixed">₹</option>
+             </select>
+           
+           </div>
                 <code class="neg" id="tp-disc">-₹0.00</code>
               </div>
               <div class="tp-row">
@@ -1384,8 +1432,8 @@ const SERVER = {
             <div class="fs-title"><i class="fas fa-sticky-note"></i> Notes & Payment Info</div>
             <div class="form-grid g2">
               <div class="field g-full"><label>Notes to Client</label><textarea id="f-notes" oninput="livePreview(); debounceSaveInvoiceDraft()">Thank you for choosing OPTMS Tech. Payment is due within 15 days of invoice date. Late payments may incur a 2% monthly interest charge.</textarea></div>
-              <div class="field g-full"><label>Bank Account Details</label><textarea id="f-bank" oninput="livePreview(); debounceSaveInvoiceDraft()"></textarea></div>
-              <div class="field g-full"><label>Terms & Conditions</label><textarea id="f-tnc" oninput="livePreview(); debounceSaveInvoiceDraft()" style="min-height:72px" placeholder="Enter terms and conditions..."></textarea></div>
+              <div class="field g-full"><label>Bank Account Details</label><textarea id="f-bank" oninput="livePreview(); debounceSaveInvoiceDraft()"style="min-height:90px" placeholder="Enter bank account details..."></textarea></div>
+              <div class="field g-full"><label>Terms & Conditions</label><textarea id="f-tnc" oninput="livePreview(); debounceSaveInvoiceDraft()" style="min-height:90px" placeholder="Enter terms and conditions..."></textarea></div>
               <div class="field g-full">
                 <label>Invoice Generated By <span style="font-size:10px;color:var(--muted)">(shown at bottom of invoice)</span></label>
                 <div style="display:flex;gap:8px;align-items:center">
@@ -2372,6 +2420,229 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
       </div>
     </div><!-- /page-msglog -->
 
+    <!-- ─────────── AGING REPORT ─────────── -->
+    <div id="page-aging" class="page">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:var(--shadow)">
+        <span style="font-size:12px;font-weight:700;color:var(--muted)"><i class="fas fa-hourglass-half" style="color:var(--teal)"></i> Invoice Aging</span>
+        <select id="aging-status-filter" class="table-filter" onchange="renderAgingReport()">
+          <option value="">All Unpaid</option>
+          <option value="Pending">Pending</option>
+          <option value="Overdue">Overdue</option>
+          <option value="Partial">Partial</option>
+        </select>
+        <button class="btn btn-outline" style="margin-left:auto;font-size:12px" onclick="exportAgingCSV()"><i class="fas fa-download"></i> Export CSV</button>
+      </div>
+      <!-- Bucket summary cards -->
+      <div id="aging-buckets" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px"></div>
+      <!-- Aging table -->
+      <div class="table-card">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <span style="font-weight:700;font-size:14px">Outstanding Invoices</span>
+          <input type="text" class="table-search" placeholder="Search…" oninput="filterAgingTable(this.value)" id="aging-search" style="max-width:200px">
+        </div>
+        <table class="data-table"><thead><tr>
+          <th>Invoice #</th><th>Client</th><th>Service</th><th>Issue Date</th><th>Due Date</th><th>Days Overdue</th><th>Total</th><th>Received</th><th>Outstanding</th><th>Bucket</th><th>Action</th>
+        </tr></thead><tbody id="aging-tbody"></tbody></table>
+        <div class="table-footer"><div class="tf-info" id="aging-info"></div></div>
+      </div>
+    </div>
+
+    <!-- ─────────── EXPENSES ─────────── -->
+    <div id="page-expenses" class="page">
+      <div class="page-toolbar">
+        <div class="toolbar-left">
+          <input type="text" class="table-search" placeholder="Search expenses…" oninput="filterExpenses(this.value)">
+          <select class="table-filter" onchange="filterExpensesCat(this.value)" id="exp-cat-filter">
+            <option value="">All Categories</option>
+            <option>Software / SaaS</option><option>Hardware</option><option>Travel</option>
+            <option>Office Supplies</option><option>Marketing</option><option>Salary</option>
+            <option>Utilities</option><option>Other</option>
+          </select>
+          <select class="table-filter" onchange="filterExpensesMonth(this.value)" id="exp-month-filter">
+            <option value="">All Time</option>
+          </select>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn btn-outline" onclick="exportExpensesCSV()"><i class="fas fa-download"></i> Export</button>
+          <button class="btn btn-primary" onclick="openAddExpenseModal()"><i class="fas fa-plus"></i> Add Expense</button>
+        </div>
+      </div>
+      <!-- Summary cards -->
+      <div id="exp-summary-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px"></div>
+      <!-- Expense table -->
+      <div class="table-card">
+        <table class="data-table"><thead><tr>
+          <th>Date</th><th>Category</th><th>Vendor / Description</th><th>Payment Method</th><th>Amount</th><th>Notes</th><th>Action</th>
+        </tr></thead><tbody id="exp-tbody"></tbody></table>
+        <div class="table-footer"><div class="tf-info" id="exp-info"></div><div class="pagination" id="exp-pagination"></div></div>
+      </div>
+    </div>
+
+    <!-- ─────────── CLIENT PORTAL ─────────── -->
+    <div id="page-portal" class="page">
+      <div style="max-width:760px">
+        <div class="settings-block" style="margin-bottom:18px">
+          <div class="sb-title"><i class="fas fa-link" style="color:var(--teal)"></i> Client Portal Links</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Each invoice gets a unique read-only shareable link. Clients can view invoice details without logging in.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+            <div class="field"><label>Find Invoice</label>
+              <select id="portal-inv-select" onchange="renderPortalLink()" style="width:100%">
+                <option value="">— Select an invoice —</option>
+              </select>
+            </div>
+            <div class="field"><label>Portal Base URL</label>
+              <input id="portal-base-url" placeholder="https://invcs.optms.co.in/portal" value="https://invcs.optms.co.in/portal">
+            </div>
+          </div>
+          <div id="portal-link-box" style="display:none;background:var(--bg);border-radius:10px;padding:16px;border:1.5px solid var(--teal)">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Shareable Link</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <code id="portal-link-url" style="flex:1;font-size:13px;word-break:break-all;color:var(--teal);font-family:var(--mono)"></code>
+              <button class="btn btn-outline" onclick="copyPortalLink()" style="flex-shrink:0"><i class="fas fa-copy"></i> Copy</button>
+              <button class="btn btn-whatsapp" onclick="sharePortalWA()" style="flex-shrink:0"><i class="fab fa-whatsapp"></i> Share</button>
+            </div>
+            <div id="portal-inv-preview" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)"></div>
+          </div>
+        </div>
+        <!-- All portal links -->
+        <div class="settings-block" style="padding:0;overflow:hidden">
+          <div class="card-header" style="padding:14px 18px"><span class="card-title">All Invoice Portal Links</span>
+            <input type="text" class="table-search" placeholder="Search…" oninput="filterPortalTable(this.value)" style="max-width:200px">
+          </div>
+          <table class="data-table"><thead><tr>
+            <th>Invoice #</th><th>Client</th><th>Amount</th><th>Status</th><th>Portal Link</th><th>Views</th><th>Actions</th>
+          </tr></thead><tbody id="portal-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────── PAYMENT REMINDERS ─────────── -->
+    <div id="page-reminders" class="page">
+      <div style="display:flex;gap:16px;align-items:stretch;margin-bottom:18px;flex-wrap:wrap">
+        <!-- Settings panel -->
+        <div class="dash-card" style="flex:0 0 300px;min-width:260px">
+          <div class="card-header"><span class="card-title"><i class="fas fa-cog" style="color:var(--teal)"></i> Reminder Rules</span></div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="field"><label>Send reminder before due date (days)</label>
+              <input type="number" id="rem-before-days" value="3" min="1" max="30" style="width:100%">
+            </div>
+            <div class="field"><label>Send reminder on due date</label>
+              <select id="rem-on-due" style="width:100%"><option value="1">Yes</option><option value="0">No</option></select>
+            </div>
+            <div class="field"><label>Send overdue reminder every (days)</label>
+              <input type="number" id="rem-overdue-freq" value="7" min="1" max="30" style="width:100%">
+            </div>
+            <div class="field"><label>Max overdue reminders</label>
+              <input type="number" id="rem-max-overdue" value="3" min="1" max="10" style="width:100%">
+            </div>
+            <div class="field"><label>Channel</label>
+              <select id="rem-channel" style="width:100%">
+                <option value="whatsapp">WhatsApp</option>
+                <option value="both">WhatsApp + Email</option>
+              </select>
+            </div>
+            <button class="btn btn-success" onclick="saveReminderSettings()" style="width:100%"><i class="fas fa-save"></i> Save Rules</button>
+          </div>
+        </div>
+        <!-- Queue -->
+        <div class="dash-card" style="flex:1;min-width:0">
+          <div class="card-header">
+            <span class="card-title"><i class="fas fa-list" style="color:var(--amber)"></i> Reminder Queue</span>
+            <button class="btn btn-primary" style="font-size:12px" onclick="sendAllReminders()"><i class="fas fa-paper-plane"></i> Send All Now</button>
+          </div>
+          <div id="rem-queue-cards" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+      </div>
+      <!-- Reminder history -->
+      <div class="table-card">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <span style="font-weight:700;font-size:14px">Reminder History</span>
+          <button class="btn btn-outline" style="font-size:12px" onclick="clearReminderHistory()"><i class="fas fa-trash"></i> Clear History</button>
+        </div>
+        <table class="data-table"><thead><tr>
+          <th>Sent At</th><th>Invoice</th><th>Client</th><th>Type</th><th>Channel</th><th>Status</th>
+        </tr></thead><tbody id="rem-history-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- ─────────── ACTIVITY LOG ─────────── -->
+    <div id="page-activity" class="page">
+      <div class="page-toolbar">
+        <div class="toolbar-left">
+          <input type="text" class="table-search" placeholder="Search activity…" oninput="filterActivity(this.value)" id="activity-search">
+          <select class="table-filter" onchange="filterActivityType(this.value)" id="activity-type-filter">
+            <option value="">All Events</option>
+            <option value="invoice_created">📄 Invoice Created</option>
+            <option value="invoice_edited">✏️ Invoice Edited</option>
+            <option value="invoice_deleted">🗑️ Invoice Deleted</option>
+            <option value="payment_recorded">💰 Payment Recorded</option>
+            <option value="status_changed">🔄 Status Changed</option>
+            <option value="client_added">👤 Client Added</option>
+            <option value="reminder_sent">🔔 Reminder Sent</option>
+            <option value="expense_added">💸 Expense Added</option>
+          </select>
+          <select class="table-filter" onchange="filterActivityDate(this.value)" id="activity-date-filter">
+            <option value="">All Time</option>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+          </select>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn btn-outline" onclick="exportActivityCSV()"><i class="fas fa-download"></i> Export</button>
+          <button class="btn btn-outline" onclick="clearActivityLog()"><i class="fas fa-trash"></i> Clear</button>
+        </div>
+      </div>
+      <div id="activity-stats" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap"></div>
+      <div id="activity-timeline" style="display:flex;flex-direction:column;gap:0"></div>
+      <div style="text-align:center;padding:16px" id="activity-load-more" style="display:none">
+        <button class="btn btn-outline" onclick="loadMoreActivity()">Load More</button>
+      </div>
+    </div>
+
+    <!-- ─────────── TAX SUMMARY ─────────── -->
+    <div id="page-tax" class="page">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;box-shadow:var(--shadow)">
+        <span style="font-size:12px;font-weight:700;color:var(--muted)"><i class="fas fa-landmark" style="color:var(--teal)"></i> Period:</span>
+        <button class="cf-btn active" onclick="setTaxRange('year')" id="tax-btn-year">This Year</button>
+        <button class="cf-btn" onclick="setTaxRange('quarter')" id="tax-btn-quarter">This Quarter</button>
+        <button class="cf-btn" onclick="setTaxRange('month')" id="tax-btn-month">This Month</button>
+        <button class="cf-btn" onclick="setTaxRange('all')" id="tax-btn-all">All Time</button>
+        <input type="date" class="table-filter" id="tax-from" onchange="applyTaxFilter()" style="max-width:130px;margin-left:8px">
+        <span style="color:var(--muted);font-size:12px">–</span>
+        <input type="date" class="table-filter" id="tax-to" onchange="applyTaxFilter()" style="max-width:130px">
+        <button class="btn btn-outline" style="margin-left:auto;font-size:12px" onclick="exportTaxCSV()"><i class="fas fa-download"></i> Export CSV</button>
+      </div>
+      <!-- Summary stat cards -->
+      <div id="tax-stat-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px"></div>
+      <!-- Charts row -->
+      <div style="display:flex;gap:16px;margin-bottom:20px">
+        <div class="dash-card" style="flex:1">
+          <div class="card-header"><span class="card-title">Monthly GST Collected</span></div>
+          <div style="position:relative;height:220px"><canvas id="taxMonthlyChart"></canvas></div>
+        </div>
+        <div class="dash-card" style="flex:0 0 280px">
+          <div class="card-header"><span class="card-title">GST Rate Breakdown</span></div>
+          <div style="position:relative;height:220px"><canvas id="taxRateChart"></canvas></div>
+        </div>
+      </div>
+      <!-- GST rate breakdown table -->
+      <div class="table-card" style="margin-bottom:18px">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)"><span style="font-weight:700;font-size:14px">GST Rate-wise Summary</span></div>
+        <table class="data-table"><thead><tr>
+          <th>GST Rate</th><th>Taxable Amount</th><th>CGST</th><th>SGST</th><th>IGST</th><th>Total GST</th><th>Invoice Count</th>
+        </tr></thead><tbody id="tax-rate-tbody"></tbody></table>
+      </div>
+      <!-- Monthly breakdown table -->
+      <div class="table-card">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)"><span style="font-weight:700;font-size:14px">Month-wise GST Detail</span></div>
+        <table class="data-table"><thead><tr>
+          <th>Month</th><th>Invoices</th><th>Gross Revenue</th><th>Taxable Value</th><th>GST Collected</th><th>Status</th>
+        </tr></thead><tbody id="tax-monthly-tbody"></tbody></table>
+      </div>
+    </div>
+
+
   </div><!-- /pages-container -->
 </div><!-- /main-wrap -->
 
@@ -2395,7 +2666,7 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
 
 <!-- Mark Paid Modal -->
 <div class="modal-overlay" id="modal-paid">
-  <div class="modal" style="max-width:580px;max-height:92vh;display:flex;flex-direction:column;">
+  <div class="modal" style="max-width:500px;max-height:92vh;display:flex;flex-direction:column;">
 
     <!-- Header -->
     <div class="modal-header" style="padding:16px 20px;flex-shrink:0">
@@ -2427,10 +2698,20 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
             <div style="font-size:18px;font-weight:800;font-family:var(--mono)" id="paid-inv-total"></div>
           </div>
         </div>
-        <!-- Already paid row (partial) -->
-        <div id="paid-inv-remaining-row" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.25);display:flex;justify-content:space-between">
-          <span style="font-size:11px;opacity:.85">Already Paid: <strong id="paid-inv-already" style="font-family:var(--mono)"></strong></span>
-          <span style="font-size:11px;font-weight:700">Remaining: <strong id="paid-inv-remaining" style="font-family:var(--mono)"></strong></span>
+        <!-- Already paid + remaining chips row -->
+        <div id="paid-inv-remaining-row" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.25);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <!-- Already Paid — orange chip -->
+          <div style="backdrop-filter: blur(6px);display:inline-flex;align-items:center;gap:5px;background:rgba(255,152,0,.28);border:1px solid rgba(255,152,0,.55);border-radius:20px;padding:3px 10px 3px 7px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#FFB300;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,179,0,.35)"></span>
+            <span style="font-size:12px;font-weight:600;color:#FFE082;white-space:nowrap">Already Paid&nbsp;</span>
+            <strong id="paid-inv-already" style="font-family:var(--mono);font-size:12px;color:#fff"></strong>
+          </div>
+          <!-- Remaining — matte red chip -->
+          <div style="margin-left:auto;backdrop-filter: blur(6px);display:inline-flex;align-items:center;gap:5px;background:rgba(229,57,53,.28);border:1px solid rgba(229,57,53,.5);border-radius:20px;padding:3px 10px 3px 7px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#EF5350;flex-shrink:0;box-shadow:0 0 0 2px rgba(239,83,80,.35)"></span>
+            <span style="font-size:12px;font-weight:600;color:#FFCDD2;white-space:nowrap">Remaining Due&nbsp;</span>
+            <strong id="paid-inv-remaining" style="font-family:var(--mono);font-size:12px;color:#fff"></strong>
+          </div>
         </div>
       </div>
 
@@ -2471,14 +2752,15 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
         <input id="paid-notes" placeholder="e.g. First instalment received">
       </div>
 
-      <!-- Partial payment box -->
+      <!-- Partial payment box — no overflow:hidden, with % column -->
       <div id="paid-remaining-box" style="display:none;border-radius:10px;border:1.5px solid #FFD54F">
-        <div style="background:linear-gradient(135deg,#FF8F00,#FFA000);padding:9px 14px;display:flex;align-items:center;gap:8px">
+        <div style="background:linear-gradient(135deg,#FF8F00,#FFA000);border-radius:8px 8px 0 0;padding:9px 14px;display:flex;align-items:center;gap:8px">
           <i class="fas fa-exclamation-triangle" style="color:#fff;font-size:12px"></i>
           <span style="color:#fff;font-weight:700;font-size:12px">Partial Payment Detected</span>
         </div>
-        <div style="background:#FFFDE7;padding:12px 14px">
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="background:#FFFDE7;border-radius:0 0 8px 8px;padding:12px 14px">
+          <!-- 4-col stats: Total | Received | Remaining | Paid % -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px">
             <div style="background:#fff;border-radius:7px;padding:8px 10px;border:1px solid #FFE082;text-align:center">
               <div style="font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px">Total</div>
               <div id="paid-rem-total" style="font-size:13px;font-weight:800;color:#333;font-family:var(--mono)">₹0.00</div>
@@ -2490,6 +2772,10 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
             <div style="background:#fff;border-radius:7px;padding:8px 10px;border:1px solid #FFCDD2;text-align:center">
               <div style="font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px">Remaining</div>
               <div id="paid-rem-due" style="font-size:13px;font-weight:800;color:#C62828;font-family:var(--mono)">₹0.00</div>
+            </div>
+            <div style="background:#fff;border-radius:7px;padding:8px 10px;border:1px solid #CE93D8;text-align:center">
+              <div style="font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px">Paid %</div>
+              <div id="paid-rem-pct" style="font-size:13px;font-weight:800;color:#7B1FA2;font-family:var(--mono)">0%</div>
             </div>
           </div>
           <div style="height:5px;background:#FFE082;border-radius:3px;margin-bottom:10px;overflow:hidden">
@@ -2579,6 +2865,54 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
     <div class="modal-body" style="padding:24px;max-height:60vh;overflow-y:auto">
       <input type="text" class="table-search" placeholder="Search services…" oninput="filterProductPicker(this.value)" style="margin-bottom:14px;width:100%">
       <div id="productPickerList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Add / Edit Expense Modal -->
+<div class="modal-overlay" id="modal-expense">
+  <div class="modal" style="max-width:500px;max-height:90vh;display:flex;flex-direction:column">
+    <div class="modal-header" style="padding:14px 20px;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:9px">
+        <div style="width:30px;height:30px;border-radius:8px;background:#fff3e0;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fas fa-wallet" style="color:#E65100;font-size:13px"></i>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:var(--text)" id="exp-modal-title">Add Expense</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-expense')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" style="overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px">
+      <input type="hidden" id="exp-edit-id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field" style="margin:0"><label>Date *</label><input type="date" id="exp-date" style="width:100%"></div>
+        <div class="field" style="margin:0"><label>Amount (₹) *</label><input type="number" id="exp-amount" placeholder="0.00" style="width:100%"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field" style="margin:0"><label>Category *</label>
+          <select id="exp-category" style="width:100%">
+            <option value="">— Select —</option>
+            <option>Software / SaaS</option><option>Hardware</option><option>Travel</option>
+            <option>Office Supplies</option><option>Marketing</option><option>Salary</option>
+            <option>Utilities</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field" style="margin:0"><label>Payment Method</label>
+          <select id="exp-method" style="width:100%">
+            <option>UPI</option><option>Bank Transfer</option><option>Cash</option>
+            <option>Credit Card</option><option>Cheque</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin:0"><label>Vendor / Description *</label>
+        <input id="exp-vendor" placeholder="e.g. AWS, Zomato, Office Rent" style="width:100%">
+      </div>
+      <div class="field" style="margin:0"><label>Notes <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <input id="exp-notes" placeholder="Additional details…" style="width:100%">
+      </div>
+    </div>
+    <div class="modal-footer" style="padding:12px 20px;flex-shrink:0">
+      <button class="btn btn-success" onclick="saveExpense()" style="flex:1"><i class="fas fa-save"></i> Save Expense</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-expense')">Cancel</button>
     </div>
   </div>
 </div>
@@ -2786,7 +3120,9 @@ const breadcrumbs = {
   clients:'Clients', products:'Services & Products', payments:'Payments',
   reports:'Reports', templates:'PDF Templates', whatsapp:'WhatsApp Setup',
   'email-setup':'Email Setup', settings:'Settings', backup:'Backup & Export',
-  msglog:'Message Log'
+  msglog:'Message Log', aging:'Aging Report', expenses:'Expense Tracker',
+  tax:'Tax Summary', reminders:'Payment Reminders', portal:'Client Portal',
+  activity:'Activity Log'
 };
 
 function showPage(name, el) {
@@ -2810,6 +3146,12 @@ function showPage(name, el) {
   if (name === 'whatsapp')  { setTimeout(populateWAPage, 100); setTimeout(renderFestivalCampaigns, 200); }
   if (name === 'settings')  populateSettingsForm();
   if (name === 'msglog')    renderMsgLog();
+  if (name === 'aging')     renderAgingReport();
+  if (name === 'expenses')  renderExpenses();
+  if (name === 'tax')       renderTaxSummary();
+  if (name === 'reminders') renderReminders();
+  if (name === 'portal')    renderPortal();
+  if (name === 'activity')  renderActivityLog();
 }
 
 // ══════════════════════════════════════════
@@ -3320,7 +3662,8 @@ function resetCreateForm() {
     // If no invoices matched the current prefix, still fall back to total count + 1
     if (nextSeq === 1 && STATE.invoices.length > 0) nextSeq = STATE.invoices.length + 1;
   }
-  document.getElementById('f-num').value = prefix + String(nextSeq).padStart(3,'0');
+  const _fnumEl = document.getElementById('f-num');
+  if (_fnumEl) _fnumEl.value = prefix + String(nextSeq).padStart(3,'0');
   // Load defaults from settings
   const bankEl = document.getElementById('f-bank');
   if (bankEl) bankEl.value = STATE.settings.defaultBank || '';
@@ -3331,14 +3674,11 @@ function resetCreateForm() {
     '1. All prices are inclusive of applicable taxes.\n2. Disputes must be raised within 7 days.\n3. Computer-generated invoice. Subject to Patna jurisdiction.';
   setTodayDates();
   // Clear client fields
-  document.getElementById('f-cname').value = '';
-  document.getElementById('f-cperson').value = '';
-  document.getElementById('f-cwa').value = '';
-  document.getElementById('f-cemail').value = '';
-  document.getElementById('f-cgst').value = '';
-  document.getElementById('f-caddr').value = '';
+  const _sv = (id, val) => { const e = document.getElementById(id); if (e) e.value = val; };
+  _sv('f-cname', ''); _sv('f-cperson', ''); _sv('f-cwa', '');
+  _sv('f-cemail', ''); _sv('f-cgst', ''); _sv('f-caddr', '');
   // Clear other form fields
-  document.getElementById('f-disc').value = '0';
+  _sv('f-disc', '0');
   const discTypeEl = document.getElementById('f-disc-type'); if (discTypeEl) discTypeEl.value = 'pct';
   document.getElementById('f-gst').value = String(STATE.settings.defaultGST ?? 18);
   const notesEl = document.getElementById('f-notes'); if (notesEl) notesEl.value = '';
@@ -3348,7 +3688,8 @@ function resetCreateForm() {
   const clientSelEl = document.getElementById('f-client'); if (clientSelEl) clientSelEl.value = '';
   // Reset company logo, qr to defaults
   const qrEl = document.getElementById('f-qr'); if (qrEl) qrEl.value = '';
-  document.querySelectorAll('input[name="inv-status"]')[0].checked = true;
+  const _radios = document.querySelectorAll('input[name="inv-status"]');
+  if (_radios.length) _radios[0].checked = true;
   formItems = [];
   addItem();
 }
@@ -4830,27 +5171,30 @@ function updatePaidRemaining() {
   const mid  = STATE.activeMenuInvoiceId;
   const inv  = STATE.invoices.find(i=>String(i.id)===mid);
   if (!inv)  return;
-  const sym       = inv.currency || '₹';
-  const total     = parseFloat(inv.amount || 0);
-  const received  = parseFloat(document.getElementById('paid-amt').value) || 0;
-  const prevPaid  = STATE.payments
+  const sym        = inv.currency || '₹';
+  const total      = parseFloat(inv.amount || 0);
+  const received   = parseFloat(document.getElementById('paid-amt').value) || 0;
+  const prevPaid   = STATE.payments
     .filter(p => p.invoice_id && String(p.invoice_id) === mid)
     .reduce((s,p) => s + parseFloat(p.amount||0), 0);
   const totalReceived = prevPaid + received;
   const remaining     = Math.max(0, total - totalReceived);
   const remBox        = document.getElementById('paid-remaining-box');
-  const hasPartialSituation = prevPaid > 0.01 || (received > 0 && remaining > 0.01);
-  if (hasPartialSituation) {
+  // Hide ONLY when no prior history AND this payment covers the full total.
+  // Once any partial exists (prevPaid > 0), box is always visible.
+  if (prevPaid < 0.01 && remaining < 0.01) {
+    remBox.style.display = 'none';
+  } else {
     remBox.style.display = 'block';
-    const el = id => document.getElementById(id);
+    const el  = id => document.getElementById(id);
+    const pct = total > 0 ? Math.min(100, Math.round(totalReceived / total * 100)) : 0;
     el('paid-rem-total').textContent    = fmt_money(total, sym);
     el('paid-rem-received').textContent = fmt_money(totalReceived, sym);
     el('paid-rem-due').textContent      = fmt_money(remaining, sym);
-    const pct = total > 0 ? Math.min(100, Math.round(totalReceived / total * 100)) : 0;
+    const pctEl = el('paid-rem-pct');
+    if (pctEl) pctEl.textContent = pct + '%';
     const bar = el('paid-rem-bar');
     if (bar) bar.style.width = pct + '%';
-  } else {
-    remBox.style.display = 'none';
   }
 }
 
@@ -6489,6 +6833,8 @@ async function loadAllData() {
       if (s.tpl_table_style)  TPL_CUSTOM.tableStyle     = s.tpl_table_style;
     }
     console.log('Loaded:', STATE.invoices.length,'invoices,', STATE.clients.length,'clients');
+    // Load new feature data
+    await loadFeatureData();
   } catch(e) {
     console.error('loadAllData failed:', e.message);
     toast('⚠️ Could not load data: ' + e.message, 'warning');
@@ -7676,6 +8022,1085 @@ function getSplitMethodLabel() {
   }).filter(Boolean);
   return 'Split: ' + parts.join(' + ');
 }
+
+
+// ══════════════════════════════════════════════════════════════
+// STATE extensions for new features
+// ══════════════════════════════════════════════════════════════
+STATE.expenses  = [];
+STATE.reminders = [];
+STATE.activity  = [];
+
+// ── DB-backed save functions ───────────────────────────────────
+async function saveExpensesState()  { /* data written per-operation via api() */ }
+async function saveRemindersState() { /* data written per-operation via api() */ }
+async function saveActivityState()  { /* data written per-operation via api() */ }
+
+// ── Load new feature data from DB ─────────────────────────────
+async function loadFeatureData() {
+  // Use allSettled so one failing endpoint doesn't crash the rest
+  const [expR, remR, actR] = await Promise.allSettled([
+    api('api/expenses.php'),
+    api('api/reminders.php'),
+    api('api/activity.php?limit=200'),
+  ]);
+  if (expR.status === 'fulfilled' && expR.value?.data)
+    STATE.expenses = expR.value.data;
+  else if (expR.status === 'rejected')
+    console.warn('expenses API unavailable (run migration?):', expR.reason?.message);
+
+  if (remR.status === 'fulfilled') {
+  //──  if (remR.value?.log)      STATE.reminders    = remR.value.log; (it has been replaced) ──────────────
+  if (remR.value?.log) STATE.reminders = remR.value.log.map(r => ({
+  id:         r.id,
+  ts:         r.sent_at,          // DB: sent_at  → JS: ts
+  invNum:     r.invoice_num,      // DB: invoice_num → JS: invNum
+  clientName: r.client_name,      // DB: client_name → JS: clientName
+  type:       r.type,
+  channel:    r.channel,
+  status:     r.status
+}));
+    if (remR.value?.settings) STATE._remSettings = remR.value.settings;
+  } else {
+    console.warn('reminders API unavailable (run migration?):', remR.reason?.message);
+  }
+
+  if (actR.status === 'fulfilled' && actR.value?.data) {
+    STATE.activity = actR.value.data.map(r => ({
+      id: r.id, type: r.type, label: r.label, detail: r.detail,
+      invoiceId: r.invoice_id, ts: r.created_at
+    }));
+  } else {
+    console.warn('activity API unavailable (run migration?):', actR.reason?.message);
+  }
+}
+
+// ── Activity logger (called from other features) ──────────────
+function logActivity(type, label, detail, invoiceId) {
+  const entry = {
+    id: Date.now() + Math.random(), type, label,
+    detail: detail || '', invoiceId: invoiceId || null,
+    ts: new Date().toISOString()
+  };
+  STATE.activity.unshift(entry);
+  if (STATE.activity.length > 500) STATE.activity = STATE.activity.slice(0,500);
+  // Write to DB (fire-and-forget)
+  api('api/activity.php','POST',{
+    type, label, detail: detail||'',
+    invoice_id: invoiceId ? parseInt(invoiceId) : null
+  }).catch(e=>console.warn('activity log write failed:',e.message));
+  if (document.getElementById('page-activity')?.classList.contains('active')) renderActivityLog();
+}
+
+// ══════════════════════════════════════════════════════════════
+// 1. AGING REPORT
+// ══════════════════════════════════════════════════════════════
+let _agingAll = [], _agingFiltered = [];
+
+function renderAgingReport() {
+  const statusF = document.getElementById('aging-status-filter')?.value || '';
+  const today   = new Date(); today.setHours(0,0,0,0);
+
+  const unpaidStatuses = ['Pending','Overdue','Partial'];
+  _agingAll = STATE.invoices.filter(inv => {
+    if (statusF) return inv.status === statusF;
+    return unpaidStatuses.includes(inv.status);
+  }).map(inv => {
+    const pmts    = STATE.payments.filter(p => String(p.invoice_id) === String(inv.id));
+    const received = pmts.reduce((s,p) => s + parseFloat(p.amount||0), 0);
+    const outstanding = Math.max(0, (inv.amount||0) - received);
+    const dueDate  = inv.due ? new Date(inv.due) : null;
+    const daysOver = dueDate ? Math.floor((today - dueDate) / 864e5) : 0;
+    let bucket;
+    if (daysOver <= 0)  bucket = 'Current';
+    else if (daysOver <= 30)  bucket = '1–30 days';
+    else if (daysOver <= 60)  bucket = '31–60 days';
+    else if (daysOver <= 90)  bucket = '61–90 days';
+    else                      bucket = '90+ days';
+    const client = STATE.clients.find(c => String(c.id) === String(inv.client)) || {};
+    return { inv, client, received, outstanding, daysOver, bucket, dueDate };
+  });
+
+  _agingFiltered = [..._agingAll];
+  _renderAgingBuckets();
+  _renderAgingTable(_agingFiltered);
+}
+
+function _renderAgingBuckets() {
+  const buckets = ['Current','1–30 days','31–60 days','61–90 days','90+ days'];
+  const colors  = ['#00897B','#F9A825','#E65100','#C62828','#7B1FA2'];
+  const bgcols  = ['#e0f2f1','#fff8e1','#fbe9e7','#ffebee','#f3e5f5'];
+  const el      = document.getElementById('aging-buckets');
+  if (!el) return;
+  el.innerHTML = buckets.map((b, i) => {
+    const items = _agingAll.filter(r => r.bucket === b);
+    const total = items.reduce((s,r) => s + r.outstanding, 0);
+    return `<div style="background:var(--card);border-radius:var(--r);padding:14px 16px;border:2px solid ${colors[i]}22;box-shadow:var(--shadow)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div style="width:10px;height:10px;border-radius:50%;background:${colors[i]}"></div>
+        <span style="font-size:11px;font-weight:700;color:${colors[i]}">${b}</span>
+      </div>
+      <div style="font-size:20px;font-weight:800;color:var(--text);font-family:var(--mono)">${fmt_money(total)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">${items.length} invoice${items.length!==1?'s':''}</div>
+    </div>`;
+  }).join('');
+}
+
+function _renderAgingTable(rows) {
+  const tbody = document.getElementById('aging-tbody');
+  const info  = document.getElementById('aging-info');
+  if (!tbody) return;
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="11" style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-check-circle" style="font-size:28px;opacity:.2;display:block;margin-bottom:8px"></i>No outstanding invoices</td></tr>`;
+    if (info) info.textContent = '0 invoices';
+    return;
+  }
+  const bucketColor = {'Current':'#00897B','1–30 days':'#F9A825','31–60 days':'#E65100','61–90 days':'#C62828','90+ days':'#7B1FA2'};
+  tbody.innerHTML = rows.map(r => {
+    const { inv, client, received, outstanding, daysOver, bucket, dueDate } = r;
+    const sym = inv.currency || '₹';
+    const overTxt = daysOver > 0 ? `<span style="color:#C62828;font-weight:700">${daysOver}d overdue</span>` : `<span style="color:#00897B">Not due</span>`;
+    const bc = bucketColor[bucket] || '#888';
+    return `<tr>
+      <td><strong style="font-family:var(--mono)">${inv.num||inv.invoice_number||''}</strong></td>
+      <td>${client.name||inv.client_name||'—'}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${inv.service||inv.service_type||'—'}</td>
+      <td>${inv.issued||'—'}</td>
+      <td>${inv.due||'—'}</td>
+      <td>${overTxt}</td>
+      <td style="font-family:var(--mono)">${fmt_money(inv.amount||0,sym)}</td>
+      <td style="font-family:var(--mono);color:#2E7D32">${fmt_money(received,sym)}</td>
+      <td style="font-family:var(--mono);color:#C62828;font-weight:700">${fmt_money(outstanding,sym)}</td>
+      <td><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:${bc}15;color:${bc};border:1px solid ${bc}30">${bucket}</span></td>
+      <td><button onclick="openPaidModal('${inv.id}')" style="padding:4px 10px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal);border-radius:6px;cursor:pointer;font-size:11px;font-weight:600"><i class="fas fa-rupee-sign"></i> Pay</button></td>
+    </tr>`;
+  }).join('');
+  if (info) info.textContent = `${rows.length} invoice${rows.length!==1?'s':''}  ·  Outstanding: ${fmt_money(rows.reduce((s,r)=>s+r.outstanding,0))}`;
+}
+
+function filterAgingTable(val) {
+  const s = val.toLowerCase();
+  _agingFiltered = s ? _agingAll.filter(r =>
+    (r.inv.num||'').toLowerCase().includes(s) ||
+    (r.client.name||'').toLowerCase().includes(s) ||
+    (r.inv.service||'').toLowerCase().includes(s)
+  ) : [..._agingAll];
+  _renderAgingTable(_agingFiltered);
+}
+
+function exportAgingCSV() {
+  const rows = [['Invoice#','Client','Service','Issue Date','Due Date','Days Overdue','Total','Received','Outstanding','Bucket']];
+  _agingFiltered.forEach(r => rows.push([
+    r.inv.num||'', r.client.name||'', r.inv.service||'',
+    r.inv.issued||'', r.inv.due||'', r.daysOver,
+    r.inv.amount||0, r.received.toFixed(2), r.outstanding.toFixed(2), r.bucket
+  ]));
+  _downloadCSV(rows, 'aging_report.csv');
+}
+
+// ══════════════════════════════════════════════════════════════
+// 2. EXPENSE TRACKER
+// ══════════════════════════════════════════════════════════════
+const EXP = { list: [], page: 1, per: 20 };
+
+function renderExpenses() {
+  // Refresh from DB then render
+  api('api/expenses.php').then(r=>{
+    if(r&&r.data) STATE.expenses=r.data;
+    _populateExpenseMonthFilter();
+    EXP.list=[...STATE.expenses].sort((a,b)=>new Date(b.date)-new Date(a.date));
+    EXP.page=1; _renderExpSummary(); _renderExpTable();
+  }).catch(()=>{
+    // Fallback to cached STATE
+    _populateExpenseMonthFilter();
+    EXP.list=[...STATE.expenses].sort((a,b)=>new Date(b.date)-new Date(a.date));
+    EXP.page=1; _renderExpSummary(); _renderExpTable();
+  });
+}
+
+function _populateExpenseMonthFilter() {
+  const sel = document.getElementById('exp-month-filter');
+  if (!sel) return;
+  const months = [...new Set(STATE.expenses.map(e => e.date?.slice(0,7)))].sort().reverse();
+  sel.innerHTML = '<option value="">All Time</option>' +
+    months.map(m => `<option value="${m}">${m}</option>`).join('');
+}
+
+function _renderExpSummary() {
+  const el = document.getElementById('exp-summary-cards');
+  if (!el) return;
+  const total    = STATE.expenses.reduce((s,e) => s + parseFloat(e.amount||0), 0);
+  const now      = new Date();
+  const thisMonth = STATE.expenses.filter(e => e.date?.slice(0,7) === `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`);
+  const monthTotal = thisMonth.reduce((s,e) => s + parseFloat(e.amount||0), 0);
+  const catTotals  = {};
+  STATE.expenses.forEach(e => { catTotals[e.category] = (catTotals[e.category]||0) + parseFloat(e.amount||0); });
+  const topCat = Object.entries(catTotals).sort((a,b)=>b[1]-a[1])[0];
+  const revenue = STATE.invoices.filter(i=>i.status==='Paid').reduce((s,i)=>s+parseFloat(i.amount||0),0);
+  const expRatio = revenue > 0 ? Math.round(total/revenue*100) : 0;
+  const cards = [
+    {l:'Total Expenses',    v:fmt_money(total),         ic:'fa-wallet',         col:'#E65100', bg:'#fbe9e7'},
+    {l:'This Month',        v:fmt_money(monthTotal),    ic:'fa-calendar-day',   col:'#1976D2', bg:'#e3f2fd'},
+    {l:'Top Category',      v:topCat?topCat[0]:'—',     ic:'fa-tag',            col:'#7B1FA2', bg:'#f3e5f5'},
+    {l:'Expense / Revenue', v:expRatio+'%',             ic:'fa-chart-pie',      col:'#388E3C', bg:'#e8f5e9'},
+  ];
+  el.innerHTML = cards.map(c => `<div class="stat-card">
+    <div class="stat-icon" style="background:${c.bg};color:${c.col}"><i class="fas ${c.ic}"></i></div>
+    <div class="stat-body"><div class="stat-val" style="font-size:18px">${c.v}</div><div class="stat-lbl">${c.l}</div></div>
+  </div>`).join('');
+}
+
+function _renderExpTable() {
+  const tbody = document.getElementById('exp-tbody');
+  const info  = document.getElementById('exp-info');
+  if (!tbody) return;
+  const s = (EXP.page-1)*EXP.per, e = s+EXP.per;
+  const pg = EXP.list.slice(s, e);
+  if (!EXP.list.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-wallet" style="font-size:28px;opacity:.2;display:block;margin-bottom:8px"></i>No expenses yet. <a onclick="openAddExpenseModal()" style="color:var(--teal);cursor:pointer">Add one →</a></td></tr>`;
+    if(info) info.textContent = '0 expenses';
+    return;
+  }
+  const catColors = {'Software / SaaS':'#1976D2','Hardware':'#7B1FA2','Travel':'#E65100','Office Supplies':'#388E3C','Marketing':'#C62828','Salary':'#455A64','Utilities':'#F57F17','Other':'#757575'};
+  tbody.innerHTML = pg.map(exp => {
+    const col = catColors[exp.category] || '#757575';
+    return `<tr>
+      <td>${exp.date||'—'}</td>
+      <td><span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:${col}15;color:${col}">${exp.category||'—'}</span></td>
+      <td style="font-weight:600">${exp.vendor||'—'}</td>
+      <td style="color:var(--muted)">${exp.method||'—'}</td>
+      <td style="font-family:var(--mono);font-weight:700;color:#C62828">${fmt_money(exp.amount||0)}</td>
+      <td style="color:var(--muted);font-size:12px">${exp.notes||'—'}</td>
+      <td>
+        <button onclick="editExpense('${exp.id}')" style="padding:4px 8px;background:var(--blue-bg);color:var(--blue);border:1px solid #90caf9;border-radius:6px;cursor:pointer;font-size:11px;margin-right:4px"><i class="fas fa-edit"></i></button>
+        <button onclick="deleteExpense('${exp.id}')" style="padding:4px 8px;background:var(--red-bg);color:var(--red);border:1px solid #ffcdd2;border-radius:6px;cursor:pointer;font-size:11px"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+  if(info) info.textContent = `${EXP.list.length} expenses · Total: ${fmt_money(EXP.list.reduce((s,e)=>s+parseFloat(e.amount||0),0))}`;
+  _renderExpPagination();
+}
+
+function _renderExpPagination() {
+  const el = document.getElementById('exp-pagination');
+  if (!el) return;
+  const total = Math.ceil(EXP.list.length / EXP.per);
+  if (total <= 1) { el.innerHTML=''; return; }
+  el.innerHTML = Array.from({length:total},(_,i)=>
+    `<button class="page-btn${EXP.page===i+1?' active':''}" onclick="expPage(${i+1})">${i+1}</button>`
+  ).join('');
+}
+function expPage(p) { EXP.page=p; _renderExpTable(); }
+
+function filterExpenses(val) {
+  const s = val.toLowerCase();
+  EXP.list = STATE.expenses.filter(e =>
+    !s || (e.vendor||'').toLowerCase().includes(s) || (e.notes||'').toLowerCase().includes(s) || (e.category||'').toLowerCase().includes(s)
+  ).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  EXP.page=1; _renderExpTable();
+}
+function filterExpensesCat(val) {
+  EXP.list = (val ? STATE.expenses.filter(e=>e.category===val) : [...STATE.expenses]).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  EXP.page=1; _renderExpTable();
+}
+function filterExpensesMonth(val) {
+  EXP.list = (val ? STATE.expenses.filter(e=>(e.date||'').startsWith(val)) : [...STATE.expenses]).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  EXP.page=1; _renderExpTable();
+}
+
+function openAddExpenseModal() {
+  document.getElementById('exp-edit-id').value = '';
+  document.getElementById('exp-modal-title').textContent = 'Add Expense';
+  document.getElementById('exp-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('exp-amount').value = '';
+  document.getElementById('exp-category').value = '';
+  document.getElementById('exp-method').value = 'UPI';
+  document.getElementById('exp-vendor').value = '';
+  document.getElementById('exp-notes').value = '';
+  openModal('modal-expense');
+}
+
+function editExpense(id) {
+  const exp = STATE.expenses.find(e=>String(e.id)===String(id));
+  if (!exp) return;
+  document.getElementById('exp-edit-id').value = id;
+  document.getElementById('exp-modal-title').textContent = 'Edit Expense';
+  document.getElementById('exp-date').value     = exp.date||'';
+  document.getElementById('exp-amount').value   = exp.amount||'';
+  document.getElementById('exp-category').value = exp.category||'';
+  document.getElementById('exp-method').value   = exp.method||'UPI';
+  document.getElementById('exp-vendor').value   = exp.vendor||'';
+  document.getElementById('exp-notes').value    = exp.notes||'';
+  openModal('modal-expense');
+}
+
+function saveExpense() {
+  const id      = document.getElementById('exp-edit-id').value;
+  const date    = document.getElementById('exp-date').value;
+  const amount  = parseFloat(document.getElementById('exp-amount').value);
+  const category= document.getElementById('exp-category').value;
+  const vendor  = document.getElementById('exp-vendor').value.trim();
+  if (!date || !amount || !category || !vendor) { toast('⚠️ Fill all required fields','warning'); return; }
+  const entry = { id: id || (Date.now()+''), date, amount, category, vendor,
+    method: document.getElementById('exp-method').value,
+    notes:  document.getElementById('exp-notes').value.trim() };
+  if (id) {
+    api('api/expenses.php?id='+id,'PUT',entry).then(()=>{
+      const idx=STATE.expenses.findIndex(e=>String(e.id)===id);
+      if(idx>-1) STATE.expenses[idx]=entry;
+      logActivity('expense_added',`Expense edited: ${vendor}`,fmt_money(amount));
+      closeModal('modal-expense'); renderExpenses(); toast('✅ Expense saved','success');
+    }).catch(e=>toast('❌ '+e.message,'error'));
+  } else {
+    api('api/expenses.php','POST',entry).then(r=>{
+      if(r&&r.id) entry.id=String(r.id);
+      STATE.expenses.unshift(entry);
+      logActivity('expense_added',`Expense added: ${vendor}`,fmt_money(amount));
+      closeModal('modal-expense'); renderExpenses(); toast('✅ Expense saved','success');
+    }).catch(e=>toast('❌ '+e.message,'error'));
+  }
+}
+
+function deleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
+  api('api/expenses.php?id='+id,'DELETE').then(()=>{
+    STATE.expenses = STATE.expenses.filter(e=>String(e.id)!==String(id));
+    renderExpenses(); toast('🗑️ Expense deleted','info');
+  }).catch(e=>toast('❌ '+e.message,'error'));
+}
+
+function exportExpensesCSV() {
+  const rows = [['Date','Category','Vendor','Method','Amount','Notes']];
+  EXP.list.forEach(e => rows.push([e.date,e.category,e.vendor,e.method,e.amount,e.notes||'']));
+  _downloadCSV(rows, 'expenses.csv');
+}
+
+// ══════════════════════════════════════════════════════════════
+// 3. CLIENT PORTAL
+// ══════════════════════════════════════════════════════════════
+
+// In-memory cache: invoiceId (string) → token string
+const _portalTokenCache = {};
+
+function renderPortal() {
+  const sel = document.getElementById('portal-inv-select');
+  if (sel) {
+    sel.innerHTML = '<option value="">— Select an invoice —</option>' +
+      STATE.invoices.map(inv => {
+        const c = STATE.clients.find(x=>String(x.id)===String(inv.client))||{};
+        return `<option value="${inv.id}">${inv.num||inv.invoice_number||''} · ${c.name||''} · ${fmt_money(inv.amount||0)}</option>`;
+      }).join('');
+  }
+  _renderPortalTable();
+}
+
+function _portalBaseURL() {
+  return (document.getElementById('portal-base-url')?.value || 'https://invcs.optms.co.in/portal').replace(/\/$/,'');
+}
+
+function _buildPortalURL(token) {
+  return `${_portalBaseURL()}?t=${token}`;
+}
+
+async function renderPortalLink() {
+  const id    = document.getElementById('portal-inv-select')?.value;
+  const box   = document.getElementById('portal-link-box');
+  const urlEl = document.getElementById('portal-link-url');
+  const prev  = document.getElementById('portal-inv-preview');
+  if (!id || !box) { if (box) box.style.display = 'none'; return; }
+  const inv = STATE.invoices.find(i => String(i.id) === String(id));
+  if (!inv) return;
+
+  box.style.display = 'block';
+  if (urlEl) urlEl.textContent = '⏳ Generating secure link…';
+
+  try {
+    const res = await api('api/portal.php', 'POST', { invoice_id: parseInt(id) });
+    if (!res.success) throw new Error(res.error || 'Failed to generate token');
+    const token = res.token;
+    _portalTokenCache[String(id)] = token;
+    const url = _buildPortalURL(token);
+    if (urlEl) urlEl.textContent = url;
+
+    const c = STATE.clients.find(x => String(x.id) === String(inv.client)) || {};
+    const pmts = STATE.payments.filter(p => String(p.invoice_id) === String(inv.id));
+    const received = pmts.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+    if (prev) prev.innerHTML = `
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px">
+        <div><span style="color:var(--muted)">Client:</span> <strong>${c.name||'—'}</strong></div>
+        <div><span style="color:var(--muted)">Amount:</span> <strong style="font-family:var(--mono)">${fmt_money(inv.amount||0)}</strong></div>
+        <div><span style="color:var(--muted)">Received:</span> <strong style="font-family:var(--mono);color:#2E7D32">${fmt_money(received)}</strong></div>
+        <div><span style="color:var(--muted)">Status:</span> <strong>${inv.status}</strong></div>
+        <div><span style="color:var(--muted)">Due:</span> <strong>${inv.due||'—'}</strong></div>
+      </div>`;
+    _renderPortalTable();
+    toast('🔗 Secure link generated!', 'success');
+  } catch(e) {
+    if (urlEl) urlEl.textContent = '❌ ' + e.message;
+    toast('❌ ' + e.message, 'error');
+  }
+}
+
+function copyPortalLink() {
+  const url = document.getElementById('portal-link-url')?.textContent;
+  if (!url || url.startsWith('⏳') || url.startsWith('❌')) return;
+  navigator.clipboard.writeText(url)
+    .then(() => toast('✅ Link copied!', 'success'))
+    .catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = url; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      toast('✅ Link copied!', 'success');
+    });
+}
+
+function sharePortalWA() {
+  const url = document.getElementById('portal-link-url')?.textContent;
+  if (!url || url.startsWith('⏳') || url.startsWith('❌')) {
+    toast('⚠️ Generate the link first', 'warning'); return;
+  }
+  const id  = document.getElementById('portal-inv-select')?.value;
+  const inv = id ? STATE.invoices.find(i => String(i.id) === String(id)) : null;
+  const c   = inv ? (STATE.clients.find(x => String(x.id) === String(inv.client)) || {}) : {};
+  const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g, '');
+  const msg = encodeURIComponent(
+    `Hi ${c.name||''},\n\nYour invoice ${inv?.num||''} is ready.\nAmount: ${fmt_money(inv?.amount||0)}\n\nView & track payment here:\n${url}\n\nThank you!`
+  );
+  window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+}
+
+async function revokePortalLink(invId) {
+  if (!confirm('Revoke this portal link? The client will no longer be able to access it.')) return;
+  try {
+    await api('api/portal.php?invoice_id=' + invId, 'DELETE');
+    delete _portalTokenCache[String(invId)];
+    toast('🗑️ Link revoked', 'info');
+    _renderPortalTable();
+    const sel = document.getElementById('portal-inv-select');
+    if (sel && String(sel.value) === String(invId)) {
+      const box = document.getElementById('portal-link-box');
+      if (box) box.style.display = 'none';
+    }
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+}
+
+function filterPortalTable(val) {
+  _renderPortalTable(val);
+}
+
+// Loaded token map from DB — refreshed each time portal page opens
+let _portalTokenMap = {};
+
+async function _renderPortalTable(search) {
+  const tbody = document.getElementById('portal-tbody');
+  if (!tbody) return;
+
+  // Show loading
+  tbody.innerHTML = `<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>`;
+
+  // Fetch all tokens from DB
+  try {
+    const res = await api('api/portal.php');
+    if (res.success && Array.isArray(res.data)) {
+      _portalTokenMap = {};
+      res.data.forEach(t => { _portalTokenMap[String(t.invoice_id)] = t; });
+    }
+  } catch(e) { _portalTokenMap = {}; }
+
+  const s = (search || '').toLowerCase();
+  const rows = STATE.invoices.filter(inv => {
+    if (!s) return true;
+    const c = STATE.clients.find(x => String(x.id) === String(inv.client)) || {};
+    return (inv.num||'').toLowerCase().includes(s) || (c.name||'').toLowerCase().includes(s);
+  });
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="padding:30px;text-align:center;color:var(--muted)">No invoices found</td></tr>`;
+    return;
+  }
+
+  const statusColors = {Paid:'#388E3C',Pending:'#F9A825',Overdue:'#C62828',Partial:'#E65100',Draft:'#9E9E9E',Cancelled:'#757575'};
+  tbody.innerHTML = rows.map(inv => {
+    const c   = STATE.clients.find(x => String(x.id) === String(inv.client)) || {};
+    const t   = _portalTokenMap[String(inv.id)];
+    const url = t ? _buildPortalURL(t.token) : '';
+    const sc  = statusColors[inv.status] || '#888';
+    const views = t ? (parseInt(t.views) || 0) : null;
+    const lastViewed = t && t.last_viewed
+      ? new Date(t.last_viewed).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'})
+      : null;
+
+    return `<tr>
+      <td><strong style="font-family:var(--mono);font-size:12px">${inv.num||inv.invoice_number||''}</strong></td>
+      <td style="font-size:13px">${c.name||'—'}</td>
+      <td style="font-family:var(--mono);font-size:13px">${fmt_money(inv.amount||0)}</td>
+      <td><span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:${sc}18;color:${sc}">${inv.status}</span></td>
+      <td style="max-width:220px">
+        ${url
+          ? `<code style="font-size:11px;color:var(--teal);word-break:break-all">${url}</code>`
+          : `<span style="color:var(--muted);font-size:12px;font-style:italic">No link yet</span>`}
+      </td>
+      <td style="text-align:center;font-size:12px">
+        ${views !== null
+          ? `<strong style="color:var(--teal)">${views}</strong>${lastViewed ? `<br><span style="font-size:10px;color:var(--muted)">${lastViewed}</span>` : ''}`
+          : `<span style="color:var(--muted)">—</span>`}
+      </td>
+      <td style="white-space:nowrap">
+        <button onclick="(async()=>{document.getElementById('portal-inv-select').value='${inv.id}';await renderPortalLink();})()"
+          title="${t ? 'Regenerate link' : 'Generate link'}"
+          style="padding:4px 8px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal);border-radius:6px;cursor:pointer;font-size:11px;margin-right:3px">
+          <i class="fas fa-${t ? 'sync-alt' : 'link'}"></i>
+        </button>
+        ${url ? `
+        <button onclick="navigator.clipboard.writeText('${url}').then(()=>toast('✅ Copied!','success'))"
+          title="Copy link"
+          style="padding:4px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:11px;margin-right:3px">
+          <i class="fas fa-copy"></i>
+        </button>
+        <button onclick="window.open('${url}','_blank')" title="Preview"
+          style="padding:4px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:11px;margin-right:3px">
+          <i class="fas fa-external-link-alt"></i>
+        </button>
+        <button onclick="revokePortalLink(${inv.id})" title="Revoke link"
+          style="padding:4px 8px;background:var(--red-bg);color:var(--red);border:1px solid #FFCDD2;border-radius:6px;cursor:pointer;font-size:11px">
+          <i class="fas fa-trash"></i>
+        </button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+// 4. PAYMENT REMINDERS
+// ══════════════════════════════════════════════════════════════
+function getReminderSettings() {
+  const s = STATE._remSettings || {};
+  return {
+    beforeDays:  parseInt(s.before_days  ?? s.beforeDays  ?? 3),
+    onDue:       (s.on_due ?? s.onDue ?? 1) == 1,
+    overdueFreq: parseInt(s.overdue_freq ?? s.overdueFreq ?? 7),
+    maxOverdue:  parseInt(s.max_overdue  ?? s.maxOverdue  ?? 3),
+    channel:     s.channel || 'whatsapp'
+  };
+}
+async function saveReminderSettings() {
+  const payload = {
+    before_days:  parseInt(document.getElementById('rem-before-days')?.value)||3,
+    on_due:       document.getElementById('rem-on-due')?.value==='1' ? 1 : 0,
+    overdue_freq: parseInt(document.getElementById('rem-overdue-freq')?.value)||7,
+    max_overdue:  parseInt(document.getElementById('rem-max-overdue')?.value)||3,
+    channel:      document.getElementById('rem-channel')?.value||'whatsapp'
+  };
+  try {
+    await api('api/reminders.php','POST',payload);
+    STATE._remSettings = payload;
+    toast('✅ Reminder rules saved','success');
+  } catch(e) { toast('❌ '+e.message,'error'); }
+}
+
+function renderReminders() {
+  const cfg   = getReminderSettings();
+  if (document.getElementById('rem-before-days'))  document.getElementById('rem-before-days').value  = cfg.beforeDays||3;
+  if (document.getElementById('rem-on-due'))       document.getElementById('rem-on-due').value       = cfg.onDue===false?'0':'1';
+  if (document.getElementById('rem-overdue-freq')) document.getElementById('rem-overdue-freq').value = cfg.overdueFreq||7;
+  if (document.getElementById('rem-max-overdue'))  document.getElementById('rem-max-overdue').value  = cfg.maxOverdue||3;
+  if (document.getElementById('rem-channel'))      document.getElementById('rem-channel').value      = cfg.channel||'whatsapp';
+  _buildReminderQueue();
+  _renderReminderHistory();
+}
+
+function _buildReminderQueue() {
+  const el    = document.getElementById('rem-queue-cards');
+  if (!el) return;
+  const cfg   = getReminderSettings();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const queue = [];
+
+  STATE.invoices.forEach(inv => {
+    if (['Paid','Cancelled','Draft'].includes(inv.status)) return;
+    const c    = STATE.clients.find(x=>String(x.id)===String(inv.client))||{};
+    const due  = inv.due ? new Date(inv.due) : null;
+    if (!due) return;
+    due.setHours(0,0,0,0);
+    const daysUntilDue = Math.floor((due - today) / 864e5);
+    const daysOverdue  = -daysUntilDue;
+
+    if (inv.status === 'Overdue' || daysOverdue > 0) {
+      queue.push({ inv, client:c, type:'overdue', urgency:'high',
+        label:`${daysOverdue}d overdue`, msg:`Overdue reminder for ${inv.num||''}` });
+    } else if (daysUntilDue === 0) {
+      queue.push({ inv, client:c, type:'due_today', urgency:'medium',
+        label:'Due today', msg:`Payment due today for ${inv.num||''}` });
+    } else if (daysUntilDue <= (cfg.beforeDays||3)) {
+      queue.push({ inv, client:c, type:'due_soon', urgency:'low',
+        label:`Due in ${daysUntilDue}d`, msg:`Due soon reminder for ${inv.num||''}` });
+    }
+  });
+
+  // Update badge
+  const badge = document.getElementById('badge-reminders');
+  if (badge) { badge.textContent=queue.length; badge.style.display=queue.length?'':'none'; }
+
+  if (!queue.length) {
+    el.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted)"><i class="fas fa-check-circle" style="font-size:28px;opacity:.2;display:block;margin-bottom:8px"></i>No pending reminders</div>`;
+    return;
+  }
+
+  const urgencyColors = { high:'#C62828', medium:'#E65100', low:'#F9A825' };
+  const urgencyBg     = { high:'#ffebee', medium:'#fbe9e7', low:'#fff8e1' };
+
+  el.innerHTML = queue.map(q => {
+    const col = urgencyColors[q.urgency];
+    const bg  = urgencyBg[q.urgency];
+    const phone = (q.client.wa||q.client.whatsapp||q.client.phone||'').replace(/\D/g,'');
+    return `<div style="background:${bg};border:1.5px solid ${col}30;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+      <div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:3px">
+          <strong style="font-size:13px;font-family:var(--mono)">${q.inv.num||q.inv.invoice_number||''}</strong>
+          <span style="font-size:10px;padding:1px 7px;border-radius:10px;background:${col};color:#fff;font-weight:700">${q.label}</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted)">${q.client.name||'—'} · ${fmt_money(q.inv.amount||0)} · Due: ${q.inv.due||'—'}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        ${phone ? `<button onclick="sendReminderNow('${q.inv.id}','whatsapp')" style="padding:5px 10px;background:#25D36615;color:#1a7a3c;border:1px solid #25D36635;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600"><i class="fab fa-whatsapp"></i> Send</button>` : ''}
+        <button onclick="sendReminderNow('${q.inv.id}','skip')" style="padding:5px 10px;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:11px">Skip</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function sendReminderNow(invId, channel) {
+  const inv = STATE.invoices.find(i=>String(i.id)===String(invId));
+  if (!inv) return;
+  const c   = STATE.clients.find(x=>String(x.id)===String(inv.client))||{};
+  if (channel === 'whatsapp') {
+    const phone = (c.wa||c.whatsapp||c.phone||'').replace(/\D/g,'');
+    const msg   = `Dear ${c.name||'Client'},\n\nThis is a reminder for Invoice *${inv.num||''}* of *${fmt_money(inv.amount||0)}* due on ${inv.due||'—'}.\n\nPlease make payment at your earliest convenience.\n\nThank you,\n${STATE.settings.company||'OPTMS Tech'}`;
+    if (phone) sendWA(phone, msg, 'payment_reminder', inv, c);
+  }
+  const entry = { id:Date.now()+'', ts:new Date().toISOString(), invNum:inv.num||inv.invoice_number||'', clientName:c.name||'', type:inv.status==='Overdue'?'Overdue Alert':'Due Reminder', channel, status: channel==='skip'?'skipped':'sent' };
+  STATE.reminders.unshift(entry);
+  if (STATE.reminders.length>200) STATE.reminders=STATE.reminders.slice(0,200);
+  // Write to DB
+  api('api/reminders.php?action=log','POST',{
+    invoice_id:inv.id, invoice_num:inv.num||inv.invoice_number||'',
+    client_name:c.name||'', type:inv.status==='Overdue'?'overdue':'due_reminder',
+    channel, status:channel==='skip'?'skipped':'sent'
+  }).catch(e=>console.warn('reminder log write failed:',e.message));
+  logActivity('reminder_sent', `Reminder ${channel==='skip'?'skipped':'sent'}: ${inv.num||inv.invoice_number||''}`, c.name||'', inv.id);
+  toast(channel==='skip'?'⏭️ Skipped':'✅ Reminder sent','success');
+  renderReminders();
+}
+
+function sendAllReminders() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const cfg   = getReminderSettings();
+  let count   = 0;
+  STATE.invoices.forEach(inv => {
+    if (['Paid','Cancelled','Draft'].includes(inv.status)) return;
+    const due = inv.due ? new Date(inv.due) : null;
+    if (!due) return;
+    due.setHours(0,0,0,0);
+    const daysUntilDue = Math.floor((due - today) / 864e5);
+    if (daysUntilDue <= (cfg.beforeDays||3)) { sendReminderNow(inv.id,'whatsapp'); count++; }
+  });
+  toast(`✅ Sent ${count} reminder${count!==1?'s':''}`, 'success');
+}
+
+function _renderReminderHistory() {
+  const tbody = document.getElementById('rem-history-tbody');
+  if (!tbody) return;
+  if (!STATE.reminders.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="padding:30px;text-align:center;color:var(--muted)">No reminder history yet</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = STATE.reminders.slice(0,50).map(r => {
+    const statusColor = r.status==='sent'?'#388E3C':r.status==='skipped'?'#888':'#C62828';
+    return `<tr>
+      <td style="font-size:11px;color:var(--muted)">${r.ts ? new Date(r.ts).toLocaleString('en-IN') : '—'}</td>
+      <td style="font-family:var(--mono);font-weight:700">${r.invNum||'—'}</td>
+      <td>${r.clientName||'—'}</td>
+      <td>${r.type||'—'}</td>
+      <td>${r.channel||'—'}</td>
+      <td><span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:${statusColor}15;color:${statusColor}">${r.status}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function clearReminderHistory() {
+  if (!confirm('Clear all reminder history?')) return;
+  api('api/reminders.php?log=1','DELETE').then(()=>{
+    STATE.reminders=[]; renderReminders(); toast('🗑️ History cleared','info');
+  }).catch(e=>toast('❌ '+e.message,'error'));
+}
+
+// ══════════════════════════════════════════════════════════════
+// 5. ACTIVITY LOG
+// ══════════════════════════════════════════════════════════════
+let _actFiltered = [];
+let _actPage     = 0;
+const _ACT_PER   = 30;
+
+function renderActivityLog() {
+  api('api/activity.php?limit=200').then(r=>{
+    if(r&&r.data) STATE.activity=r.data.map(x=>({
+      id:x.id, type:x.type, label:x.label, detail:x.detail, invoiceId:x.invoice_id, ts:x.created_at
+    }));
+    _actFiltered=[...STATE.activity]; _actPage=0;
+    _renderActivityStats(); _renderActivityTimeline(true);
+  }).catch(()=>{
+    _actFiltered=[...STATE.activity]; _actPage=0;
+    _renderActivityStats(); _renderActivityTimeline(true);
+  });
+}
+
+function filterActivity(val) {
+  const s = val.toLowerCase();
+  const tf = document.getElementById('activity-type-filter')?.value||'';
+  const df = document.getElementById('activity-date-filter')?.value||'';
+  _actFiltered = STATE.activity.filter(e => {
+    if (tf && e.type !== tf) return false;
+    if (df) {
+      const now = new Date(), d = new Date(e.ts);
+      if (df==='today' && d.toDateString()!==now.toDateString()) return false;
+      if (df==='week' && (now-d)>7*864e5) return false;
+      if (df==='month' && (d.getMonth()!==now.getMonth()||d.getFullYear()!==now.getFullYear())) return false;
+    }
+    return !s || (e.label||'').toLowerCase().includes(s) || (e.detail||'').toLowerCase().includes(s);
+  });
+  _actPage=0; _renderActivityTimeline(true);
+}
+function filterActivityType(v) { filterActivity(document.getElementById('activity-search')?.value||''); }
+function filterActivityDate(v) { filterActivity(document.getElementById('activity-search')?.value||''); }
+function loadMoreActivity()    { _actPage++; _renderActivityTimeline(false); }
+
+function _renderActivityStats() {
+  const el = document.getElementById('activity-stats');
+  if (!el) return;
+  const types = {};
+  STATE.activity.forEach(e => { types[e.type]=(types[e.type]||0)+1; });
+  const pills = Object.entries(types).slice(0,6).map(([t,n]) => {
+    const info = _actTypeInfo(t);
+    return `<div style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:${info.bg};border:1px solid ${info.col}30">
+      <span>${info.icon}</span>
+      <span style="font-size:12px;font-weight:600;color:${info.col}">${info.label}</span>
+      <span style="font-size:11px;font-weight:800;color:${info.col};background:${info.col}20;padding:1px 6px;border-radius:8px">${n}</span>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;padding:5px 0">
+    <i class="fas fa-history" style="color:var(--teal)"></i> ${STATE.activity.length} total events
+  </div>${pills}`;
+}
+
+function _actTypeInfo(type) {
+  const map = {
+    invoice_created:  {icon:'📄', label:'Created',   col:'#1976D2', bg:'#e3f2fd'},
+    invoice_edited:   {icon:'✏️', label:'Edited',    col:'#7B1FA2', bg:'#f3e5f5'},
+    invoice_deleted:  {icon:'🗑️', label:'Deleted',  col:'#C62828', bg:'#ffebee'},
+    payment_recorded: {icon:'💰', label:'Payment',   col:'#388E3C', bg:'#e8f5e9'},
+    status_changed:   {icon:'🔄', label:'Status',    col:'#E65100', bg:'#fbe9e7'},
+    client_added:     {icon:'👤', label:'Client',    col:'#00897B', bg:'#e0f2f1'},
+    reminder_sent:    {icon:'🔔', label:'Reminder',  col:'#F9A825', bg:'#fff8e1'},
+    expense_added:    {icon:'💸', label:'Expense',   col:'#455A64', bg:'#eceff1'},
+  };
+  return map[type] || {icon:'•', label:type, col:'#9E9E9E', bg:'#f5f5f5'};
+}
+
+function _renderActivityTimeline(reset) {
+  const el = document.getElementById('activity-timeline');
+  const lm = document.getElementById('activity-load-more');
+  if (!el) return;
+  const start = _actPage * _ACT_PER;
+  const chunk = _actFiltered.slice(0, start + _ACT_PER);
+  if (reset) el.innerHTML = '';
+
+  if (!_actFiltered.length) {
+    el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--muted);background:var(--card);border-radius:var(--r);border:1px solid var(--border)">
+      <i class="fas fa-history" style="font-size:32px;opacity:.15;display:block;margin-bottom:12px"></i>
+      No activity yet. Actions like creating invoices, recording payments, and adding expenses will appear here.
+    </div>`;
+    if (lm) lm.style.display='none';
+    return;
+  }
+
+  // Group by date
+  let lastDate = '';
+  const html = chunk.map(e => {
+    const info    = _actTypeInfo(e.type);
+    const d       = e.ts ? new Date(e.ts) : new Date();
+    const dateStr = d.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+    const timeStr = d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    let dateHeader = '';
+    if (dateStr !== lastDate) {
+      lastDate = dateStr;
+      dateHeader = `<div style="display:flex;align-items:center;gap:10px;margin:12px 0 6px">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <span style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap">${dateStr}</span>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>`;
+    }
+    return `${dateHeader}<div style="display:flex;gap:12px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;align-items:flex-start">
+      <div style="width:32px;height:32px;border-radius:8px;background:${info.bg};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${info.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+          <span style="font-size:13px;font-weight:600;color:var(--text)">${e.label||''}</span>
+          <span style="font-size:11px;padding:1px 7px;border-radius:10px;background:${info.col}15;color:${info.col};font-weight:700">${info.label}</span>
+        </div>
+        ${e.detail ? `<div style="font-size:12px;color:var(--muted)">${e.detail}</div>` : ''}
+      </div>
+      <div style="font-size:11px;color:var(--muted);flex-shrink:0;white-space:nowrap">${timeStr}</div>
+    </div>`;
+  }).join('');
+
+  if (reset) el.innerHTML = html; else el.innerHTML += html;
+  if (lm) lm.style.display = chunk.length < _actFiltered.length ? 'block' : 'none';
+}
+
+function exportActivityCSV() {
+  const rows = [['Timestamp','Type','Label','Detail']];
+  _actFiltered.forEach(e => rows.push([e.ts||'',e.type||'',e.label||'',e.detail||'']));
+  _downloadCSV(rows, 'activitys_log.csv');
+}
+
+function clearActivityLog() {
+  if (!confirm('Clear entire activity log?')) return;
+  api('api/activity.php','DELETE').then(()=>{
+    STATE.activity=[]; renderActivityLog(); toast('🗑️ Activity log cleared','info');
+  }).catch(e=>toast('❌ '+e.message,'error'));
+}
+
+// ══════════════════════════════════════════════════════════════
+// 6. TAX SUMMARY
+// ══════════════════════════════════════════════════════════════
+let _taxInvoices = [];
+let taxMonthlyChartInst = null;
+let taxRateChartInst    = null;
+
+function setTaxRange(r) {
+  const now = new Date();
+  const fmt = d => d.toISOString().slice(0,10);
+  let from, to = fmt(now);
+  ['year','quarter','month','all'].forEach(b => {
+    const btn = document.getElementById('tax-btn-'+b);
+    if (btn) btn.classList.toggle('active', b===r);
+  });
+  if (r==='year')    { from = `${now.getFullYear()}-01-01`; }
+  else if (r==='quarter') {
+    const qStart = new Date(now.getFullYear(), Math.floor(now.getMonth()/3)*3, 1);
+    from = fmt(qStart);
+  } else if (r==='month') { from = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`; }
+  else { from=''; to=''; }
+  const fi = document.getElementById('tax-from'), ti = document.getElementById('tax-to');
+  if (fi) fi.value=from; if (ti) ti.value=to;
+  _applyTaxData(from, to);
+}
+
+function applyTaxFilter() {
+  const from = document.getElementById('tax-from')?.value||'';
+  const to   = document.getElementById('tax-to')?.value||'';
+  ['year','quarter','month','all'].forEach(b => {
+    const btn = document.getElementById('tax-btn-'+b);
+    if (btn) btn.classList.remove('active');
+  });
+  _applyTaxData(from, to);
+}
+
+function renderTaxSummary() { setTaxRange('year'); }
+
+function _applyTaxData(from, to) {
+  _taxInvoices = STATE.invoices.filter(inv => {
+    if (inv.status==='Draft'||inv.status==='Cancelled') return false;
+    if (!from && !to) return true;
+    const d = inv.issued||inv.date||'';
+    if (from && d < from) return false;
+    if (to && d > to)     return false;
+    return true;
+  });
+  _renderTaxStatCards();
+  _renderTaxRateTable();
+  _renderTaxMonthlyTable();
+  _renderTaxCharts();
+}
+
+function _getTaxBreakdown(inv) {
+  const gstRate = parseFloat(inv.gst||inv.gst_rate||STATE.settings.defaultGST||18);
+  const amount  = parseFloat(inv.amount||0);
+  // Back-calculate taxable value from GST-inclusive total
+  const taxable  = parseFloat((amount / (1 + gstRate/100)).toFixed(2));
+  const gstTotal = parseFloat((amount - taxable).toFixed(2));
+  const cgst     = parseFloat((gstTotal/2).toFixed(2));
+  const sgst     = parseFloat((gstTotal/2).toFixed(2));
+  return { gstRate, taxable, gstTotal, cgst, sgst, igst:0 };
+}
+
+function _renderTaxStatCards() {
+  const el = document.getElementById('tax-stat-cards');
+  if (!el) return;
+  const totalGross   = _taxInvoices.reduce((s,i)=>s+parseFloat(i.amount||0),0);
+  const totalTaxable = _taxInvoices.reduce((s,i)=>s+_getTaxBreakdown(i).taxable,0);
+  const totalGST     = _taxInvoices.reduce((s,i)=>s+_getTaxBreakdown(i).gstTotal,0);
+  const paidGST      = _taxInvoices.filter(i=>i.status==='Paid').reduce((s,i)=>s+_getTaxBreakdown(i).gstTotal,0);
+  const cards = [
+    {l:'Gross Revenue',     v:fmt_money(totalGross),   ic:'fa-rupee-sign',  col:'var(--teal)',   bg:'#e0f2f1'},
+    {l:'Taxable Value',     v:fmt_money(totalTaxable), ic:'fa-calculator',  col:'var(--blue)',   bg:'#e3f2fd'},
+    {l:'Total GST Collected',v:fmt_money(totalGST),   ic:'fa-landmark',    col:'var(--purple)', bg:'#f3e5f5'},
+    {l:'GST on Paid Invoices',v:fmt_money(paidGST),   ic:'fa-check-circle',col:'var(--green)',  bg:'#e8f5e9'},
+  ];
+  el.innerHTML = cards.map(c=>`<div class="stat-card">
+    <div class="stat-icon" style="background:${c.bg};color:${c.col}"><i class="fas ${c.ic}"></i></div>
+    <div class="stat-body"><div class="stat-val" style="font-size:18px">${c.v}</div><div class="stat-lbl">${c.l}</div></div>
+  </div>`).join('');
+}
+
+function _renderTaxRateTable() {
+  const tbody = document.getElementById('tax-rate-tbody');
+  if (!tbody) return;
+  const rateMap = {};
+  _taxInvoices.forEach(inv => {
+    const b = _getTaxBreakdown(inv);
+    const k = b.gstRate+'%';
+    if (!rateMap[k]) rateMap[k] = {rate:k,taxable:0,cgst:0,sgst:0,igst:0,total:0,count:0};
+    rateMap[k].taxable+=b.taxable; rateMap[k].cgst+=b.cgst; rateMap[k].sgst+=b.sgst;
+    rateMap[k].igst+=b.igst; rateMap[k].total+=b.gstTotal; rateMap[k].count++;
+  });
+  const rows = Object.values(rateMap).sort((a,b)=>parseFloat(b.rate)-parseFloat(a.rate));
+  if (!rows.length) { tbody.innerHTML=`<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--muted)">No data</td></tr>`; return; }
+  tbody.innerHTML = rows.map(r=>`<tr>
+    <td><span style="padding:2px 8px;border-radius:10px;font-size:12px;font-weight:700;background:var(--purple-bg);color:var(--purple)">${r.rate}</span></td>
+    <td style="font-family:var(--mono)">${fmt_money(r.taxable)}</td>
+    <td style="font-family:var(--mono)">${fmt_money(r.cgst)}</td>
+    <td style="font-family:var(--mono)">${fmt_money(r.sgst)}</td>
+    <td style="font-family:var(--mono)">${fmt_money(r.igst)}</td>
+    <td style="font-family:var(--mono);font-weight:700;color:var(--purple)">${fmt_money(r.total)}</td>
+    <td style="text-align:center">${r.count}</td>
+  </tr>`).join('');
+}
+
+function _renderTaxMonthlyTable() {
+  const tbody = document.getElementById('tax-monthly-tbody');
+  if (!tbody) return;
+  const monthMap = {};
+  _taxInvoices.forEach(inv => {
+    const m = (inv.issued||inv.date||'').slice(0,7);
+    if (!m) return;
+    if (!monthMap[m]) monthMap[m]={month:m,count:0,gross:0,taxable:0,gst:0,paid:0};
+    const b = _getTaxBreakdown(inv);
+    monthMap[m].count++; monthMap[m].gross+=parseFloat(inv.amount||0);
+    monthMap[m].taxable+=b.taxable; monthMap[m].gst+=b.gstTotal;
+    if(inv.status==='Paid') monthMap[m].paid+=b.gstTotal;
+  });
+  const rows = Object.values(monthMap).sort((a,b)=>b.month.localeCompare(a.month));
+  if (!rows.length) { tbody.innerHTML=`<tr><td colspan="6" style="padding:24px;text-align:center;color:var(--muted)">No data</td></tr>`; return; }
+  tbody.innerHTML = rows.map(r=>{
+    const d = new Date(r.month+'-01');
+    const label = d.toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+    const allPaid = Math.abs(r.paid-r.gst)<1;
+    return `<tr>
+      <td style="font-weight:600">${label}</td>
+      <td style="text-align:center">${r.count}</td>
+      <td style="font-family:var(--mono)">${fmt_money(r.gross)}</td>
+      <td style="font-family:var(--mono)">${fmt_money(r.taxable)}</td>
+      <td style="font-family:var(--mono);font-weight:700;color:var(--purple)">${fmt_money(r.gst)}</td>
+      <td><span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:${allPaid?'#e8f5e9':'#fff8e1'};color:${allPaid?'#388E3C':'#F9A825'}">${allPaid?'Collected':'Partial'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function _renderTaxCharts() {
+  // Monthly GST bar chart
+  const monthMap={};
+  _taxInvoices.forEach(inv=>{
+    const m=(inv.issued||inv.date||'').slice(0,7); if(!m) return;
+    if(!monthMap[m]) monthMap[m]=0;
+    monthMap[m]+=_getTaxBreakdown(inv).gstTotal;
+  });
+  const months=Object.keys(monthMap).sort().slice(-12);
+  const ctx1=document.getElementById('taxMonthlyChart');
+  if(ctx1){
+    if(taxMonthlyChartInst) taxMonthlyChartInst.destroy();
+    taxMonthlyChartInst=new Chart(ctx1,{type:'bar',data:{
+      labels:months.map(m=>{const d=new Date(m+'-01');return d.toLocaleDateString('en-IN',{month:'short',year:'2-digit'});}),
+      datasets:[{label:'GST Collected',data:months.map(m=>Math.round(monthMap[m]||0)),backgroundColor:'#7B1FA220',borderColor:'#7B1FA2',borderWidth:2,borderRadius:6}]
+    },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'₹'+v.toLocaleString('en-IN')}}}}});
+  }
+  // Rate donut chart
+  const rateMap={};
+  _taxInvoices.forEach(inv=>{
+    const b=_getTaxBreakdown(inv); const k=b.gstRate+'%';
+    rateMap[k]=(rateMap[k]||0)+b.gstTotal;
+  });
+  const ctx2=document.getElementById('taxRateChart');
+  if(ctx2){
+    if(taxRateChartInst) taxRateChartInst.destroy();
+    const keys=Object.keys(rateMap); const cols=['#7B1FA2','#1976D2','#00897B','#E65100','#C62828'];
+    taxRateChartInst=new Chart(ctx2,{type:'doughnut',data:{
+      labels:keys,datasets:[{data:keys.map(k=>Math.round(rateMap[k]||0)),backgroundColor:keys.map((_,i)=>cols[i%cols.length]),borderWidth:2,borderColor:'#fff'}]
+    },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:8}}}}});
+  }
+}
+
+function exportTaxCSV() {
+  const rows=[['Month','Invoices','Gross Revenue','Taxable Value','GST Collected']];
+  const monthMap={};
+  _taxInvoices.forEach(inv=>{
+    const m=(inv.issued||inv.date||'').slice(0,7); if(!m) return;
+    if(!monthMap[m]) monthMap[m]={count:0,gross:0,taxable:0,gst:0};
+    const b=_getTaxBreakdown(inv);
+    monthMap[m].count++; monthMap[m].gross+=parseFloat(inv.amount||0); monthMap[m].taxable+=b.taxable; monthMap[m].gst+=b.gstTotal;
+  });
+  Object.entries(monthMap).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([m,r])=>{
+    rows.push([m,r.count,r.gross.toFixed(2),r.taxable.toFixed(2),r.gst.toFixed(2)]);
+  });
+  _downloadCSV(rows,'tax_summary.csv');
+}
+
+// ══════════════════════════════════════════════════════════════
+// SHARED HELPER: CSV download
+// ══════════════════════════════════════════════════════════════
+function _downloadCSV(rows, filename) {
+  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════════════════════════
+// HOOK existing actions to log activity
+// ══════════════════════════════════════════════════════════════
+(function patchActivityHooks(){
+  const _origLoadAll = window.loadAllData;
+  // Patch confirmPaid to log payment activity
+  const _origConfirmPaid = window.confirmPaid;
+  if (typeof _origConfirmPaid === 'function') {
+    window.confirmPaid = function() {
+      const mid = String(STATE.activeMenuInvoiceId);
+      const inv = STATE.invoices.find(i=>String(i.id)===mid);
+      if (inv) logActivity('payment_recorded', `Payment recorded: ${inv.num||inv.invoice_number||''}`, fmt_money(parseFloat(inv.amount||0)), mid);
+      return _origConfirmPaid.apply(this, arguments);
+    };
+  }
+})();
+
+// Re-render reminder badge on dashboard load
+const _origRenderDashboard = window.renderDashboard;
+if (typeof _origRenderDashboard === 'function') {
+  window.renderDashboard = function() {
+    _origRenderDashboard.apply(this, arguments);
+    // Update reminder badge
+    const today = new Date(); today.setHours(0,0,0,0);
+    const cfg   = getReminderSettings();
+    const count = STATE.invoices.filter(inv => {
+      if (['Paid','Cancelled','Draft'].includes(inv.status)) return false;
+      const due = inv.due ? new Date(inv.due) : null;
+      if (!due) return false; due.setHours(0,0,0,0);
+      return Math.floor((due-today)/864e5) <= (cfg.beforeDays||3);
+    }).length;
+    const badge = document.getElementById('badge-reminders');
+    if (badge) { badge.textContent=count; badge.style.display=count?'':'none'; }
+  };
+}
+
 
 </script>
 

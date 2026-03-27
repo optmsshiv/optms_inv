@@ -3996,21 +3996,51 @@ function tplWatermark(d) {
 function tplBankHTML(d, color='#00695C', bg='#e0f2f1', border='') {
   if (d.status === 'Paid') return '';  // Hide bank details on paid invoices
   const bankText = d.bank || STATE.settings.defaultBank || '';
-  if (!bankText) return '';
-  if (d.popt && d.popt.bank === false) return '';
+  if (!d.popt || d.popt.bank === false) return '';
   const sc  = STATE.settings;
   const upi = sc.upi || '';
-  const upiLine = upi
-    ? `<div style="margin-top:8px;background:rgba(0,0,0,.06);border-radius:6px;padding:8px 10px;font-size:13px;font-weight:800;letter-spacing:.5px">📲 UPI: ${upi}</div>`
+  const hasBank = !!bankText;
+  const hasUpi  = !!upi;
+  const hasQr   = !!(d.popt && d.popt.qr && d.qrUrl);
+
+  if (!hasBank && !hasUpi && !hasQr) return '';
+
+  // Left column: bank details
+  const leftCol = hasBank
+    ? `<div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;color:${color}">💳 Bank Details</div>
+        <div style="font-size:10.5px;line-height:1.9;color:${color}">
+          ${bankText.split('|').map(s=>s.trim()).filter(Boolean).map(s=>`<div>${s}</div>`).join('')}
+        </div>
+      </div>`
     : '';
-  return `<div style="margin-top:16px;background:${bg};border-radius:8px;padding:12px 14px;font-size:11px;color:${color};line-height:1.8;${border}">
-    <div style="font-weight:700;font-size:12px;margin-bottom:4px">💳 Payment Details:</div>
-    <div>${bankText.replace(/\|/g,'<span style="opacity:.4;margin:0 4px">|</span>')}</div>
-    ${upiLine}
+
+  // Right column: UPI id + QR
+  const qrImg = hasQr
+    ? `<div style="margin-top:8px;text-align:center"><img src="${d.qrUrl}" style="width:76px;height:76px;border-radius:6px;border:1px solid #cde8e4;display:block;margin:0 auto" onerror="this.style.display='none'"><div style="font-size:9px;color:#888;margin-top:3px">Scan to Pay</div></div>`
+    : '';
+  const upiBlock = hasUpi
+    ? `<div style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;color:${color}">📲 UPI</div>
+       <div style="background:rgba(0,0,0,.06);border-radius:6px;padding:6px 8px;font-size:12px;font-weight:800;letter-spacing:.4px;color:${color};text-align:center">${upi}</div>
+       ${qrImg}`
+    : '';
+  const rightCol = (hasUpi || hasQr)
+    ? `<div style="flex-shrink:0;min-width:110px;max-width:140px;text-align:center">${upiBlock}</div>`
+    : '';
+
+  const divider = hasBank && (hasUpi || hasQr)
+    ? `<div style="width:1px;background:rgba(0,0,0,.1);margin:0 12px;align-self:stretch"></div>`
+    : '';
+
+  return `<div style="margin-top:16px;background:${bg};border-radius:8px;padding:12px 14px;display:flex;align-items:flex-start;gap:0;${border}">
+    ${leftCol}${divider}${rightCol}
   </div>`;
 }
 function tplQrHTML(d) {
+  // QR is now embedded inside tplBankHTML when bank is shown; standalone fallback when no bank
   if (!d.popt.qr || !d.qrUrl) return '';
+  const bankText = d.bank || STATE.settings.defaultBank || '';
+  if (bankText && d.popt && d.popt.bank !== false) return ''; // already rendered inside tplBankHTML
   return `<div style="margin-top:12px;display:flex;align-items:center;gap:12px"><img src="${d.qrUrl}" style="width:80px;height:80px;border-radius:6px;border:1px solid #eee" onerror="this.style.display='none'"><div style="font-size:11px;color:#888">Scan QR to pay via UPI<br><strong>${STATE.settings.upi}</strong></div></div>`;
 }
 function tplSignHTML(d, sc_arg, label='Authorised Signatory') {
@@ -4050,7 +4080,7 @@ function tplNotesHTML(d, color='#795548', bg='#fff8e1') {
 }
 function tplTncHTML(d, color='#888') {
   if (!d.popt.tnc || !d.tnc) return '';
-  return `<div style="margin-top:12px;border-top:1px solid #eee;padding-top:10px"><div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#aaa;margin-bottom:5px">Terms & Conditions</div><div style="font-size:10.5px;color:${color};line-height:1.7">${d.tnc}</div></div>`;
+  return `<div style="margin-top:12px;border-top:1px solid #eee;padding-top:10px;width:100%"><div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#aaa;margin-bottom:5px">Terms &amp; Conditions</div><div style="font-size:10.5px;color:${color};line-height:1.7">${d.tnc}</div></div>`;
 }
 
 // ── TEMPLATE 1: Classic Pro ──
@@ -4137,7 +4167,11 @@ function totalsRows(d, accentColor, borderColor='#eee', mainColor='#000', mutedC
   if (showInstalmentsSection && invId && invId !== '0' && invId !== '') {
     paymentsForInv = STATE.payments.filter(p =>
       p.invoice_id && String(p.invoice_id) === invId
-    );
+    ).sort((a,b) => {
+      const da = new Date(a.date||a.payment_date||0);
+      const db = new Date(b.date||b.payment_date||0);
+      return da - db;
+    });
     totalPaid  = paymentsForInv.reduce((s,p) => s + parseFloat(p.amount||0), 0);
     remaining  = Math.max(0, (d.grand||0) - totalPaid);
   }
