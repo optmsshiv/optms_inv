@@ -5208,7 +5208,7 @@ function openPrintWindow(d, items) {
       .print-wrap{padding:20px;display:flex;justify-content:center}
       @page{margin:0;size:A4}
       @media print{.no-print{display:none!important}body{background:#fff;padding:0}.print-wrap{padding:0;display:block}}
-    <\/style>
+    </style>
   </head><body>
   <div class="no-print">
     <button onclick="window.print()" style="padding:8px 20px;background:#00897B;color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:700;font-family:inherit">🖨️ Print / Save PDF</button>
