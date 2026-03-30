@@ -3087,7 +3087,7 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
 <!-- ══ MAIN APP JS (embedded) ══ -->
 <script>
 
-  // ── API helper ──────────────────────────────────────────────────
+// ── API helper ──────────────────────────────────────────────────
 async function api(endpoint, method, body) {
   method = method || 'GET';
   const opts = { method, headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } };
@@ -7131,7 +7131,6 @@ document.addEventListener('click', e => closeAllDropdowns(e));
     STATE.settings.wa = Object.assign({}, SERVER.wa);
   }
 })();
-
 
 // ── Load all data from API on page load ────────────────────────
 async function loadAllData() {
