@@ -4597,7 +4597,7 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
   </div>
 
   <!-- LINE ITEMS -->
-  <div style="padding:0 24px;border-bottom:1.5px solid ${T.metabr}">
+  <div style="padding:0 1px;border-bottom:1.5px solid ${T.metabr}">
     <table style="width:100%;border-collapse:collapse">
       <thead><tr style="background:${T.thbg}">
         <th style="${thStyle};width:26px">#</th>
