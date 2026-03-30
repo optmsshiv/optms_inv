@@ -994,6 +994,35 @@ const SERVER = {
 };
 </script>
 
+<script>
+// ── Early stubs ──────────────────────────────────────────────────────────────
+// The sidebar HTML uses onclick="showPage(...)" etc. which fire before the main
+// <script> block (3000+ lines below) has been parsed. These stubs prevent
+// "ReferenceError: showPage is not defined" on early clicks by queuing the call.
+// The real implementations below simply overwrite these via normal JS hoisting.
+window._earlyQueue = [];
+window._appReady   = false;
+
+// Generic deferred caller used by all stubs
+function _earlyCall(fn, args) {
+  if (window._appReady && typeof window[fn] === 'function') {
+    window[fn].apply(null, args);
+  } else {
+    window._earlyQueue.push({ fn, args });
+  }
+}
+
+var showPage          = function(n,e)  { _earlyCall('showPage',         [n,e]);  };
+var toggleSidebar     = function()     { _earlyCall('toggleSidebar',    []);     };
+var closeAllDropdowns = function(e)    { _earlyCall('closeAllDropdowns', [e]);    };
+var globalSearchFn    = function(v)    { _earlyCall('globalSearchFn',   [v]);    };
+var toggleNotifPanel  = function(e)    { _earlyCall('toggleNotifPanel', [e]);    };
+var clearNotifs       = function()     { _earlyCall('clearNotifs',      []);     };
+var openModal         = function(id)   { _earlyCall('openModal',        [id]);   };
+var closeModal        = function(id)   { _earlyCall('closeModal',       [id]);   };
+var openPreviewModal  = function(id)   { _earlyCall('openPreviewModal', [id]);   };
+</script>
+
 <!-- ══════════════════════════════════════════
      SIDEBAR
 ══════════════════════════════════════════ -->
@@ -7555,6 +7584,18 @@ document.addEventListener('DOMContentLoaded', function() {
       });
       setTimeout(livePreview, 100);
       document.addEventListener('click', closeAllDropdowns);
+
+      // ── Flush any onclick calls that fired before app was ready ──
+      window._appReady = true;
+      (window._earlyQueue || []).forEach(function(item) {
+        try {
+          if (typeof window[item.fn] === 'function') {
+            window[item.fn].apply(null, item.args);
+          }
+        } catch(e) { console.warn('Early queue replay error:', e); }
+      });
+      window._earlyQueue = [];
+
     } catch(initErr) {
       console.error('App init error:', initErr);
     }
