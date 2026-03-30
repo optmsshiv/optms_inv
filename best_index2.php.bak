@@ -4398,14 +4398,14 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
   <!-- HEADER -->
   <div style="background:${T.hbg};padding:28px 36px;display:flex;justify-content:space-between;align-items:flex-start;gap:20px">
     <div>
-      ${sc.logo?`<img src="${sc.logo}" style="height:110px;max-width:350px;object-fit:contain;display:block;margin-bottom:8px;filter:brightness(0) invert(1)" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">`:''}
-      <div style="font-size:20px;font-weight:800;color:${T.htext};letter-spacing:-.5px;line-height:1;margin-bottom:2px${sc.logo?';display:none':''}">${sc.company}</div>
+      ${sc.logo?`<img src="${sc.logo}" style="height:110px;max-width:350px;object-fit:contain;display:block;margin-bottom:8px;filter:brightness(0) invert(1)" onerror="this.style.display='none'">`:''}
+      <div style="font-size:20px;font-weight:800;color:${T.htext};letter-spacing:-.5px;line-height:1;margin-bottom:2px">${sc.company}</div>
       <div style="font-size:10px;color:${T.htag};letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;font-weight:600">Code we make it possible</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px">
-        ${sc.phone?`<div style="font-size:11px;color:#ffffff;font-weight:500;line-height:1.9">${sc.phone}</div>`:''}
-        ${sc.email?`<div style="font-size:11px;color:#ffffff;font-weight:500;line-height:1.9">${sc.email}</div>`:''}
-        ${sc.website?`<div style="font-size:11px;color:#ffffff;font-weight:500;line-height:1.9">${sc.website}</div>`:''}
-        ${sc.gst?`<div style="font-size:11px;color:#ffffff;font-weight:500;line-height:1.9">GSTIN: ${sc.gst}</div>`:''}
+        ${sc.phone?`<div style="font-size:11px;color:${T.htag};font-weight:500;line-height:1.9">${sc.phone}</div>`:''}
+        ${sc.email?`<div style="font-size:11px;color:${T.htag};font-weight:500;line-height:1.9">${sc.email}</div>`:''}
+        ${sc.website?`<div style="font-size:11px;color:${T.htag};font-weight:500;line-height:1.9">${sc.website}</div>`:''}
+        ${sc.gst?`<div style="font-size:11px;color:${T.htag};font-weight:500;line-height:1.9">GSTIN: ${sc.gst}</div>`:''}
         ${sc.address?`<div style="font-size:11px;color:${T.htag};font-weight:500;line-height:1.9;grid-column:1/-1">${sc.address.replace(/\n/g,', ')}</div>`:''}
       </div>
     </div>
@@ -4438,12 +4438,12 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
       ${d.cgst?`<div style="font-size:11px;color:#555;margin-top:4px;font-weight:600">GSTIN: ${d.cgst}</div>`:''}
     </div>
     <div style="flex:1;padding:18px 24px;background:${T.issbg}">
-      <div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:${T.isslbl};margin-bottom:8px">Issued By</div>
-      <div style="font-size:14px;font-weight:800;color:#111;margin-bottom:2px">${sc.company}</div>
-      ${sc.email?`<div style="font-size:11px;color:#555;line-height:1.8">${sc.email}</div>`:''}
-      ${sc.phone?`<div style="font-size:11px;color:#555;line-height:1.8">${sc.phone}</div>`:''}
-      ${sc.address?`<div style="font-size:11px;color:#555;line-height:1.7;margin-top:3px">${sc.address.replace(/\n/g,'<br>')}</div>`:''}
-      ${sc.gst?`<div style="font-size:11px;color:#555;margin-top:4px;font-weight:600">GSTIN: ${sc.gst}</div>`:''}
+      <div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:${T.isslbl};margin-bottom:8px">Invoice Details</div>
+      ${[['Issue Date',d.date],['Due Date',d.due],['Service',d.svc]].map(([k,v])=>v?`
+      <div style="display:flex;justify-content:space-between;font-size:11px;padding:5px 0;border-bottom:1px solid ${T.issbr}">
+        <span style="color:#777;font-weight:600">${k}</span>
+        <span style="font-weight:700;color:#111">${v}</span>
+      </div>`:'').join('')}
     </div>
   </div>
 
