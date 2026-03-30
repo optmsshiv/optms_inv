@@ -4892,6 +4892,17 @@ function printInvoiceData(inv) {
 
 function openPrintWindow(d, items) {
   const showGst = d.popt ? d.popt.gstCol : true;
+  const buildGstBadge = (rate) => {
+    const r = parseFloat(rate)||0;
+    const [bg, color, border] = r === 0
+      ? ['#F1F5F9','#475569','#CBD5E1']
+      : r <= 5
+      ? ['#F0FDF4','#166534','#86EFAC']
+      : r <= 12
+      ? ['#FEF3C7','#92400E','#FDE68A']
+      : ['#FEE2E2','#991B1B','#FECACA'];
+    return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:${bg};color:${color};border:1px solid ${border}">${r}%</span>`;
+  };
   const itemsHTML = items.length
     ? items.map(i => {
         const line = (i.qty||1)*(i.rate||0);
@@ -4907,7 +4918,7 @@ function openPrintWindow(d, items) {
           <td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${i.qty}</td>
           <td style="padding:10px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(i.rate,d.sym)}</td>
           <td style="padding:10px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(line,d.sym)}</td>
-          ${showGst ? `<td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${gstR}%</td>` : ''}
+          ${showGst ? `<td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${buildGstBadge(gstR)}</td>` : ''}
           <td style="padding:10px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">${fmt_money(lineInclGst,d.sym)}</td>
         </tr>`;
       }).join('')
@@ -4921,7 +4932,7 @@ function openPrintWindow(d, items) {
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>Invoice ${d.num} – OPTMS Tech</title>
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>*{box-sizing:border-box;margin:0;padding:0}body{background:#fff;font-family:'Public Sans',sans-serif}
+    <style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}body{background:#fff;font-family:'Public Sans',sans-serif}
     .no-print{background:#f5f5f5;padding:10px 20px;display:flex;gap:12px;align-items:center;font-family:'Public Sans',sans-serif;font-size:13px;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:99}
     @page{margin:0;size:A4}@media print{.no-print{display:none!important}body{margin:0;padding:0}}</style>
   </head><body>
@@ -4961,6 +4972,8 @@ function printInvoiceById(inv) {
         const lineInclGst = line + gstAmt;
         const itype       = i.itemType||i.item_type||'Service';
         const pidx2 = items.indexOf(i);
+        const [gstBg,gstColor,gstBorder] = gst===0?['#F1F5F9','#475569','#CBD5E1']:gst<=5?['#F0FDF4','#166534','#86EFAC']:gst<=12?['#FEF3C7','#92400E','#FDE68A']:['#FEE2E2','#991B1B','#FECACA'];
+        const gstBadge = `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:${gstBg};color:${gstColor};border:1px solid ${gstBorder}">${gst}%</span>`;
         return `<tr>
           <td style="padding:10px 8px;border-bottom:1px solid #eee;font-size:11px;color:#111;font-family:monospace;font-weight:700">${String(pidx2+1).padStart(2,'0')}</td>
           <td style="padding:10px 12px;border-bottom:1px solid #eee">${i.desc||i.description||'—'}</td>
@@ -4968,7 +4981,7 @@ function printInvoiceById(inv) {
           <td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${qty}</td>
           <td style="padding:10px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(rate,sym)}</td>
           <td style="padding:10px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(line,sym)}</td>
-          <td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${gst}%</td>
+          <td style="padding:10px 12px;text-align:center;border-bottom:1px solid #eee">${gstBadge}</td>
           <td style="padding:10px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">${fmt_money(lineInclGst,sym)}</td>
         </tr>`;
       }).join('')
@@ -5004,7 +5017,7 @@ function printInvoiceById(inv) {
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>Invoice ${d.num}</title>
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>*{box-sizing:border-box;margin:0;padding:0}body{background:#fff;font-family:'Public Sans',sans-serif}
+    <style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}body{background:#fff;font-family:'Public Sans',sans-serif}
     .np{background:#f5f5f5;padding:10px 20px;display:flex;gap:12px;align-items:center;font-family:'Public Sans',sans-serif;font-size:13px;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:99}
     @page{margin:0;size:A4}@media print{.np{display:none!important}body{margin:0;padding:0}}</style>
   </head><body>
@@ -7028,6 +7041,9 @@ async function loadAllData() {
         if (s.tpl_footer_text)   TPL_CUSTOM.footerText     = s.tpl_footer_text;
         if (s.tpl_tagline)       TPL_CUSTOM.tagline        = s.tpl_tagline;
         if (s.tpl_watermark_text)TPL_CUSTOM.watermarkText  = s.tpl_watermark_text;
+        if (s.tpl_header_style)  TPL_CUSTOM.headerStyle    = s.tpl_header_style;
+        if (s.tpl_table_style)   TPL_CUSTOM.tableStyle     = s.tpl_table_style;
+        if (s.tpl_color_theme)   TPL_CUSTOM.colorTheme     = parseInt(s.tpl_color_theme)||1;
         // Sync UI controls to restored values (done after DOM ready)
         setTimeout(() => {
           const sync = (id, val) => { const e=document.getElementById(id); if(e) e.value=val; };
@@ -7038,7 +7054,7 @@ async function loadAllData() {
           sync('tpl-font',        TPL_CUSTOM.font);
           sync('tpl-name-size',   TPL_CUSTOM.companyNameSize);
           sync('tpl-name-color',  TPL_CUSTOM.companyNameColor);
-          sync('tpl-name-style',  TPL_CUSTOM.companyNameWeight);
+          sync('tpl-name-style',  TPL_CUSTOM.companyNameStyle);
           sync('tpl-header-style',TPL_CUSTOM.headerStyle);
           sync('tpl-table-style', TPL_CUSTOM.tableStyle);
           sync('tpl-footer-text', TPL_CUSTOM.footerText);
@@ -7970,7 +7986,7 @@ function populateTemplateForm() {
   setV('tpl-watermark-text',C.watermarkText|| 'PAID');
   setV('tpl-name-size',    C.companyNameSize   || '28');
   setV('tpl-name-color',   C.companyNameColor  || '#ffffff');
-  setV('tpl-name-style',   C.companyNameWeight || '800');
+  setV('tpl-name-style',   C.companyNameStyle  || 'normal');
   setV('tpl-logo-pos',     C.logoPosition  || 'left');
   // Also populate user-visible (renamed) panel
   setV('tpl-r-name-size',  C.companyNameSize   || '28');
@@ -8044,7 +8060,8 @@ window.saveTplCustomization = async function() {
     tpl_name_size:     TPL_CUSTOM.companyNameSize,
     tpl_name_color:    TPL_CUSTOM.companyNameColor,
     tpl_name_weight:   TPL_CUSTOM.companyNameWeight,
-    tpl_logo_pos:      TPL_CUSTOM.logoPosition,
+    tpl_name_style:    TPL_CUSTOM.companyNameStyle,
+    tpl_logo_position: TPL_CUSTOM.logoPosition,
     tpl_color_theme:   TPL_CUSTOM.colorTheme,
   };
   try {
