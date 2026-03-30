@@ -4400,7 +4400,7 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
     <div>
       ${sc.logo?`<img src="${sc.logo}" style="height:110px;max-width:350px;object-fit:contain;display:block;margin-bottom:8px;filter:brightness(0) invert(1)" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">`:''}
       <div style="font-size:20px;font-weight:800;color:${T.htext};letter-spacing:-.5px;line-height:1;margin-bottom:2px${sc.logo?';display:none':''}">${sc.company}</div>
-      ${sc.tagline?`<div style="font-size:10px;color:${T.htag};letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;font-weight:600">${sc.tagline}</div>`:""}
+      <div style="font-size:10px;color:${T.htag};letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;font-weight:600">Code we make it possible</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px">
         ${sc.phone?`<div style="font-size:11px;color:#ffffff;font-weight:500;line-height:1.9">${sc.phone}</div>`:''}
         ${sc.email?`<div style="font-size:11px;color:#ffffff;font-weight:500;line-height:1.9">${sc.email}</div>`:''}
@@ -4492,13 +4492,15 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
           <span style="font-family:monospace;font-weight:700;color:${T.totval}">${fmt_money((d.sub||0)-(d.discAmt||0),d.sym)}</span>
         </div>
       </div>
-      <div style="background:${T.grandbg};padding:14px 22px;display:flex;justify-content:space-between;align-items:center">
+      <div style="background:${T.grandbg};padding:16px 22px;display:flex;justify-content:space-between;align-items:center">
         <span style="color:${T.grandtext};font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px">Grand Total</span>
         <span style="color:${T.grandtext};font-family:monospace;font-size:19px;font-weight:800;letter-spacing:-1px">${fmt_money(d.grand,d.sym)}</span>
       </div>
-      ${d.popt.sign?(()=>{const sig=d.signature||STATE.settings.signature||'';return `<div style="padding:14px 22px;border-top:1px solid ${T.totbr};text-align:right">${sig?`<img src="${sig}" style="height:44px;max-width:160px;object-fit:contain;display:block;margin-left:auto" onerror="this.style.display='none'">`:'<div style="width:140px;border-bottom:1.5px solid #bbb;margin-left:auto;height:36px"></div>'}<div style="font-size:10px;color:#aaa;margin-top:5px;font-weight:600">Authorised Signatory</div><div style="font-size:10px;color:#bbb">${sc.company}</div></div>`;})():''}
     </div>
   </div>
+
+  <!-- SIGN -->
+  ${tplSignHTML(d)}
 
   <!-- FOOTER -->
   ${d.popt.footer!==false?`
@@ -4993,7 +4995,7 @@ function printInvoiceById(inv) {
     cname: c.name||inv.clientName||inv.client_name||'',
     cperson:c.person||'', cemail:c.email||'', cwa:c.wa||c.whatsapp||'',
     cgst:c.gst||c.gst_number||'', caddr:c.addr||c.address||'',
-    disc:parseFloat(inv.disc||inv.discount_pct)||0, discAmt:parseFloat(inv.discount_amt)||0, discType:inv.discount_type||(parseFloat(inv.discount_amt)>0&&!(parseFloat(inv.disc||0)>0)?'fixed':'percent'),
+    disc:parseFloat(inv.disc||inv.discount_pct)||0, discAmt:parseFloat(inv.discount_amt)||0,
     notes:inv.notes||'', bank:inv.bank||inv.bank_details||'',
     tnc:inv.tnc||inv.terms||'', status:inv.status, sym,
     sub:parseFloat(inv.subtotal)||0, gstAmt:parseFloat(inv.gst_amount)||0,
@@ -5119,9 +5121,8 @@ function openPreviewModal(id) {
     cwa: c.wa || '',
     cgst: c.gst || '',
     caddr: c.addr || '',
-    disc: inv.disc || inv.discount_pct || 0,
-    discType: inv.discount_type || (inv.discount_amt > 0 && !(inv.disc > 0) ? 'fixed' : 'percent'),
-    discAmt: parseFloat(inv.discount_amt) > 0 ? parseFloat(inv.discount_amt) : (inv.subtotal ? inv.subtotal * (parseFloat(inv.disc||inv.discount_pct)||0) / 100 : 0),
+    disc: inv.disc || 0,
+    discAmt: inv.subtotal ? inv.subtotal * (inv.disc||0) / 100 : 0,
     notes: (inv.notes||'').replace(/\s*\|?\s*Partial payment received\..*$/i,'').trim(),
     bank: inv.bank || inv.bank_details || STATE.settings.defaultBank || '',
     tnc: inv.tnc || inv.terms || '',
@@ -5143,9 +5144,7 @@ function openPreviewModal(id) {
   if (inv.items && inv.items.length) {
     let sub=0, gstAmt=0;
     inv.items.forEach(it => { const line=((it.qty||it.quantity)||1)*(it.rate||0); sub+=line; gstAmt+=line*((it.gstRate!==undefined?parseFloat(it.gstRate):it.gst!==undefined&&it.gst!==null&&it.gst!==''?parseFloat(it.gst):it.gstRate!==undefined&&it.gstRate!==''?parseFloat(it.gstRate):18)/100); });
-    const disc=parseFloat(inv.disc||inv.discount_pct)||0;
-    const discAmt=parseFloat(inv.discount_amt)>0?parseFloat(inv.discount_amt):(d.discType==='fixed'?Math.min(disc,sub):sub*disc/100);
-    const discF=sub>0?(1-discAmt/sub):1;
+    const disc=inv.disc||0; const discAmt=sub*disc/100; const discF=sub>0?(1-disc/100):1;
     d.sub=sub; d.discAmt=discAmt; d.gstAmt=gstAmt*discF; d.grand=sub-discAmt+gstAmt*discF;
   }
   // Build items HTML
