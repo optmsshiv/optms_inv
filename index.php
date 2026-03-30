@@ -1039,6 +1039,10 @@ const SERVER = {
       <i class="fas fa-bell"></i><span>Reminders</span>
       <span class="nav-badge" id="badge-reminders" style="display:none">0</span>
     </a>
+    <a class="nav-item" data-page="recurring" onclick="showPage('recurring',this)">
+      <i class="fas fa-sync-alt"></i><span>Recurring</span>
+      <span class="nav-badge" id="badge-recurring" style="display:none">0</span>
+    </a>
     <a class="nav-item" data-page="portal" onclick="showPage('portal',this)">
       <i class="fas fa-link"></i><span>Client Portal</span>
     </a>
@@ -2571,6 +2575,128 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
       </div>
     </div>
 
+    <!-- ─────────── RECURRING INVOICES ─────────── -->
+    <div id="page-recurring" class="page">
+      <div class="page-toolbar">
+        <div class="toolbar-left">
+          <span style="font-weight:700;font-size:16px;color:var(--text)"><i class="fas fa-sync-alt" style="color:var(--teal);margin-right:8px"></i>Recurring Invoices</span>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn btn-primary" onclick="openRecurringModal()"><i class="fas fa-plus"></i> New Schedule</button>
+        </div>
+      </div>
+      <!-- Stats row -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">
+        <div class="stat-card"><div class="stat-icon" style="background:var(--teal-bg);color:var(--teal)"><i class="fas fa-sync-alt"></i></div><div class="stat-body"><div class="stat-val" id="rec-stat-active">0</div><div class="stat-lbl">Active Schedules</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:var(--amber-bg);color:var(--amber)"><i class="fas fa-clock"></i></div><div class="stat-body"><div class="stat-val" id="rec-stat-due">0</div><div class="stat-lbl">Due Today</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:var(--blue-bg);color:var(--blue)"><i class="fas fa-file-invoice"></i></div><div class="stat-body"><div class="stat-val" id="rec-stat-generated">0</div><div class="stat-lbl">Total Generated</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:var(--purple-bg);color:var(--purple)"><i class="fas fa-calendar-check"></i></div><div class="stat-body"><div class="stat-val" id="rec-stat-paused">0</div><div class="stat-lbl">Paused</div></div></div>
+      </div>
+      <!-- Schedule table -->
+      <div class="table-card">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <span style="font-weight:700;font-size:14px">Schedules</span>
+          <button class="btn btn-outline" style="font-size:12px" onclick="runRecurringCheck()"><i class="fas fa-play"></i> Run Now</button>
+        </div>
+        <table class="data-table"><thead><tr>
+          <th>Client</th><th>Service</th><th>Amount</th><th>Frequency</th><th>Next Due</th><th>Last Generated</th><th>Status</th><th>Generated</th><th>Actions</th>
+        </tr></thead><tbody id="rec-table-body"></tbody></table>
+        <div id="rec-empty" style="padding:40px;text-align:center;color:var(--muted);display:none">
+          <i class="fas fa-sync-alt" style="font-size:32px;margin-bottom:10px;opacity:.3"></i>
+          <div style="font-weight:600;margin-bottom:6px">No recurring schedules yet</div>
+          <div style="font-size:13px">Create a schedule to auto-generate invoices on a set frequency</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────── RECURRING MODAL ─────────── -->
+    <div id="modal-recurring" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-recurring')">
+      <div class="modal-box" style="width:520px;max-width:95vw">
+        <div class="modal-header">
+          <span class="modal-title" id="rec-modal-title">New Recurring Schedule</span>
+          <button class="modal-close" onclick="closeModal('modal-recurring')">×</button>
+        </div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+          <input type="hidden" id="rec-edit-id" value="">
+          <div class="field">
+            <label>Client <span style="color:var(--red)">*</span></label>
+            <select id="rec-client" style="width:100%" onchange="recClientChange()">
+              <option value="">— Select Client —</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field">
+              <label>Service / Description <span style="color:var(--red)">*</span></label>
+              <input type="text" id="rec-service" placeholder="e.g. Web Hosting" style="width:100%">
+            </div>
+            <div class="field">
+              <label>Amount (₹) <span style="color:var(--red)">*</span></label>
+              <input type="number" id="rec-amount" placeholder="0.00" min="0" step="0.01" style="width:100%">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field">
+              <label>GST Rate (%)</label>
+              <select id="rec-gst" style="width:100%">
+                <option value="0">0% (Exempt)</option>
+                <option value="5">5%</option>
+                <option value="12">12%</option>
+                <option value="18" selected>18%</option>
+                <option value="28">28%</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Frequency <span style="color:var(--red)">*</span></label>
+              <select id="rec-freq" style="width:100%" onchange="recFreqChange()">
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Bi-Weekly (Every 2 weeks)</option>
+                <option value="monthly" selected>Monthly</option>
+                <option value="quarterly">Quarterly (Every 3 months)</option>
+                <option value="halfyearly">Half-Yearly (Every 6 months)</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field">
+              <label>Start Date <span style="color:var(--red)">*</span></label>
+              <input type="date" id="rec-start" style="width:100%">
+            </div>
+            <div class="field">
+              <label>End Date <span style="font-size:11px;color:var(--muted)">(optional)</span></label>
+              <input type="date" id="rec-end" style="width:100%">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field">
+              <label>Payment Due After (days)</label>
+              <input type="number" id="rec-due-days" value="15" min="1" max="90" style="width:100%">
+            </div>
+            <div class="field">
+              <label>Template</label>
+              <select id="rec-template" style="width:100%">
+                <option value="1">Template 1</option><option value="2" selected>Template 2</option>
+                <option value="3">Template 3</option><option value="4">Template 4</option>
+                <option value="5">Template 5</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Notes <span style="font-size:11px;color:var(--muted)">(optional, shown on invoice)</span></label>
+            <textarea id="rec-notes" rows="2" placeholder="e.g. Monthly retainer for web services" style="width:100%;resize:vertical"></textarea>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--teal-bg);border-radius:8px;border:1px solid var(--teal-l)">
+            <i class="fas fa-info-circle" style="color:var(--teal)"></i>
+            <span id="rec-preview-text" style="font-size:12px;color:var(--teal);font-weight:600">Next invoice will be generated on start date</span>
+          </div>
+        </div>
+        <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn btn-outline" onclick="closeModal('modal-recurring')">Cancel</button>
+          <button class="btn btn-primary" onclick="saveRecurring()"><i class="fas fa-save"></i> Save Schedule</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ─────────── ACTIVITY LOG ─────────── -->
     <div id="page-activity" class="page">
       <div class="page-toolbar">
@@ -3952,8 +4078,9 @@ function tplLogoHTML(d, sc) {
   const nameSize  = (C.companyNameSize  ? parseInt(C.companyNameSize) : 28) + 'px';
   const nameColor = C.companyNameColor  || '#ffffff';
   const nameWt    = C.companyNameWeight || '800';
-  const company   = sc.company || STATE.settings.company || '';
-  const logo      = d.companyLogo || d.logo || sc.logo || STATE.settings.logo || '';
+  const _S2 = (typeof STATE !== 'undefined' ? STATE.settings : {});
+  const company   = sc.company || _S2.company || '';
+  const logo      = d.companyLogo || d.logo || sc.logo || _S2.logo || '';
   const showLogo  = !d.popt || d.popt.logo !== false;
 
   const nameDiv = `<div style="font-size:${nameSize};font-weight:${nameWt};color:${nameColor};letter-spacing:-0.5px;font-family:${font};line-height:1.1;margin-top:6px">${company}</div>`;
@@ -3973,12 +4100,13 @@ function tplClientLogoHTML(d) {
 }
 // Full company info block for PDF header (used by all templates)
 function tplCompanyInfoHTML(sc, textColor='rgba(255,255,255,.65)', smallColor='rgba(255,255,255,.45)') {
-  const co = sc.company||STATE.settings.company||'';
-  const ph = sc.phone||STATE.settings.phone||'';
-  const em = sc.email||STATE.settings.email||'';
-  const ws = sc.website||STATE.settings.website||'';
-  const gst = sc.gst||STATE.settings.gst||'';
-  const addr = sc.address||STATE.settings.address||'';
+  const _S3 = (typeof STATE !== 'undefined' ? STATE.settings : {});
+  const co = sc.company||_S3.company||'';
+  const ph = sc.phone||_S3.phone||'';
+  const em = sc.email||_S3.email||'';
+  const ws = sc.website||_S3.website||'';
+  const gst = sc.gst||_S3.gst||'';
+  const addr = sc.address||_S3.address||'';
   // Company name is rendered by tplLogoHTML — only show contact/address info here
   return ''
        + (ph?`<div style="color:${smallColor};font-size:10px;margin-top:3px">📞 ${ph}</div>`:'')
@@ -4012,10 +4140,11 @@ function tplWatermark(d) {
 }
 function tplBankHTML(d, color='#00695C', bg='#e0f2f1', border='') {
   if (d.status === 'Paid') return '';  // Hide bank details on paid invoices
-  const bankText = d.bank || STATE.settings.defaultBank || '';
+  const _sc = (typeof STATE !== 'undefined' ? STATE.settings : {});
+  const bankText = d.bank || _sc.defaultBank || '';
   if (!d.popt || d.popt.bank === false) return '';
-  const sc  = STATE.settings;
-  const upi = sc.upi || '';
+  const sc  = _sc;
+  const upi = d.upi || sc.upi || '';
   const hasBank = !!bankText;
   const hasUpi  = !!upi;
   const hasQr   = !!(d.popt && d.popt.qr && d.qrUrl);
@@ -4058,11 +4187,13 @@ function tplQrHTML(d) {
   if (!d.popt.qr || !d.qrUrl) return '';
   const bankText = d.bank || STATE.settings.defaultBank || '';
   if (bankText && d.popt && d.popt.bank !== false) return ''; // already rendered inside tplBankHTML
-  return `<div style="margin-top:12px;display:flex;align-items:center;gap:12px"><img src="${d.qrUrl}" style="width:80px;height:80px;border-radius:6px;border:1px solid #eee" onerror="this.style.display='none'"><div style="font-size:11px;color:#888">Scan QR to pay via UPI<br><strong>${STATE.settings.upi}</strong></div></div>`;
+  const _upi = d.upi || (typeof STATE !== 'undefined' ? STATE.settings.upi : '') || '';
+  return `<div style="margin-top:12px;display:flex;align-items:center;gap:12px"><img src="${d.qrUrl}" style="width:80px;height:80px;border-radius:6px;border:1px solid #eee" onerror="this.style.display='none'"><div style="font-size:11px;color:#888">Scan QR to pay via UPI<br><strong>${_upi}</strong></div></div>`;
 }
 function tplSignHTML(d, sc_arg, label='Authorised Signatory') {
   // sc_arg is optional - for backwards compat where called with just (d)
-  const sc = (sc_arg && typeof sc_arg === 'object' && sc_arg.company) ? sc_arg : STATE.settings;
+  const _stateSettings = (typeof STATE !== 'undefined' ? STATE.settings : {});
+  const sc = (sc_arg && typeof sc_arg === 'object' && sc_arg.company) ? sc_arg : _stateSettings;
   if (!d.popt.sign) return '';
   const sig = d.signature || sc.signature || '';
   const sigImg = sig
@@ -4337,7 +4468,7 @@ function statusColor(s) {
 
 // ── Helper: resolve company settings (merge STATE if sc is sparse) ──
 function resolveCompany(sc) {
-  const S = STATE.settings;
+  const S = (typeof STATE !== 'undefined' ? STATE.settings : {});
   return {
     company: sc.company||S.company||'',
     phone:   sc.phone||S.phone||'',
@@ -4473,24 +4604,22 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
       ${tplTncHTML(d,'#B45309')}
     </div>
     <div style="width:250px;flex-shrink:0;display:flex;flex-direction:column;background:${T.totbg}">
-      <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:1px solid ${T.totbr};font-size:12px">
-          <span style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:${T.totlbl}">Subtotal</span>
-          <span style="font-family:monospace;font-weight:700;color:${T.totval}">${fmt_money(d.sub,d.sym)}</span>
-        </div>
-        ${d.discAmt>0?`
-        <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:1px solid ${T.totbr};font-size:12px">
-          <span style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:${T.totlbl}">Discount${d.discType==='fixed'?' (₹)':d.disc>0?' ('+Math.round(d.disc*100)/100+'%)':''}</span>
-          <span style="font-family:monospace;font-weight:700;color:#DC2626">−${fmt_money(d.discAmt,d.sym)}</span>
-        </div>`:''}
-        <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:1px solid ${T.totbr};font-size:12px">
-          <span style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:${T.totlbl}">GST</span>
-          <span style="font-family:monospace;font-weight:700;color:${T.totval}">${d.gstAmt>0?'+'+fmt_money(d.gstAmt,d.sym):fmt_money(0,d.sym)}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:1px solid ${T.totbr};font-size:12px">
-          <span style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:${T.totlbl}">Amount</span>
-          <span style="font-family:monospace;font-weight:700;color:${T.totval}">${fmt_money((d.sub||0)-(d.discAmt||0),d.sym)}</span>
-        </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:1px solid ${T.totbr};font-size:12px">
+        <span style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:${T.totlbl}">Subtotal</span>
+        <span style="font-family:monospace;font-weight:700;color:${T.totval}">${fmt_money(d.sub,d.sym)}</span>
+      </div>
+      ${d.discAmt>0?`
+      <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:1px solid ${T.totbr};font-size:12px">
+        <span style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:${T.totlbl}">Discount${d.discType==='fixed'?' (₹)':d.disc>0?' ('+Math.round(d.disc*100)/100+'%)':''}</span>
+        <span style="font-family:monospace;font-weight:700;color:#DC2626">−${fmt_money(d.discAmt,d.sym)}</span>
+      </div>`:''}
+      <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:1px solid ${T.totbr};font-size:12px">
+        <span style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:${T.totlbl}">GST</span>
+        <span style="font-family:monospace;font-weight:700;color:${T.totval}">${d.gstAmt>0?'+'+fmt_money(d.gstAmt,d.sym):fmt_money(0,d.sym)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:1px solid ${T.totbr};font-size:12px">
+        <span style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:${T.totlbl}">Amount</span>
+        <span style="font-family:monospace;font-weight:700;color:${T.totval}">${fmt_money((d.sub||0)-(d.discAmt||0),d.sym)}</span>
       </div>
       <div style="background:${T.grandbg};padding:14px 22px;display:flex;justify-content:space-between;align-items:center">
         <span style="color:${T.grandtext};font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px">Grand Total</span>
@@ -4925,21 +5054,37 @@ function openPrintWindow(d, items) {
   const rowNumHeader = `<th style="padding:10px 8px;text-align:left;width:28px">#</th>`;
   const templates = { 1:buildTpl1,2:buildTpl2,3:buildTpl3,4:buildTpl4,5:buildTpl5,6:buildTpl6,7:buildTpl7,8:buildTpl8,9:buildTpl9 };
   const fn = templates[d.tpl]||buildTpl1;
-  const html = fn(d, STATE.settings, itemsHTML, gstColHeader, rowNumHeader);
-  const w = window.open('','_blank','width=900,height=700');
+  // Ensure d has sym set (fallback for when called from create form)
+  if (!d.sym) d.sym = '₹';
+  // Ensure d has discType set
+  if (!d.discType) d.discType = 'percent';
+  // Snapshot STATE.settings so helpers (tplBankHTML, tplSignHTML etc) work correctly
+  const _printSc = Object.assign({}, STATE.settings);
+  const _origStatePrint = window.STATE;
+  window.STATE = Object.assign({}, STATE, { settings: _printSc });
+  const html = fn(d, _printSc, itemsHTML, gstColHeader, rowNumHeader);
+  window.STATE = _origStatePrint;
+  const w = window.open('','_blank','width=920,height=750');
+  if (!w) { toast('⚠️ Pop-up blocked — please allow pop-ups for this site', 'warning'); return; }
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Invoice ${d.num} – OPTMS Tech</title>
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}body{background:#fff;font-family:'Public Sans',sans-serif}
-    .no-print{background:#f5f5f5;padding:10px 20px;display:flex;gap:12px;align-items:center;font-family:'Public Sans',sans-serif;font-size:13px;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:99}
-    @page{margin:0;size:A4}@media print{.no-print{display:none!important}body{margin:0;padding:0}}</style>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+      body{background:#f0f0f0;font-family:'Public Sans',sans-serif;padding:0}
+      .no-print{background:#fff;padding:10px 20px;display:flex;gap:12px;align-items:center;font-family:'Public Sans',sans-serif;font-size:13px;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:99;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+      .print-wrap{padding:20px;display:flex;justify-content:center}
+      @page{margin:0;size:A4}
+      @media print{.no-print{display:none!important}body{background:#fff;padding:0}.print-wrap{padding:0;display:block}}
+    </style>
   </head><body>
   <div class="no-print">
     <button onclick="window.print()" style="padding:8px 20px;background:#00897B;color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:700;font-family:inherit">🖨️ Print / Save PDF</button>
-    <button onclick="window.close()" style="padding:8px 16px;background:#fff;border:1.5px solid #ddd;border-radius:7px;cursor:pointer;font-family:inherit">Close</button>
-    <span style="color:#888;font-size:12px">Tip: Set margins to "None" in print dialog for best result</span>
+    <button onclick="window.close()" style="padding:8px 16px;background:#fff;border:1.5px solid #ddd;border-radius:7px;cursor:pointer;font-family:inherit">✕ Close</button>
+    <span style="color:#888;font-size:12px">💡 Set margins to "None" in print dialog for best result</span>
   </div>
-  ${html}
+  <div class="print-wrap">${html}</div>
   </body></html>`);
   w.document.close();
 }
@@ -5010,21 +5155,33 @@ function printInvoiceById(inv) {
   const tpls={1:buildTpl1,2:buildTpl2,3:buildTpl3,4:buildTpl4,5:buildTpl5,
               6:buildTpl6,7:buildTpl7,8:buildTpl8,9:buildTpl9};
   const fn = tpls[d.tpl]||buildTpl1;
-  const html = fn(d, sc, itemsHTML, gstHdr, rowNumHdr2);
-  const w = window.open('','_blank','width=900,height=700');
+  // Snapshot STATE so helpers (tplBankHTML, tplSignHTML etc) resolve correctly
+  const _printSc2 = Object.assign({}, sc);
+  const _origState2 = window.STATE;
+  window.STATE = Object.assign({}, STATE, { settings: _printSc2 });
+  const html = fn(d, _printSc2, itemsHTML, gstHdr, rowNumHdr2);
+  window.STATE = _origState2;
+  const w = window.open('','_blank','width=920,height=750');
+  if (!w) { toast('⚠️ Pop-up blocked — please allow pop-ups for this site', 'warning'); return; }
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Invoice ${d.num}</title>
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}body{background:#fff;font-family:'Public Sans',sans-serif}
-    .np{background:#f5f5f5;padding:10px 20px;display:flex;gap:12px;align-items:center;font-family:'Public Sans',sans-serif;font-size:13px;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:99}
-    @page{margin:0;size:A4}@media print{.np{display:none!important}body{margin:0;padding:0}}</style>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+      body{background:#f0f0f0;font-family:'Public Sans',sans-serif;padding:0}
+      .np{background:#fff;padding:10px 20px;display:flex;gap:12px;align-items:center;font-family:'Public Sans',sans-serif;font-size:13px;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:99;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+      .print-wrap{padding:20px;display:flex;justify-content:center}
+      @page{margin:0;size:A4}
+      @media print{.np{display:none!important}body{background:#fff;padding:0}.print-wrap{padding:0;display:block}}
+    </style>
   </head><body>
   <div class="np">
     <button onclick="window.print()" style="padding:8px 20px;background:#00897B;color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:700;font-family:inherit">🖨️ Print / Save PDF</button>
-    <button onclick="window.close()" style="padding:8px 16px;background:#fff;border:1.5px solid #ddd;border-radius:7px;cursor:pointer;font-family:inherit">Close</button>
-    <span style="color:#888;font-size:12px">Set print margins to "None" for best result</span>
+    <button onclick="window.close()" style="padding:8px 16px;background:#fff;border:1.5px solid #ddd;border-radius:7px;cursor:pointer;font-family:inherit">✕ Close</button>
+    <span style="color:#888;font-size:12px">💡 Set margins to "None" for best result</span>
   </div>
-  ${html}
+  <div class="print-wrap">${html}</div>
   </body></html>`);
   w.document.close();
 }
@@ -9429,6 +9586,330 @@ function _downloadCSV(rows, filename) {
     };
   }
 })();
+
+// ══════════════════════════════════════════════════════════════
+// RECURRING INVOICES
+// ══════════════════════════════════════════════════════════════
+
+// Storage key for recurring schedules (localStorage - no backend needed)
+const REC_KEY = 'optms_recurring_schedules';
+const REC_LOG_KEY = 'optms_recurring_log';
+
+function recGetAll() {
+  try { return JSON.parse(localStorage.getItem(REC_KEY) || '[]'); } catch(e) { return []; }
+}
+function recSaveAll(arr) {
+  localStorage.setItem(REC_KEY, JSON.stringify(arr));
+}
+function recGetLog() {
+  try { return JSON.parse(localStorage.getItem(REC_LOG_KEY) || '[]'); } catch(e) { return []; }
+}
+function recAddLog(entry) {
+  const log = recGetLog();
+  log.unshift({ ...entry, at: new Date().toISOString() });
+  localStorage.setItem(REC_LOG_KEY, JSON.stringify(log.slice(0, 200)));
+}
+
+function recNextDate(fromDate, freq) {
+  const d = new Date(fromDate);
+  switch(freq) {
+    case 'weekly':      d.setDate(d.getDate() + 7);   break;
+    case 'biweekly':    d.setDate(d.getDate() + 14);  break;
+    case 'monthly':     d.setMonth(d.getMonth() + 1); break;
+    case 'quarterly':   d.setMonth(d.getMonth() + 3); break;
+    case 'halfyearly':  d.setMonth(d.getMonth() + 6); break;
+    case 'yearly':      d.setFullYear(d.getFullYear() + 1); break;
+    default:            d.setMonth(d.getMonth() + 1);
+  }
+  return d.toISOString().slice(0,10);
+}
+
+function recFreqLabel(freq) {
+  return { weekly:'Weekly', biweekly:'Bi-Weekly', monthly:'Monthly', quarterly:'Quarterly', halfyearly:'Half-Yearly', yearly:'Yearly' }[freq] || freq;
+}
+
+function recClientChange() {
+  // Nothing needed — just for future autocomplete hooks
+}
+
+function recFreqChange() {
+  const freq = document.getElementById('rec-freq')?.value || 'monthly';
+  const start = document.getElementById('rec-start')?.value;
+  const el = document.getElementById('rec-preview-text');
+  if (!el) return;
+  if (start) {
+    const next = recNextDate(start, freq);
+    el.textContent = `Next invoice: ${start} → then every ${recFreqLabel(freq).toLowerCase()} (next: ${next})`;
+  } else {
+    el.textContent = `Invoices will generate every ${recFreqLabel(freq).toLowerCase()} from the start date`;
+  }
+}
+
+function openRecurringModal(id) {
+  // Populate client dropdown
+  const sel = document.getElementById('rec-client');
+  if (sel) {
+    sel.innerHTML = '<option value="">— Select Client —</option>' +
+      STATE.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  }
+  // Set default start date to today
+  const today = new Date().toISOString().slice(0,10);
+
+  if (id) {
+    // Edit mode
+    const schedules = recGetAll();
+    const s = schedules.find(x => x.id === id);
+    if (!s) return;
+    document.getElementById('rec-modal-title').textContent = 'Edit Recurring Schedule';
+    document.getElementById('rec-edit-id').value = id;
+    document.getElementById('rec-client').value = s.clientId || '';
+    document.getElementById('rec-service').value = s.service || '';
+    document.getElementById('rec-amount').value = s.amount || '';
+    document.getElementById('rec-gst').value = s.gst !== undefined ? s.gst : 18;
+    document.getElementById('rec-freq').value = s.freq || 'monthly';
+    document.getElementById('rec-start').value = s.nextDate || today;
+    document.getElementById('rec-end').value = s.endDate || '';
+    document.getElementById('rec-due-days').value = s.dueDays || 15;
+    document.getElementById('rec-template').value = s.template || 2;
+    document.getElementById('rec-notes').value = s.notes || '';
+  } else {
+    document.getElementById('rec-modal-title').textContent = 'New Recurring Schedule';
+    document.getElementById('rec-edit-id').value = '';
+    document.getElementById('rec-client').value = '';
+    document.getElementById('rec-service').value = '';
+    document.getElementById('rec-amount').value = '';
+    document.getElementById('rec-gst').value = '18';
+    document.getElementById('rec-freq').value = 'monthly';
+    document.getElementById('rec-start').value = today;
+    document.getElementById('rec-end').value = '';
+    document.getElementById('rec-due-days').value = '15';
+    document.getElementById('rec-template').value = '2';
+    document.getElementById('rec-notes').value = '';
+  }
+  recFreqChange();
+  openModal('modal-recurring');
+}
+
+function saveRecurring() {
+  const clientId = document.getElementById('rec-client').value;
+  const service  = document.getElementById('rec-service').value.trim();
+  const amount   = parseFloat(document.getElementById('rec-amount').value) || 0;
+  const gst      = parseFloat(document.getElementById('rec-gst').value) || 0;
+  const freq     = document.getElementById('rec-freq').value;
+  const start    = document.getElementById('rec-start').value;
+  const endDate  = document.getElementById('rec-end').value || '';
+  const dueDays  = parseInt(document.getElementById('rec-due-days').value) || 15;
+  const template = parseInt(document.getElementById('rec-template').value) || 2;
+  const notes    = document.getElementById('rec-notes').value.trim();
+  const editId   = document.getElementById('rec-edit-id').value;
+
+  if (!clientId) { toast('⚠️ Please select a client', 'warning'); return; }
+  if (!service)  { toast('⚠️ Please enter a service description', 'warning'); return; }
+  if (!amount)   { toast('⚠️ Please enter an amount', 'warning'); return; }
+  if (!start)    { toast('⚠️ Please set a start date', 'warning'); return; }
+
+  const client = STATE.clients.find(c => String(c.id) === String(clientId));
+  const schedules = recGetAll();
+  const gstAmt = amount * gst / 100;
+  const grand  = amount + gstAmt;
+
+  if (editId) {
+    const idx = schedules.findIndex(x => x.id === editId);
+    if (idx >= 0) {
+      schedules[idx] = { ...schedules[idx], clientId, clientName: client?.name || '', service, amount, gst, gstAmt, grand, freq, nextDate: start, endDate, dueDays, template, notes };
+      toast('✅ Schedule updated!', 'success');
+    }
+  } else {
+    schedules.push({
+      id: 'rec_' + Date.now(),
+      clientId, clientName: client?.name || '',
+      service, amount, gst, gstAmt, grand,
+      freq, nextDate: start, endDate, dueDays, template, notes,
+      status: 'active',
+      generatedCount: 0,
+      createdAt: new Date().toISOString()
+    });
+    toast('✅ Recurring schedule created!', 'success');
+  }
+  recSaveAll(schedules);
+  closeModal('modal-recurring');
+  renderRecurringPage();
+  updateRecurringBadge();
+}
+
+function recPause(id) {
+  const schedules = recGetAll();
+  const s = schedules.find(x => x.id === id);
+  if (!s) return;
+  s.status = s.status === 'paused' ? 'active' : 'paused';
+  recSaveAll(schedules);
+  renderRecurringPage();
+  updateRecurringBadge();
+  toast(s.status === 'paused' ? '⏸ Schedule paused' : '▶ Schedule resumed', 'info');
+}
+
+function recDelete(id) {
+  if (!confirm('Delete this recurring schedule? This won't delete any already-generated invoices.')) return;
+  const schedules = recGetAll().filter(x => x.id !== id);
+  recSaveAll(schedules);
+  renderRecurringPage();
+  updateRecurringBadge();
+  toast('🗑 Schedule deleted', 'info');
+}
+
+async function runRecurringCheck() {
+  const schedules = recGetAll();
+  const today = new Date().toISOString().slice(0,10);
+  let generated = 0;
+  const toSave = [...schedules];
+
+  for (let i = 0; i < toSave.length; i++) {
+    const s = toSave[i];
+    if (s.status !== 'active') continue;
+    if (s.endDate && today > s.endDate) { toSave[i].status = 'completed'; continue; }
+    if (!s.nextDate || today < s.nextDate) continue;
+
+    // Generate invoice
+    try {
+      const client = STATE.clients.find(c => String(c.id) === String(s.clientId));
+      const issueDate = s.nextDate;
+      const dueDate = (() => { const d = new Date(issueDate); d.setDate(d.getDate() + (s.dueDays||15)); return d.toISOString().slice(0,10); })();
+      const invoiceNum = (STATE.settings.invoice_prefix || STATE.settings.invoicePrefix || 'INV-') + new Date().getFullYear() + '-' + String(Math.floor(Math.random()*900)+100);
+
+      const payload = {
+        invoice_number: invoiceNum,
+        client_id: client ? parseInt(s.clientId) : null,
+        client_name: s.clientName || '',
+        service_type: s.service,
+        issued_date: issueDate,
+        due_date: dueDate,
+        status: 'Pending',
+        currency: '₹',
+        subtotal: s.amount,
+        discount_pct: 0,
+        discount_amt: 0,
+        gst_amount: s.gstAmt || 0,
+        grand_total: s.grand || s.amount,
+        notes: s.notes || `Auto-generated recurring invoice (${recFreqLabel(s.freq)})`,
+        bank_details: STATE.settings.defaultBank || '',
+        terms: STATE.settings.defaultTnC || '',
+        company_logo: STATE.settings.logo || '',
+        client_logo: '',
+        signature: STATE.settings.signature || '',
+        qr_code: '',
+        template_id: s.template || 2,
+        generated_by: 'OPTMS Tech — Recurring',
+        show_generated: 1,
+        pdf_options: { bank:true, qr:false, sign:true, logo:true, clientLogo:false, notes:true, tnc:true, gstCol:true, footer:true, watermark:false },
+        items: [{ desc: s.service, itemType: 'Service', qty: 1, rate: s.amount, gst: s.gst || 0 }]
+      };
+      await api('api/invoices.php', 'POST', payload);
+      toSave[i].nextDate = recNextDate(s.nextDate, s.freq);
+      toSave[i].generatedCount = (s.generatedCount || 0) + 1;
+      toSave[i].lastGenerated = issueDate;
+      recAddLog({ scheduleId: s.id, clientName: s.clientName, service: s.service, amount: s.grand, invoiceNum, issueDate });
+      generated++;
+    } catch(e) {
+      console.error('Recurring generation failed for', s.id, e.message);
+      toast('⚠️ Failed to generate for ' + s.clientName + ': ' + e.message, 'error');
+    }
+  }
+  recSaveAll(toSave);
+
+  if (generated > 0) {
+    // Reload invoices
+    const r = await api('api/invoices.php');
+    STATE.invoices = Array.isArray(r.data) ? r.data : [];
+    STATE.filteredInvoices = [...STATE.invoices];
+    renderInvoicesTable(); renderDashRecent(); updateDashStats();
+    toast(`✅ ${generated} invoice${generated>1?'s':''} generated!`, 'success');
+  } else {
+    toast('ℹ️ No invoices due today', 'info');
+  }
+  renderRecurringPage();
+  updateRecurringBadge();
+}
+
+function renderRecurringPage() {
+  const schedules = recGetAll();
+  const today = new Date().toISOString().slice(0,10);
+  const tbody = document.getElementById('rec-table-body');
+  const empty = document.getElementById('rec-empty');
+  if (!tbody) return;
+
+  const active    = schedules.filter(s => s.status === 'active').length;
+  const dueToday  = schedules.filter(s => s.status === 'active' && s.nextDate <= today).length;
+  const paused    = schedules.filter(s => s.status === 'paused').length;
+  const generated = schedules.reduce((a,s) => a + (s.generatedCount||0), 0);
+
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('rec-stat-active', active);
+  set('rec-stat-due', dueToday);
+  set('rec-stat-generated', generated);
+  set('rec-stat-paused', paused);
+
+  if (!schedules.length) {
+    tbody.innerHTML = '';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  const statusChip = s => {
+    if (s.status === 'paused')    return `<span style="padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;background:#FEF3C7;color:#92400E">Paused</span>`;
+    if (s.status === 'completed') return `<span style="padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;background:#E8F5E9;color:#388E3C">Completed</span>`;
+    if (s.nextDate <= today)      return `<span style="padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;background:#FEE2E2;color:#C62828;animation:pulse 1.5s infinite">Due Today!</span>`;
+    return `<span style="padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;background:#E0F2F1;color:#00695C">Active</span>`;
+  };
+
+  tbody.innerHTML = schedules.map(s => `
+    <tr>
+      <td style="font-weight:700">${s.clientName||'—'}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.service}">${s.service}</td>
+      <td style="font-family:var(--mono);font-weight:700">₹${parseFloat(s.grand||s.amount||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      <td><span style="padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;background:var(--blue-bg);color:var(--blue)">${recFreqLabel(s.freq)}</span></td>
+      <td style="font-family:var(--mono);${s.nextDate<=today&&s.status==='active'?'color:var(--red);font-weight:700':''}">${s.nextDate||'—'}</td>
+      <td style="font-family:var(--mono);color:var(--muted)">${s.lastGenerated||'Never'}</td>
+      <td>${statusChip(s)}</td>
+      <td style="text-align:center;font-weight:700;color:var(--teal)">${s.generatedCount||0}</td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <button class="act-btn" title="Edit" onclick="openRecurringModal('${s.id}')"><i class="fas fa-edit"></i></button>
+          <button class="act-btn" title="${s.status==='paused'?'Resume':'Pause'}" onclick="recPause('${s.id}')"><i class="fas fa-${s.status==='paused'?'play':'pause'}"></i></button>
+          <button class="act-btn" title="Delete" onclick="recDelete('${s.id}')" style="color:var(--red)"><i class="fas fa-trash"></i></button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function updateRecurringBadge() {
+  const today = new Date().toISOString().slice(0,10);
+  const due = recGetAll().filter(s => s.status === 'active' && s.nextDate <= today).length;
+  const badge = document.getElementById('badge-recurring');
+  if (badge) { badge.textContent = due; badge.style.display = due ? '' : 'none'; }
+}
+
+// Hook into showPage to render recurring page when opened
+const _origShowPage = window.showPage;
+if (typeof _origShowPage === 'function') {
+  window.showPage = function(name, el) {
+    _origShowPage.call(this, name, el);
+    if (name === 'recurring') renderRecurringPage();
+  };
+}
+
+// Run recurring check silently on app load (after a short delay)
+setTimeout(() => {
+  updateRecurringBadge();
+  // Auto-run if any schedules are due
+  const today = new Date().toISOString().slice(0,10);
+  const due = recGetAll().filter(s => s.status === 'active' && s.nextDate <= today);
+  if (due.length > 0) {
+    toast(`⏰ ${due.length} recurring invoice${due.length>1?'s are':' is'} due — go to Recurring to generate`, 'warning');
+  }
+}, 3000);
+
+// ══════════════════════════════════════════════════════════════
 
 // Re-render reminder badge on dashboard load
 const _origRenderDashboard = window.renderDashboard;
