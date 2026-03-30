@@ -4149,14 +4149,15 @@ function tplWatermark(d) {
   let wText = '', wColor = '';
   if (d.status === 'Paid') {
     wText  = (window.TPL_CUSTOM && TPL_CUSTOM.watermarkText) ? TPL_CUSTOM.watermarkText : 'PAID';
-    wColor = 'rgba(0,150,0,.12)';
-    if (!d.popt || !d.popt.watermark) return '';
+    wColor = 'rgba(0,150,0,.13)';
+    // Always show PAID watermark — it confirms payment status clearly on the PDF
   } else if (d.status === 'Cancelled') {
     wText = 'CANCELLED'; wColor = 'rgba(183,28,28,.15)';
   } else if (d.status === 'Partial') {
     wText = 'PARTIAL'; wColor = 'rgba(255,152,0,.13)';
   } else if (d.status === 'Pending') {
     wText = 'PENDING'; wColor = 'rgba(255,152,0,.10)';
+    if (!d.popt || !d.popt.watermark) return '';
   } else if (d.status === 'Overdue') {
     wText = 'OVERDUE'; wColor = 'rgba(229,57,53,.12)';
   } else if (d.status === 'Draft') {
@@ -4553,7 +4554,7 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
   const thStyle = `padding:10px 10px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${T.thtext};text-align:left`;
   const thr = `${thStyle};text-align:right`;
 
-  return `<div style="font-family:'Public Sans',sans-serif;background:#fff;width:794px;min-height:1123px;position:relative;overflow:hidden;border:1.5px solid ${T.metabr};border-radius:0">
+  return `<div style="font-family:'Public Sans',sans-serif;background:#fff;width:794px;min-height:1123px;position:relative;border:1.5px solid ${T.metabr};border-radius:0">
   ${tplWatermark(d)}
 
   <!-- COLOR BAND -->
@@ -4628,17 +4629,111 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
     </table>
   </div>
 
-  <!-- BOTTOM: BANK | NOTES | TNC in row, then TOTALS -->
-  <div style="display:flex;flex-direction:column;border-top:1.5px solid ${T.metabr}">
-    <!-- Row: Bank Details | Notes | Terms & Conditions -->
-    <div style="display:flex;border-bottom:1px solid ${T.metabr}">
-      ${(()=>{ const bankText = d.bank || (typeof STATE!=='undefined'?STATE.settings.defaultBank:'') || ''; const upi = d.upi || (typeof STATE!=='undefined'?STATE.settings.upi:'') || ''; const hasBank=!!bankText; const hasUpi=!!upi; if (!hasBank && !hasUpi) return ''; return `<div style="flex:1;padding:14px 18px;border-right:1px solid ${T.metabr}"><div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:${T.noteslbl};margin-bottom:7px">💳 Bank Details</div>${hasBank?`<div style="font-size:10.5px;line-height:1.9;color:${T.noteslbl}">${bankText.split('|').map(s=>s.trim()).filter(Boolean).map(s=>`<div>${s}</div>`).join('')}</div>`:''}${hasUpi?`<div style="margin-top:6px;font-size:10px;font-weight:700;color:${T.noteslbl}">📲 UPI: ${upi}</div>`:''}</div>`; })()}
-      ${(()=>{ if (!d.popt||!d.popt.notes) return ''; if (d.status==='Paid') return ''; if (!d.notes) return ''; return `<div style="flex:1;padding:14px 18px;border-right:1px solid ${T.metabr}"><div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:${T.noteslbl};margin-bottom:7px">Notes</div><div style="font-size:11px;color:${T.noteslbl};line-height:1.7">${d.notes.replace(/\n/g,'<br>')}</div></div>`; })()}
-      ${(()=>{ if (!d.popt||!d.popt.tnc) return ''; const tnc=(d.tnc||'').trim(); if(!tnc) return ''; return `<div style="flex:1;padding:14px 18px"><div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:${T.noteslbl};margin-bottom:7px">Terms &amp; Conditions</div><div style="font-size:10.5px;color:${T.noteslbl};line-height:1.7">${tnc.replace(/\n/g,'<br>')}</div></div>`; })()}
-    </div>
-    <!-- Totals row: Subtotal → Discount → Amount → GST → Grand Total + partial history -->
-    <div style="display:flex;justify-content:flex-end">
-      <div style="width:280px;flex-shrink:0;display:flex;flex-direction:column;background:${T.totbg}">
+  <!-- BOTTOM: Bank | Notes | T&C in amber row, then totals+history -->
+  ${(()=>{
+    /* ── gather payment data ── */
+    const invId = d.invId ? String(d.invId) : '';
+    const isPartial = d.status === 'Partial';
+    const isPaid    = d.status === 'Paid';
+    const showHistory = (isPartial || isPaid) && invId && invId !== '0';
+    let paymentsForInv = [], totalPaid = 0, remaining = 0;
+    if (showHistory) {
+      const allPmts = (typeof STATE !== 'undefined' ? STATE.payments : []);
+      /* Sort strictly by payment date ASC, then by DB id ASC as tiebreaker — ensures 800→300→500 order */
+      paymentsForInv = allPmts
+        .filter(p => p.invoice_id && String(p.invoice_id) === invId)
+        .slice()
+        .sort((a, b) => {
+          const da = new Date(a.payment_date || a.date || 0).getTime();
+          const db = new Date(b.payment_date || b.date || 0).getTime();
+          if (da !== db) return da - db;
+          return (parseInt(a.id) || 0) - (parseInt(b.id) || 0);
+        });
+      totalPaid = paymentsForInv.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+      remaining = Math.max(0, (d.grand || 0) - totalPaid);
+    }
+
+    /* ── amber info row: Bank Details | Notes | Terms & Conditions ── */
+    const bankText = d.bank || (typeof STATE !== 'undefined' ? STATE.settings.defaultBank : '') || '';
+    const upi      = d.upi  || (typeof STATE !== 'undefined' ? STATE.settings.upi         : '') || '';
+    const hasBank  = !!bankText, hasUpi = !!upi;
+
+    const bankCol = (hasBank || hasUpi) ? `
+      <div style="flex:1;padding:16px 20px;background:#FFFBEB;border-right:1.5px solid #FDE68A">
+        <div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#B45309;margin-bottom:8px">💳 Bank Details</div>
+        ${hasBank ? `<div style="font-size:10.5px;line-height:2;color:#78350F">${bankText.split('|').map(s=>s.trim()).filter(Boolean).map(s=>`<div>${s}</div>`).join('')}</div>` : ''}
+        ${hasUpi  ? `<div style="margin-top:${hasBank?'8':'0'}px;display:inline-flex;align-items:center;gap:6px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:6px;padding:5px 10px">
+            <span style="font-size:10px;font-weight:700;color:#B45309">📲 UPI</span>
+            <span style="font-size:11px;font-weight:800;color:#78350F;letter-spacing:.3px">${upi}</span>
+          </div>` : ''}
+      </div>` : '';
+
+    const showNotes = d.popt && d.popt.notes && d.notes;
+    /* For Paid status: show thank-you message instead of regular notes */
+    const notesContent = isPaid
+      ? `<div style="font-size:11px;color:#78350F;line-height:1.8">
+           <div style="font-weight:800;font-size:13px;margin-bottom:4px;color:#B45309">🎉 Thank You for Your Payment!</div>
+           <div>We appreciate your prompt payment and continued trust in <strong>${sc.company||''}</strong>. Your account is now fully clear.</div>
+         </div>`
+      : (showNotes ? `<div style="font-size:11px;color:#78350F;line-height:1.7">${d.notes.replace(/\n/g,'<br>')}</div>` : '');
+
+    const notesCol = notesContent ? `
+      <div style="flex:1;padding:16px 20px;background:#FFFBEB;border-right:1.5px solid #FDE68A">
+        <div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#B45309;margin-bottom:8px">Notes</div>
+        ${notesContent}
+      </div>` : '';
+
+    const tncText  = (d.popt && d.popt.tnc) ? (d.tnc || '').trim() : '';
+    const tncCol   = tncText ? `
+      <div style="flex:1;padding:16px 20px;background:#FFFBEB">
+        <div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#B45309;margin-bottom:8px">Terms &amp; Conditions</div>
+        <div style="font-size:10.5px;color:#78350F;line-height:1.7">${tncText.replace(/\n/g,'<br>')}</div>
+      </div>` : '';
+
+    const infoRow = (bankCol || notesCol || tncCol) ? `
+      <div style="display:flex;border-top:1.5px solid #FDE68A;border-bottom:1.5px solid #FDE68A">
+        ${bankCol}${notesCol}${tncCol}
+      </div>` : '';
+
+    /* ── instalment history rows (date-sorted) ── */
+    const instalmentRows = paymentsForInv.map((p, i) => {
+      const rawDt  = p.payment_date || p.date || '';
+      const dtF    = rawDt ? new Date(rawDt).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'}) : '';
+      const meth   = (p.method || '').replace('Split: ','').substring(0, 28);
+      const isSplit= (p.method || '').startsWith('Split');
+      return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:5px 22px;border-bottom:1px dashed #D1FAE5">
+        <span style="color:#166534;flex:1">${isSplit ? '⚡' : '✓'} Instalment ${i + 1}${dtF ? ' · <em style="font-weight:500">' + dtF + '</em>' : ''}${meth ? ' · ' + meth : ''}</span>
+        <span style="font-family:monospace;font-weight:700;color:#166534;white-space:nowrap">−${fmt_money(parseFloat(p.amount || 0), d.sym)}</span>
+      </div>`;
+    }).join('');
+
+    const totalPaidRow = (showHistory && totalPaid > 0.01) ? `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 22px;border-bottom:1px solid ${T.totbr};font-size:12px">
+        <span style="color:#166534;font-weight:700">${isPaid ? '✅' : '💚'} ${isPaid ? 'Paid in Full' : 'Total Paid'}${paymentsForInv.length > 1 ? ' (' + paymentsForInv.length + ' instalments)' : ''}</span>
+        <span style="font-family:monospace;font-weight:800;color:#166534">−${fmt_money(totalPaid, d.sym)}</span>
+      </div>
+      ${paymentsForInv.length > 1 ? `<div style="background:#F0FDF4;border-bottom:1px solid ${T.totbr}">${instalmentRows}</div>` : ''}` : '';
+
+    const remainRow = (isPartial && remaining > 0.01) ? `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 22px;margin:8px 14px;background:#FFF8E1;border:2px solid #F59E0B;border-radius:8px;font-size:13px;font-weight:800;color:#B45309">
+        <span>⚠ Remaining Due</span>
+        <span style="font-family:monospace">${fmt_money(remaining, d.sym)}</span>
+      </div>` : '';
+
+    const signBlock = d.popt.sign ? (()=>{
+      const sig = d.signature || (typeof STATE !== 'undefined' ? STATE.settings.signature : '') || '';
+      return `<div style="padding:14px 22px;border-top:1px solid ${T.totbr};text-align:right">
+        ${sig ? `<img src="${sig}" style="height:44px;max-width:160px;object-fit:contain;display:block;margin-left:auto" onerror="this.style.display='none'">` : `<div style="width:140px;border-bottom:1.5px solid #bbb;margin-left:auto;height:36px"></div>`}
+        <div style="font-size:10px;color:#aaa;margin-top:5px;font-weight:600">Authorised Signatory</div>
+        <div style="font-size:10px;color:#bbb">${sc.company}</div>
+      </div>`;
+    })() : '';
+
+    return `
+    ${infoRow}
+    <!-- Totals aligned right -->
+    <div style="display:flex;justify-content:flex-end;border-top:1.5px solid ${T.metabr}">
+      <div style="width:300px;flex-shrink:0;display:flex;flex-direction:column;background:${T.totbg}">
         <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:1px solid ${T.totbr};font-size:12px">
           <span style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:${T.totlbl}">Subtotal</span>
           <span style="font-family:monospace;font-weight:700;color:${T.totval}">${fmt_money(d.sub,d.sym)}</span>
@@ -4660,52 +4755,20 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
           <span style="color:${T.grandtext};font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px">Grand Total</span>
           <span style="color:${T.grandtext};font-family:monospace;font-size:19px;font-weight:800;letter-spacing:-1px">${fmt_money(d.grand,d.sym)}</span>
         </div>
-        ${(()=>{
-          // Partial payment history for Template 2
-          const invId = d.invId ? String(d.invId) : '';
-          const isPartialStatus = d.status === 'Partial';
-          const isPaidStatus = d.status === 'Paid';
-          if ((!isPartialStatus && !isPaidStatus) || !invId || invId === '0') return '';
-          const paymentsForInv = (typeof STATE!=='undefined' ? STATE.payments : []).filter(p =>
-            p.invoice_id && String(p.invoice_id) === invId
-          ).sort((a,b) => new Date(a.date||a.payment_date||0) - new Date(b.date||b.payment_date||0));
-          const totalPaid = paymentsForInv.reduce((s,p) => s + parseFloat(p.amount||0), 0);
-          const remaining = Math.max(0, (d.grand||0) - totalPaid);
-          if (totalPaid < 0.01) return '';
-          const instalmentRows = paymentsForInv.map((p,i) => {
-            const dt = p.date||p.payment_date||'';
-            const dtF = dt ? new Date(dt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '';
-            const meth = p.method||'';
-            const isSplit = meth.startsWith('Split');
-            return `<div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 22px;border-bottom:1px dashed ${T.totbr}">
-              <span style="color:#388E3C">${isSplit?'⚡':'✓'} Instalment ${i+1}${dtF?' · '+dtF:''}${meth?' · '+meth.replace('Split: ','').substring(0,20):''}</span>
-              <span style="font-family:monospace;font-weight:600;color:#388E3C">-${fmt_money(parseFloat(p.amount||0),d.sym)}</span>
-            </div>`;
-          }).join('');
-          const paidRow = `<div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:1px solid ${T.totbr};font-size:12px">
-            <span style="color:#388E3C;font-weight:700">${isPaidStatus?'✅':'💚'} ${isPaidStatus?'Paid in Full':'Total Paid'}${paymentsForInv.length>1?' ('+paymentsForInv.length+' instalments)':''}</span>
-            <span style="font-family:monospace;font-weight:800;color:#388E3C">-${fmt_money(totalPaid,d.sym)}</span>
-          </div>`;
-          const instalBlock = paymentsForInv.length > 1 ? `<div style="background:#F1F8E9">${instalmentRows}</div>` : '';
-          const remRow = isPartialStatus && remaining > 0.01 ? `<div style="display:flex;justify-content:space-between;padding:10px 22px;background:#FFF8E1;border:2px solid #FFB300;margin:6px 12px;border-radius:7px;font-size:13px;font-weight:800;color:#E65100">
-            <span>⚠ Remaining Due</span><span style="font-family:monospace">${fmt_money(remaining,d.sym)}</span>
-          </div>` : '';
-          return paidRow + instalBlock + remRow;
-        })()}
-        ${d.popt.sign?(()=>{const sig=d.signature||STATE.settings.signature||'';return `<div style="padding:14px 22px;border-top:1px solid ${T.totbr};text-align:right">${sig?`<img src="${sig}" style="height:44px;max-width:160px;object-fit:contain;display:block;margin-left:auto" onerror="this.style.display='none'">`:'<div style="width:140px;border-bottom:1.5px solid #bbb;margin-left:auto;height:36px"></div>'}<div style="font-size:10px;color:#aaa;margin-top:5px;font-weight:600">Authorised Signatory</div><div style="font-size:10px;color:#bbb">${sc.company}</div></div>`;})():''}
+        ${totalPaidRow}${remainRow}${signBlock}
       </div>
     </div>
-  </div>
 
-  <!-- FOOTER -->
-  ${d.popt.footer!==false?`
-  <div style="padding:12px 24px;background:${T.footbg};display:flex;justify-content:space-between;align-items:center">
-    <div>
-      <div style="font-size:10px;color:${T.foottext};letter-spacing:.5px;line-height:1.8;font-weight:600">${sc.company}${sc.gst?' · GSTIN: '+sc.gst:''}</div>
-      <div style="font-size:10px;color:${T.foottext};letter-spacing:.3px">Computer-generated invoice · No physical signature required</div>
-    </div>
-  </div>`:''}
-  </div>`;
+    <!-- FOOTER -->
+    ${d.popt.footer!==false?`
+    <div style="padding:12px 24px;background:${T.footbg};display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:10px;color:${T.foottext};letter-spacing:.5px;line-height:1.8;font-weight:600">${sc.company}${sc.gst?' · GSTIN: '+sc.gst:''}</div>
+        <div style="font-size:10px;color:${T.foottext};letter-spacing:.3px">Computer-generated invoice · No physical signature required</div>
+      </div>
+    </div>`:''}
+    </div>`;
+  })()}
 }
 
 // ── TEMPLATE 3: Bold Dark ──
