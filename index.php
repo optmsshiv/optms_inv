@@ -3087,6 +3087,24 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
 <!-- ══ MAIN APP JS (embedded) ══ -->
 <script>
 
+  // ── API helper ──────────────────────────────────────────────────
+async function api(endpoint, method, body) {
+  method = method || 'GET';
+  const opts = { method, headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(endpoint, opts);
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); }
+  catch(e) {
+    console.error('API response not JSON from', endpoint, '\nResponse:', text.substring(0,300));
+    throw new Error('Server returned non-JSON response. Check PHP error logs.');
+  }
+  if (res.status === 401) { window.location.href = '/auth/login.php'; throw new Error('Not authenticated'); }
+  if (!res.ok) throw new Error(data.error || 'API error ' + res.status);
+  return data;
+}
+
 // ══════════════════════════════════════════
 // OPTMS Tech – data.js  (App State & Sample Data)
 // ══════════════════════════════════════════
@@ -7114,7 +7132,7 @@ document.addEventListener('click', e => closeAllDropdowns(e));
   }
 })();
 
-// ── API helper ──────────────────────────────────────────────────
+// ── API helper
 async function api(endpoint, method, body) {
   method = method || 'GET';
   const opts = { method, headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } };
@@ -7130,7 +7148,7 @@ async function api(endpoint, method, body) {
   if (res.status === 401) { window.location.href = '/auth/login.php'; throw new Error('Not authenticated'); }
   if (!res.ok) throw new Error(data.error || 'API error ' + res.status);
   return data;
-}
+}  ──────────────────────────────────────────────────
 
 // ── Load all data from API on page load ────────────────────────
 async function loadAllData() {
