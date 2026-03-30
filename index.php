@@ -9749,7 +9749,7 @@ function recPause(id) {
 }
 
 function recDelete(id) {
-  if (!confirm('Delete this recurring schedule? This won't delete any already-generated invoices.')) return;
+  if (!confirm('Delete this recurring schedule? This will not delete any already-generated invoices.')) return;
   const schedules = recGetAll().filter(x => x.id !== id);
   recSaveAll(schedules);
   renderRecurringPage();
