@@ -3909,29 +3909,39 @@ function buildInvoiceHTML(d, forPrint) {
   // Build items HTML with GST column
   const showGstCol = d.popt ? d.popt.gstCol : true;
   const itemsHTML = formItems.length
-    ? formItems.map(i => {
+    ? formItems.map((i, idx) => {
         const line    = (i.qty||1)*(i.rate||0);
         const itemGst = parseFloat(i.gst ?? 0);
         const gstAmt  = line * itemGst / 100;
         const lineInclGst = line + gstAmt;
         const itype = i.itemType||'Service';
+        // GST badge colors
+        const gstBadge = itemGst === 0
+          ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#F1F5F9;color:#475569;border:1px solid #CBD5E1">${itemGst}%</span>`
+          : itemGst <= 5
+          ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#F0FDF4;color:#166534;border:1px solid #86EFAC">${itemGst}%</span>`
+          : itemGst <= 12
+          ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#FEF3C7;color:#92400E;border:1px solid #FDE68A">${itemGst}%</span>`
+          : `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#FEE2E2;color:#991B1B;border:1px solid #FECACA">${itemGst}%</span>`;
         return `<tr>
-          <td style="padding:9px 12px;border-bottom:1px solid #eee">${i.desc||'—'}</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee;font-size:11px;color:#888">${itype}</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">${i.qty}</td>
-          <td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(i.rate,d.sym)}</td>
-          <td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">${fmt_money(line,d.sym)}</td>
-          ${showGstCol ? `<td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">${itemGst}%</td>` : ''}
-          <td style="padding:9px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">${fmt_money(lineInclGst,d.sym)}</td>
+          <td style="padding:9px 8px;border-bottom:1px solid #eee;font-size:11px;color:#999;font-family:monospace;font-weight:600">${String(idx+1).padStart(2,'0')}</td>
+          <td style="padding:9px 8px;border-bottom:1px solid #eee;font-weight:700;color:#111">${i.desc||'—'}</td>
+          <td style="padding:9px 8px;text-align:center;border-bottom:1px solid #eee"><span style="font-size:10px;font-weight:700;background:#F1F5F9;color:#475569;padding:2px 8px;border-radius:4px;border:1px solid #E2E8F0">${itype}</span></td>
+          <td style="padding:9px 8px;text-align:right;border-bottom:1px solid #eee;font-family:monospace">${i.qty}</td>
+          <td style="padding:9px 8px;text-align:right;border-bottom:1px solid #eee;font-family:monospace">${fmt_money(i.rate,d.sym)}</td>
+          <td style="padding:9px 8px;text-align:right;border-bottom:1px solid #eee;font-family:monospace">${fmt_money(line,d.sym)}</td>
+          ${showGstCol ? `<td style="padding:9px 8px;text-align:center;border-bottom:1px solid #eee">${gstBadge}</td>` : ''}
+          <td style="padding:9px 8px;text-align:right;font-weight:800;border-bottom:1px solid #eee;font-family:monospace;color:#111">${fmt_money(lineInclGst,d.sym)}</td>
         </tr>`;
       }).join('')
-    : `<tr><td colspan="${showGstCol?7:6}" style="padding:20px;text-align:center;color:#aaa">No items added</td></tr>`;
+    : `<tr><td colspan="${showGstCol?8:7}" style="padding:20px;text-align:center;color:#aaa">No items added</td></tr>`;
 
-  const gstColHeader = showGstCol ? `<th style="padding:10px 12px;text-align:center">GST%</th>` : '';
+  const gstColHeader = showGstCol ? `<th style="padding:10px 8px;text-align:center">GST%</th>` : '';
+  const rowNumHeader = `<th style="padding:10px 8px;text-align:left;width:28px">#</th>`;
 
   const templates = { 1:buildTpl1, 2:buildTpl2, 3:buildTpl3, 4:buildTpl4, 5:buildTpl5, 6:buildTpl6, 7:buildTpl7, 8:buildTpl8, 9:buildTpl9 };
   const fn = templates[d.tpl] || buildTpl1;
-  return fn(d, sc, itemsHTML, gstColHeader);
+  return fn(d, sc, itemsHTML, gstColHeader, rowNumHeader);
 }
 
 // ── Shared helpers for templates ──
@@ -4090,7 +4100,7 @@ function tplTncHTML(d, color='#888') {
 }
 
 // ── TEMPLATE 1: Pure Black ──
-function buildTpl1(d, sc, itemsHTML, gstColHeader) {
+function buildTpl1(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
   sc = resolveCompany(sc);
   const B = '2px solid #000';
   const b = '1px solid #000';
@@ -4183,13 +4193,23 @@ function buildTpl1(d, sc, itemsHTML, gstColHeader) {
     </div>
     <div style="width:240px;flex-shrink:0;display:flex;flex-direction:column">
       <div style="flex:1;padding:0">
-        ${['Subtotal','Discount','GST'].map(k=>`
         <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:${b};font-size:12px">
-          <span style="color:#000;font-weight:800;text-transform:uppercase;font-size:10px;letter-spacing:.5px">${k}</span>
-          <span style="font-family:monospace;font-weight:800;color:#000">
-            ${k==='Subtotal'?fmt_money(d.sub,d.sym):k==='Discount'?(d.discAmt>0?'-'+fmt_money(d.discAmt,d.sym):'—'):(d.gstAmt>0?'+'+fmt_money(d.gstAmt,d.sym):'—')}
-          </span>
-        </div>`).join('')}
+          <span style="color:#000;font-weight:800;text-transform:uppercase;font-size:10px;letter-spacing:.5px">Subtotal</span>
+          <span style="font-family:monospace;font-weight:800;color:#000">${fmt_money(d.sub,d.sym)}</span>
+        </div>
+        ${d.discAmt>0?`
+        <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:${b};font-size:12px">
+          <span style="color:#000;font-weight:800;text-transform:uppercase;font-size:10px;letter-spacing:.5px">Discount${d.discType==='fixed'?' (₹)':d.disc>0?' ('+Math.round(d.disc*100)/100+'%)':''}</span>
+          <span style="font-family:monospace;font-weight:800;color:#000">−${fmt_money(d.discAmt,d.sym)}</span>
+        </div>`:''}
+        <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:${b};font-size:12px">
+          <span style="color:#000;font-weight:800;text-transform:uppercase;font-size:10px;letter-spacing:.5px">Amount</span>
+          <span style="font-family:monospace;font-weight:800;color:#000">${fmt_money((d.sub||0)-(d.discAmt||0),d.sym)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:${b};font-size:12px">
+          <span style="color:#000;font-weight:800;text-transform:uppercase;font-size:10px;letter-spacing:.5px">GST</span>
+          <span style="font-family:monospace;font-weight:800;color:#000">${d.gstAmt>0?'+'+fmt_money(d.gstAmt,d.sym):fmt_money(0,d.sym)}</span>
+        </div>
       </div>
       <div style="background:#000;padding:14px 22px;display:flex;justify-content:space-between;align-items:center">
         <span style="color:#fff;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px">Grand Total</span>
@@ -4347,7 +4367,7 @@ const _MATTE_THEMES = {
   8:{ name:'Crimson',   hbg:'#7F1D1D', htext:'#fff', htag:'#FCA5A5', hnum:'#fff', metabg:'#FEF2F2', metabr:'#FECACA', metalbl:'#DC2626', metaval:'#450A0A', billbg:'#FEF2F2', billbr:'#FECACA', billlbl:'#DC2626', issbg:'#FFF5F5', issbr:'#FECACA', isslbl:'#B91C1C', thbg:'#7F1D1D', thtext:'#fff', notesbg:'#FEF2F2', notesbr:'#FECACA', noteslbl:'#DC2626', totbg:'#FEF2F2', totbr:'#FECACA', totlbl:'#DC2626', totval:'#450A0A', grandbg:'#7F1D1D', grandtext:'#fff', footbg:'#7F1D1D', foottext:'rgba(252,165,165,.8)', pillpaid:'#166534|#DCFCE7', pillpending:'#92400E|#FEF3C7', pilloverdue:'#991B1B|#FEE2E2', pilldraft:'#7F1D1D|#FEF2F2', band:'#7F1D1D,#DC2626,#FCA5A5' }
 };
 
-function buildTpl2(d, sc, itemsHTML, gstColHeader) {
+function buildTpl2(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
   sc = resolveCompany(sc);
   const tid = (window.TPL_CUSTOM && TPL_CUSTOM.colorTheme) ? parseInt(TPL_CUSTOM.colorTheme)||1 : 1;
   const T = _MATTE_THEMES[tid] || _MATTE_THEMES[1];
@@ -4448,13 +4468,23 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader) {
     </div>
     <div style="width:250px;flex-shrink:0;display:flex;flex-direction:column;background:${T.totbg}">
       <div style="flex:1">
-        ${['Subtotal','Discount','GST'].map(k=>`
         <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:1px solid ${T.totbr};font-size:12px">
-          <span style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:${T.totlbl}">${k}</span>
-          <span style="font-family:monospace;font-weight:700;color:${T.totval}">
-            ${k==='Subtotal'?fmt_money(d.sub,d.sym):k==='Discount'?(d.discAmt>0?'−'+fmt_money(d.discAmt,d.sym):'—'):(d.gstAmt>0?'+'+fmt_money(d.gstAmt,d.sym):'—')}
-          </span>
-        </div>`).join('')}
+          <span style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:${T.totlbl}">Subtotal</span>
+          <span style="font-family:monospace;font-weight:700;color:${T.totval}">${fmt_money(d.sub,d.sym)}</span>
+        </div>
+        ${d.discAmt>0?`
+        <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:1px solid ${T.totbr};font-size:12px">
+          <span style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:${T.totlbl}">Discount${d.discType==='fixed'?' (₹)':d.disc>0?' ('+Math.round(d.disc*100)/100+'%)':''}</span>
+          <span style="font-family:monospace;font-weight:700;color:#DC2626">−${fmt_money(d.discAmt,d.sym)}</span>
+        </div>`:''}
+        <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:1px solid ${T.totbr};font-size:12px">
+          <span style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:${T.totlbl}">GST</span>
+          <span style="font-family:monospace;font-weight:700;color:${T.totval}">${d.gstAmt>0?'+'+fmt_money(d.gstAmt,d.sym):fmt_money(0,d.sym)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 22px;border-bottom:1px solid ${T.totbr};font-size:12px">
+          <span style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:${T.totlbl}">Amount</span>
+          <span style="font-family:monospace;font-weight:700;color:${T.totval}">${fmt_money((d.sub||0)-(d.discAmt||0),d.sym)}</span>
+        </div>
       </div>
       <div style="background:${T.grandbg};padding:16px 22px;display:flex;justify-content:space-between;align-items:center">
         <span style="color:${T.grandtext};font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px">Grand Total</span>
