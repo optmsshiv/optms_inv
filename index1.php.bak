@@ -1542,16 +1542,16 @@ const SERVER = {
           <div class="form-section">
             <div class="fs-title"><i class="fas fa-eye"></i> PDF Show / Hide Options</div>
             <div class="pdf-opts-grid">
-              <label class="pdf-opt"><input type="checkbox" id="popt-bank" checked onchange="savePoptPrefs();livePreview()"><span>Bank Details</span></label>
-              <label class="pdf-opt"><input type="checkbox" id="popt-qr" checked onchange="savePoptPrefs();livePreview()"><span>QR Code</span></label>
-              <label class="pdf-opt"><input type="checkbox" id="popt-sign" checked onchange="savePoptPrefs();livePreview()"><span>Signature</span></label>
-              <label class="pdf-opt"><input type="checkbox" id="popt-logo" checked onchange="savePoptPrefs();livePreview()"><span>Company Logo</span></label>
-              <label class="pdf-opt"><input type="checkbox" id="popt-client-logo" onchange="savePoptPrefs();livePreview()"><span>Client Logo</span></label>
-              <label class="pdf-opt"><input type="checkbox" id="popt-notes" checked onchange="savePoptPrefs();livePreview()"><span>Notes</span></label>
-              <label class="pdf-opt"><input type="checkbox" id="popt-tnc" checked onchange="savePoptPrefs();livePreview()"><span>Terms & Conditions</span></label>
-              <label class="pdf-opt"><input type="checkbox" id="popt-gst-col" checked onchange="savePoptPrefs();livePreview()"><span>GST Column</span></label>
-              <label class="pdf-opt"><input type="checkbox" id="popt-footer" checked onchange="savePoptPrefs();livePreview()"><span>Footer Bar</span></label>
-              <label class="pdf-opt"><input type="checkbox" id="popt-watermark" onchange="savePoptPrefs();livePreview()"><span>Paid Watermark</span></label>
+              <label class="pdf-opt"><input type="checkbox" id="popt-bank" checked onchange="livePreview()"><span>Bank Details</span></label>
+              <label class="pdf-opt"><input type="checkbox" id="popt-qr" checked onchange="livePreview()"><span>QR Code</span></label>
+              <label class="pdf-opt"><input type="checkbox" id="popt-sign" checked onchange="livePreview()"><span>Signature</span></label>
+              <label class="pdf-opt"><input type="checkbox" id="popt-logo" checked onchange="livePreview()"><span>Company Logo</span></label>
+              <label class="pdf-opt"><input type="checkbox" id="popt-client-logo" onchange="livePreview()"><span>Client Logo</span></label>
+              <label class="pdf-opt"><input type="checkbox" id="popt-notes" checked onchange="livePreview()"><span>Notes</span></label>
+              <label class="pdf-opt"><input type="checkbox" id="popt-tnc" checked onchange="livePreview()"><span>Terms & Conditions</span></label>
+              <label class="pdf-opt"><input type="checkbox" id="popt-gst-col" checked onchange="livePreview()"><span>GST Column</span></label>
+              <label class="pdf-opt"><input type="checkbox" id="popt-footer" checked onchange="livePreview()"><span>Footer Bar</span></label>
+              <label class="pdf-opt"><input type="checkbox" id="popt-watermark" onchange="livePreview()"><span>Paid Watermark</span></label>
             </div>
           </div>
 
@@ -3824,31 +3824,6 @@ function closeAllDropdowns(e) {
   }
 }
 
-// ── PDF Options: persist checkbox state in localStorage ────────
-const POPT_STORAGE_KEY = 'optms_popt_prefs';
-const POPT_IDS = ['popt-bank','popt-qr','popt-sign','popt-logo','popt-client-logo','popt-notes','popt-tnc','popt-gst-col','popt-footer','popt-watermark'];
-const POPT_DEFAULTS = { 'popt-bank':true,'popt-qr':false,'popt-sign':true,'popt-logo':true,'popt-client-logo':false,'popt-notes':true,'popt-tnc':true,'popt-gst-col':true,'popt-footer':true,'popt-watermark':false };
-
-function savePoptPrefs() {
-  const prefs = {};
-  POPT_IDS.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) prefs[id] = el.checked;
-  });
-  try { localStorage.setItem(POPT_STORAGE_KEY, JSON.stringify(prefs)); } catch(e) {}
-}
-
-function loadPoptPrefs() {
-  let prefs = null;
-  try { const raw = localStorage.getItem(POPT_STORAGE_KEY); if (raw) prefs = JSON.parse(raw); } catch(e) {}
-  POPT_IDS.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    // Use saved pref if exists, else fall back to default
-    el.checked = prefs && prefs[id] !== undefined ? prefs[id] : POPT_DEFAULTS[id];
-  });
-}
-
 // ══════════════════════════════════════════
 // CREATE / EDIT INVOICE
 // ══════════════════════════════════════════
@@ -3896,8 +3871,18 @@ function resetCreateForm() {
   const qrEl = document.getElementById('f-qr'); if (qrEl) qrEl.value = '';
   const _radios = document.querySelectorAll('input[name="inv-status"]');
   if (_radios.length) _radios[0].checked = true;
-  // Reset PDF option checkboxes — restore user's saved preferences
-  loadPoptPrefs();
+  // Reset PDF option checkboxes to defaults
+  const _sc2 = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
+  _sc2('popt-bank',        true);
+  _sc2('popt-qr',          false);
+  _sc2('popt-sign',        true);
+  _sc2('popt-logo',        true);
+  _sc2('popt-client-logo', false);
+  _sc2('popt-notes',       true);
+  _sc2('popt-tnc',         true);
+  _sc2('popt-gst-col',     true);
+  _sc2('popt-footer',      true);
+  _sc2('popt-watermark',   false);
   formItems = [];
   addItem();
 }
