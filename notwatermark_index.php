@@ -4185,7 +4185,7 @@ function tplWatermark(d) {
   } else {
     return '';
   }
-  return `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:80px;font-weight:900;color:${wColor};z-index:999;pointer-events:none;white-space:nowrap;letter-spacing:8px;user-select:none">${wText}</div>`;
+  return `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:80px;font-weight:900;color:${wColor};z-index:0;pointer-events:none;white-space:nowrap;letter-spacing:8px">${wText}</div>`;
 }
 function tplBankHTML(d, color='#00695C', bg='#e0f2f1', border='') {
   if (!d.popt || d.popt.bank === false) return '';
