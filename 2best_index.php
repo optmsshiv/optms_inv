@@ -3908,7 +3908,8 @@ function resetCreateForm() {
   _sv('f-disc', '0');
   const discTypeEl = document.getElementById('f-disc-type'); if (discTypeEl) discTypeEl.value = 'pct';
   const _gstEl2 = document.getElementById('f-gst'); if (_gstEl2) _gstEl2.value = String(STATE.settings.defaultGST ?? 18);
-  const notesEl = document.getElementById('f-notes'); if (notesEl) notesEl.value = '';
+  const DEFAULT_NOTES = 'Thank you for choosing OPTMS Tech. Payment is due within 15 days of invoice date. Late payments may incur a 2% monthly interest charge.';
+  const notesEl = document.getElementById('f-notes'); if (notesEl) notesEl.value = STATE.settings.defaultNotes || DEFAULT_NOTES;
   const svcEl = document.getElementById('f-service'); if (svcEl) svcEl.value = '';
   const currEl = document.getElementById('f-currency'); if (currEl) currEl.value = '₹';
   const tplEl = document.getElementById('f-template'); if (tplEl) tplEl.value = String(STATE.settings.activeTemplate || 1);
@@ -6719,7 +6720,6 @@ window.saveWASettings = async function() {
     wa_auto_remind:   tog('twa3'),
     wa_auto_overdue:  tog('twa4'),
     wa_auto_followup: tog('twa5'),
-    wa_msg_mode:      document.querySelector('input[name="wa-msg-mode"]:checked')?.value || 'session',
   };
   // Update STATE immediately with all keys
   if (!STATE.settings.wa) STATE.settings.wa = {};
@@ -6735,7 +6735,6 @@ window.saveWASettings = async function() {
     auto_partial: payload.wa_auto_partial,
     auto_remind: payload.wa_auto_remind, auto_overdue: payload.wa_auto_overdue,
     auto_followup: payload.wa_auto_followup,
-    msg_mode: payload.wa_msg_mode,
   });
   try {
     await api('api/settings.php', 'POST', payload);
@@ -7428,6 +7427,8 @@ function normalizeInvoice(inv) {
   if (!inv.bank && inv.bank_details) inv.bank = inv.bank_details;
   // Unify tnc field aliases
   if (!inv.tnc && inv.terms) inv.tnc = inv.terms;
+  // Fall back to default notes if notes is empty
+  if (!inv.notes) inv.notes = 'Thank you for choosing OPTMS Tech. Payment is due within 15 days of invoice date. Late payments may incur a 2% monthly interest charge.';
   return inv;
 }
 
