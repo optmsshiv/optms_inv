@@ -6719,14 +6719,7 @@ window.saveWASettings = async function() {
     wa_auto_remind:   tog('twa3'),
     wa_auto_overdue:  tog('twa4'),
     wa_auto_followup: tog('twa5'),
-    wa_msg_mode:           document.querySelector('input[name="wa-msg-mode"]:checked')?.value || 'session',
-    wa_tpl_name_invoice:   val('tpl-name-invoice'),
-    wa_tpl_name_reminder:  val('tpl-name-reminder'),
-    wa_tpl_name_overdue:   val('tpl-name-overdue'),
-    wa_tpl_name_paid:      val('tpl-name-paid'),
-    wa_tpl_name_followup:  val('tpl-name-followup'),
-    wa_tpl_name_partial:   val('tpl-name-partial'),
-    wa_tpl_name_festival:  val('tpl-name-festival'),
+    wa_msg_mode:      document.querySelector('input[name="wa-msg-mode"]:checked')?.value || 'session',
   };
   // Update STATE immediately with all keys
   if (!STATE.settings.wa) STATE.settings.wa = {};
@@ -6743,13 +6736,6 @@ window.saveWASettings = async function() {
     auto_remind: payload.wa_auto_remind, auto_overdue: payload.wa_auto_overdue,
     auto_followup: payload.wa_auto_followup,
     msg_mode: payload.wa_msg_mode,
-    tpl_name_invoice:  payload.wa_tpl_name_invoice,
-    tpl_name_reminder: payload.wa_tpl_name_reminder,
-    tpl_name_overdue:  payload.wa_tpl_name_overdue,
-    tpl_name_paid:     payload.wa_tpl_name_paid,
-    tpl_name_followup: payload.wa_tpl_name_followup,
-    tpl_name_partial:  payload.wa_tpl_name_partial,
-    tpl_name_festival: payload.wa_tpl_name_festival,
   });
   try {
     await api('api/settings.php', 'POST', payload);
@@ -7992,7 +7978,7 @@ function populateWAPage() {
   const mode  = wa.msg_mode || 'session';
   const radio = document.querySelector('input[name="wa-msg-mode"][value="' + mode + '"]');
   if (radio) { radio.checked = true; setWAMode(mode); }
-  const tpls  = ['invoice','reminder','overdue','paid','followup','partial','festival'];
+  const tpls  = ['invoice','reminder','overdue','paid','followup','festival'];
   tpls.forEach(t => {
     const nEl = document.getElementById('tpl-name-' + t);
     const lEl = document.getElementById('tpl-lang-' + t);
