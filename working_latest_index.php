@@ -6811,15 +6811,6 @@ function formatWAMsg(tpl, inv, client, settings) {
     }
   }
 
-  // Resolve portal link for this invoice
-  const invId = String(inv.id || inv._dbId || '');
-  let portalLink = '';
-  if (invId && _portalTokenCache && _portalTokenCache[invId]) {
-    portalLink = _portalBaseURL() + '?t=' + _portalTokenCache[invId];
-  } else if (invId && typeof _portalTokenMap !== 'undefined' && _portalTokenMap[invId]) {
-    portalLink = _portalBaseURL() + '?t=' + _portalTokenMap[invId].token;
-  }
-
   return (tpl||'')
     .replace(/{client_name}/g,  c.name||inv.clientName||inv.client_name||'Valued Client')
     .replace(/{invoice_no}/g,   inv.num||inv.invoice_number||'')
@@ -6836,7 +6827,7 @@ function formatWAMsg(tpl, inv, client, settings) {
     .replace(/{days_overdue}/g, String(daysOverdue))
     .replace(/{item_list}/g,    items||'')
     .replace(/{status}/g,       inv.status||'')
-    .replace(/{invoice_link}/g, portalLink)
+    .replace(/{invoice_link}/g, '')
     .replace(/{paid_amount}/g,      fmt_money(paidAmt, sym))
     .replace(/{remaining_amount}/g, fmt_money(remainingAmt, sym))
     .replace(/{payment_method}/g,   inv._payMethod   || '')
@@ -8044,8 +8035,6 @@ function getDefaultWATpl(type) {
 💳 *Pay via UPI:* {upi}
 🏦 {bank_details}
 
-🔗 *View Invoice:* {invoice_link}
-
 Thank you for choosing {company_name}!
 📞 {company_phone} | ✉ {company_email}`,
 
@@ -8075,8 +8064,6 @@ Please arrange payment at your earliest convenience.
 💳 *UPI:* {upi}
 🏦 {bank_details}
 
-🔗 *View Invoice:* {invoice_link}
-
 {company_name} | 📞 {company_phone}`,
 
     overdue: `Hi {client_name}! ⚠️ *Overdue Notice*
@@ -8092,8 +8079,6 @@ Please clear this payment immediately to avoid any inconvenience.
 💳 *UPI:* {upi}
 🏦 {bank_details}
 
-🔗 *View Invoice:* {invoice_link}
-
 {company_name} | 📞 {company_phone}`,
 
     followup: `Hi {client_name},
@@ -8106,8 +8091,6 @@ This is a follow-up regarding *Invoice #{invoice_no}* ({currency}{amount}).
 Kindly process the payment immediately or contact us to discuss.
 
 💳 *UPI:* {upi}
-
-🔗 *View Invoice:* {invoice_link}
 
 {company_name} | 📞 {company_phone} | ✉ {company_email}`,
 
@@ -8191,15 +8174,6 @@ function buildWATplParams(tplName, inv, client, settings) {
   const amount    = String(parseFloat(inv.amount||inv.grand_total)||0);
   const daysOver  = dueDate ? String(Math.max(0,Math.floor((new Date()-new Date(dueDate))/86400000))) : '0';
 
-  // Resolve portal link for template params
-  const tplInvId = String(inv.id || inv._dbId || '');
-  let tplPortalLink = '';
-  if (tplInvId && _portalTokenCache && _portalTokenCache[tplInvId]) {
-    tplPortalLink = _portalBaseURL() + '?t=' + _portalTokenCache[tplInvId];
-  } else if (tplInvId && typeof _portalTokenMap !== 'undefined' && _portalTokenMap[tplInvId]) {
-    tplPortalLink = _portalBaseURL() + '?t=' + _portalTokenMap[tplInvId].token;
-  }
-
   // Common params used across most templates
   const common = {
     client_name:    c.name || inv.client_name || 'Valued Client',
@@ -8213,16 +8187,15 @@ function buildWATplParams(tplName, inv, client, settings) {
     upi:            sc.upi || '',
     company_phone:  sc.phone || '',
     days_overdue:   daysOver,
-    portal_link:    tplPortalLink,
   };
 
   // Map template name to ordered params list
   const maps = {
-    invoice_created:   ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
-    payment_reminder:  ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
-    payment_overdue:   ['client_name','invoice_no','amount','days_overdue','upi','company_name','portal_link'],
-    payment_received:  ['client_name','invoice_no','amount','issue_date','company_name','portal_link'],
-    invoice_followup:  ['client_name','invoice_no','amount','days_overdue','upi','company_phone','portal_link'],
+    invoice_created:   ['client_name','invoice_no','amount','due_date','upi','company_name'],
+    payment_reminder:  ['client_name','invoice_no','amount','due_date','upi','company_name'],
+    payment_overdue:   ['client_name','invoice_no','amount','days_overdue','upi','company_name'],
+    payment_received:  ['client_name','invoice_no','amount','issue_date','company_name'],
+    invoice_followup:  ['client_name','invoice_no','amount','days_overdue','upi','company_phone'],
     festival_greeting: ['client_name','company_name','company_phone'],
   };
 
@@ -8325,14 +8298,6 @@ async function sendWAForInvoice(inv) {
     tplName = 'invoice_created'; statusLabel = 'Invoice';
   }
   const tpl = tplKey || tplDefault;
-  // Ensure portal link is cached before formatting message
-  const invIdForPortal = String(inv.id || inv._dbId || '');
-  if (invIdForPortal && !_portalTokenCache[invIdForPortal]) {
-    try {
-      const pr = await api('api/portal.php', 'POST', { invoice_id: parseInt(invIdForPortal) });
-      if (pr && pr.token) _portalTokenCache[invIdForPortal] = pr.token;
-    } catch(e) { /* portal link unavailable, continue without it */ }
-  }
   const msg = formatWAMsg(tpl, inv, client, STATE.settings);
   // Log message
   logWAMessage({ inv, client, type: tplName, msg, status: 'sending' });
