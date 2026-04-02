@@ -2645,33 +2645,14 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
           <span class="modal-title" id="rec-modal-title">New Recurring Schedule</span>
           <button class="modal-close" onclick="closeModal('modal-recurring')">×</button>
         </div>
-        <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+        <div style="padding:20px;display:flex;flex-direction:column;gap:14px;max-height:78vh;overflow-y:auto">
           <input type="hidden" id="rec-edit-id" value="">
-          <div class="field">
-            <label>Client <span style="color:var(--red)">*</span></label>
-            <select id="rec-client" style="width:100%" onchange="recClientChange()">
-              <option value="">— Select Client —</option>
-            </select>
-          </div>
+          <!-- Client + Frequency -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="field">
-              <label>Service / Description <span style="color:var(--red)">*</span></label>
-              <input type="text" id="rec-service" placeholder="e.g. Web Hosting" style="width:100%">
-            </div>
-            <div class="field">
-              <label>Amount (₹) <span style="color:var(--red)">*</span></label>
-              <input type="number" id="rec-amount" placeholder="0.00" min="0" step="0.01" style="width:100%">
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="field">
-              <label>GST Rate (%)</label>
-              <select id="rec-gst" style="width:100%">
-                <option value="0">0% (Exempt)</option>
-                <option value="5">5%</option>
-                <option value="12">12%</option>
-                <option value="18" selected>18%</option>
-                <option value="28">28%</option>
+              <label>Client <span style="color:var(--red)">*</span></label>
+              <select id="rec-client" style="width:100%" onchange="recClientChange()">
+                <option value="">— Select Client —</option>
               </select>
             </div>
             <div class="field">
@@ -2686,6 +2667,47 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
               </select>
             </div>
           </div>
+
+          <!-- Line Items -->
+          <div class="field">
+            <label>Line Items <span style="color:var(--red)">*</span></label>
+            <div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
+              <div style="display:grid;grid-template-columns:1fr 70px 100px 80px 30px;background:#EEF0F4;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">
+                <span style="padding:7px 10px">Description</span>
+                <span style="padding:7px 6px">Qty</span>
+                <span style="padding:7px 6px">Rate (₹)</span>
+                <span style="padding:7px 6px">GST %</span>
+                <span style="padding:7px 6px"></span>
+              </div>
+              <div id="rec-items-list"></div>
+            </div>
+            <button type="button" onclick="recAddItem()" style="margin-top:6px;padding:5px 12px;border:1.5px dashed var(--teal);border-radius:7px;background:transparent;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer"><i class="fas fa-plus"></i> Add Item</button>
+          </div>
+
+          <!-- Discount -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field">
+              <label>Discount</label>
+              <div style="display:flex;gap:6px">
+                <select id="rec-disc-type" style="width:90px;flex-shrink:0" onchange="recCalcTotals()">
+                  <option value="pct">%</option>
+                  <option value="fixed">₹ Fixed</option>
+                </select>
+                <input type="number" id="rec-disc" value="0" min="0" step="0.01" style="flex:1" oninput="recCalcTotals()">
+              </div>
+            </div>
+            <div class="field">
+              <label>Totals</label>
+              <div style="font-size:12px;padding:9px 12px;background:var(--bg);border-radius:8px;border:1.5px solid var(--border);line-height:1.8">
+                <span style="color:var(--muted)">Subtotal:</span> <span id="rec-tot-sub">₹0.00</span><br>
+                <span style="color:var(--muted)">Discount:</span> <span id="rec-tot-disc">₹0.00</span><br>
+                <span style="color:var(--muted)">GST:</span> <span id="rec-tot-gst">₹0.00</span><br>
+                <strong>Grand Total: <span id="rec-tot-grand" style="color:var(--teal)">₹0.00</span></strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dates -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="field">
               <label>Start Date <span style="color:var(--red)">*</span></label>
@@ -2711,7 +2733,7 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
             </div>
           </div>
           <div class="field">
-            <label>Notes <span style="font-size:11px;color:var(--muted)">(optional, shown on invoice)</span></label>
+            <label>Notes <span style="font-size:11px;color:var(--muted)">(optional)</span></label>
             <textarea id="rec-notes" rows="2" placeholder="e.g. Monthly retainer for web services" style="width:100%;resize:vertical"></textarea>
           </div>
           <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--teal-bg);border-radius:8px;border:1px solid var(--teal-l)">
@@ -10026,72 +10048,152 @@ function openRecurringModal(id) {
     document.getElementById('rec-modal-title').textContent = 'Edit Recurring Schedule';
     document.getElementById('rec-edit-id').value = id;
     document.getElementById('rec-client').value = s.clientId || '';
-    document.getElementById('rec-service').value = s.service || '';
-    document.getElementById('rec-amount').value = s.amount || '';
-    document.getElementById('rec-gst').value = s.gst !== undefined ? s.gst : 18;
     document.getElementById('rec-freq').value = s.freq || 'monthly';
     document.getElementById('rec-start').value = s.nextDate || today;
     document.getElementById('rec-end').value = s.endDate || '';
     document.getElementById('rec-due-days').value = s.dueDays || 15;
     document.getElementById('rec-template').value = s.template || 2;
     document.getElementById('rec-notes').value = s.notes || '';
+    // Load items (support legacy single-item schedules)
+    if (s.items && s.items.length) {
+      recItems = s.items.map(i => ({...i, id: Date.now() + Math.random()}));
+    } else {
+      recItems = [{ id: Date.now(), desc: s.service||'', qty: 1, rate: s.amount||0, gst: s.gst!==undefined?s.gst:18 }];
+    }
+    recRenderItems();
+    // Load discount
+    const rdtEl = document.getElementById('rec-disc-type'); if (rdtEl) rdtEl.value = s.discType || 'pct';
+    const rdEl  = document.getElementById('rec-disc');      if (rdEl)  rdEl.value  = s.discVal  || 0;
+    recCalcTotals();
   } else {
     document.getElementById('rec-modal-title').textContent = 'New Recurring Schedule';
     document.getElementById('rec-edit-id').value = '';
     document.getElementById('rec-client').value = '';
-    document.getElementById('rec-service').value = '';
-    document.getElementById('rec-amount').value = '';
-    document.getElementById('rec-gst').value = '18';
     document.getElementById('rec-freq').value = 'monthly';
     document.getElementById('rec-start').value = today;
     document.getElementById('rec-end').value = '';
     document.getElementById('rec-due-days').value = '15';
     document.getElementById('rec-template').value = '2';
     document.getElementById('rec-notes').value = '';
+    // Reset items and discount
+    const rdtEl2 = document.getElementById('rec-disc-type'); if (rdtEl2) rdtEl2.value = 'pct';
+    const rdEl2  = document.getElementById('rec-disc');      if (rdEl2)  rdEl2.value  = 0;
+    recItems = [];
+    recAddItem();
+    recCalcTotals();
   }
   recFreqChange();
   openModal('modal-recurring');
 }
 
-function saveRecurring() {
-  const clientId = document.getElementById('rec-client').value;
-  const service  = document.getElementById('rec-service').value.trim();
-  const amount   = parseFloat(document.getElementById('rec-amount').value) || 0;
-  const gst      = parseFloat(document.getElementById('rec-gst').value) || 0;
-  const freq     = document.getElementById('rec-freq').value;
-  const start    = document.getElementById('rec-start').value;
-  const endDate  = document.getElementById('rec-end').value || '';
-  const dueDays  = parseInt(document.getElementById('rec-due-days').value) || 15;
-  const template = parseInt(document.getElementById('rec-template').value) || 2;
-  const notes    = document.getElementById('rec-notes').value.trim();
-  const editId   = document.getElementById('rec-edit-id').value;
+// ── Recurring Items ──────────────────────────────────────────
+let recItems = [];
 
-  if (!clientId) { toast('⚠️ Please select a client', 'warning'); return; }
-  if (!service)  { toast('⚠️ Please enter a service description', 'warning'); return; }
-  if (!amount)   { toast('⚠️ Please enter an amount', 'warning'); return; }
-  if (!start)    { toast('⚠️ Please set a start date', 'warning'); return; }
+function recAddItem(item) {
+  const id = Date.now() + Math.random();
+  recItems.push({ id, desc: item?.desc||'', qty: item?.qty||1, rate: item?.rate||0, gst: item?.gst!==undefined?item.gst:18 });
+  recRenderItems();
+  recCalcTotals();
+}
+
+function recRemoveItem(id) {
+  recItems = recItems.filter(x => x.id !== id);
+  recRenderItems();
+  recCalcTotals();
+}
+
+function recRenderItems() {
+  const list = document.getElementById('rec-items-list');
+  if (!list) return;
+  list.innerHTML = recItems.map(item => `
+    <div style="display:grid;grid-template-columns:1fr 70px 100px 80px 30px;border-top:1px solid var(--border);align-items:center">
+      <input value="${item.desc}" placeholder="Description" style="border:none;background:transparent;padding:8px 10px;font-size:13px;outline:none;width:100%"
+        oninput="recItems.find(x=>x.id===${item.id}).desc=this.value">
+      <input type="number" value="${item.qty}" min="1" style="border:none;background:transparent;padding:8px 6px;font-size:13px;outline:none;text-align:center;width:100%"
+        oninput="recItems.find(x=>x.id===${item.id}).qty=parseFloat(this.value)||1;recCalcTotals()">
+      <input type="number" value="${item.rate}" min="0" step="0.01" style="border:none;background:transparent;padding:8px 6px;font-size:13px;outline:none;text-align:right;width:100%"
+        oninput="recItems.find(x=>x.id===${item.id}).rate=parseFloat(this.value)||0;recCalcTotals()">
+      <select style="border:none;background:transparent;padding:8px 4px;font-size:12px;outline:none;width:100%"
+        onchange="recItems.find(x=>x.id===${item.id}).gst=parseFloat(this.value);recCalcTotals()">
+        ${[0,5,12,18,28].map(g=>`<option value="${g}"${g===item.gst?' selected':''}>${g}%</option>`).join('')}
+      </select>
+      <button onclick="recRemoveItem(${item.id})" style="border:none;background:transparent;color:var(--red);cursor:pointer;padding:4px;font-size:14px" title="Remove">×</button>
+    </div>`).join('');
+}
+
+function recCalcTotals() {
+  let sub = 0, gstTotal = 0;
+  recItems.forEach(item => {
+    const line = (item.qty||1) * (item.rate||0);
+    sub += line;
+    gstTotal += line * (item.gst||0) / 100;
+  });
+  const discType = document.getElementById('rec-disc-type')?.value || 'pct';
+  const discVal  = parseFloat(document.getElementById('rec-disc')?.value) || 0;
+  const discAmt  = discType === 'fixed' ? Math.min(discVal, sub) : sub * discVal / 100;
+  const discFactor = sub > 0 ? (1 - discAmt/sub) : 1;
+  const gstAfterDisc = gstTotal * discFactor;
+  const grand = sub - discAmt + gstAfterDisc;
+  const fmt = v => '₹' + v.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('rec-tot-sub',   fmt(sub));
+  set('rec-tot-disc',  fmt(discAmt));
+  set('rec-tot-gst',   fmt(gstAfterDisc));
+  set('rec-tot-grand', fmt(grand));
+}
+
+function saveRecurring() {
+  const clientId  = document.getElementById('rec-client').value;
+  const freq      = document.getElementById('rec-freq').value;
+  const start     = document.getElementById('rec-start').value;
+  const endDate   = document.getElementById('rec-end').value || '';
+  const dueDays   = parseInt(document.getElementById('rec-due-days').value) || 15;
+  const template  = parseInt(document.getElementById('rec-template').value) || 2;
+  const notes     = document.getElementById('rec-notes').value.trim();
+  const editId    = document.getElementById('rec-edit-id').value;
+  const discType  = document.getElementById('rec-disc-type')?.value || 'pct';
+  const discVal   = parseFloat(document.getElementById('rec-disc')?.value) || 0;
+
+  if (!clientId)         { toast('⚠️ Please select a client', 'warning'); return; }
+  if (!recItems.length)  { toast('⚠️ Add at least one line item', 'warning'); return; }
+  if (recItems.some(i => !i.desc.trim())) { toast('⚠️ All items need a description', 'warning'); return; }
+  if (!start)            { toast('⚠️ Please set a start date', 'warning'); return; }
 
   const client = STATE.clients.find(c => String(c.id) === String(clientId));
+
+  // Calculate totals
+  let sub = 0, gstTotal = 0;
+  recItems.forEach(item => {
+    const line = (item.qty||1) * (item.rate||0);
+    sub += line;
+    gstTotal += line * (item.gst||0) / 100;
+  });
+  const discAmt    = discType === 'fixed' ? Math.min(discVal, sub) : sub * discVal / 100;
+  const discPct    = sub > 0 ? (discAmt / sub * 100) : 0;
+  const discFactor = sub > 0 ? (1 - discAmt/sub) : 1;
+  const gstAmt     = gstTotal * discFactor;
+  const grand      = sub - discAmt + gstAmt;
+  // Legacy single-item compat fields (use first item)
+  const service    = recItems.map(i => i.desc).join(', ');
+  const amount     = sub;
+
   const schedules = recGetAll();
-  const gstAmt = amount * gst / 100;
-  const grand  = amount + gstAmt;
+  const schedData = {
+    clientId, clientName: client?.name || '',
+    service, amount, gst: 0, gstAmt, grand,
+    items: recItems.map(({id,...rest}) => rest),
+    discType, discVal, discAmt, discPct,
+    freq, nextDate: start, endDate, dueDays, template, notes,
+  };
 
   if (editId) {
     const idx = schedules.findIndex(x => x.id === editId);
     if (idx >= 0) {
-      schedules[idx] = { ...schedules[idx], clientId, clientName: client?.name || '', service, amount, gst, gstAmt, grand, freq, nextDate: start, endDate, dueDays, template, notes };
+      schedules[idx] = { ...schedules[idx], ...schedData };
       toast('✅ Schedule updated!', 'success');
     }
   } else {
-    schedules.push({
-      id: 'rec_' + Date.now(),
-      clientId, clientName: client?.name || '',
-      service, amount, gst, gstAmt, grand,
-      freq, nextDate: start, endDate, dueDays, template, notes,
-      status: 'active',
-      generatedCount: 0,
-      createdAt: new Date().toISOString()
-    });
+    schedules.push({ id: 'rec_' + Date.now(), ...schedData, status: 'active', generatedCount: 0, createdAt: new Date().toISOString() });
     toast('✅ Recurring schedule created!', 'success');
   }
   recSaveAll(schedules);
@@ -10139,20 +10241,42 @@ async function runRecurringCheck() {
       const dueDate = (() => { const d = new Date(issueDate); d.setDate(d.getDate() + (s.dueDays||15)); return d.toISOString().slice(0,10); })();
       const invoiceNum = (STATE.settings.invoice_prefix || STATE.settings.invoicePrefix || 'INV-') + new Date().getFullYear() + '-' + String(Math.floor(Math.random()*900)+100);
 
+      // Build items from multi-item schedule or fall back to legacy single-item
+      const recInvItems = (s.items && s.items.length)
+        ? s.items.map(i => ({ desc: i.desc, itemType: 'Service', qty: parseFloat(i.qty)||1, rate: parseFloat(i.rate)||0, gst: parseFloat(i.gst)||0 }))
+        : [{ desc: s.service, itemType: 'Service', qty: 1, rate: s.amount, gst: s.gst || 0 }];
+
+      // Recalculate totals from items + discount
+      let recSub = 0, recGstRaw = 0;
+      recInvItems.forEach(item => {
+        const line = item.qty * item.rate;
+        recSub    += line;
+        recGstRaw += line * item.gst / 100;
+      });
+      const recDiscAmt    = s.discType === 'fixed' ? Math.min(s.discVal||0, recSub) : recSub * (s.discVal||0) / 100;
+      const recDiscPct    = recSub > 0 ? (recDiscAmt / recSub * 100) : 0;
+      const recDiscFactor = recSub > 0 ? (1 - recDiscAmt/recSub) : 1;
+      const recGstAmt     = recGstRaw * recDiscFactor;
+      const recGrand      = recSub - recDiscAmt + recGstAmt;
+
+      // Use user's saved PDF preferences from settings
+      const savedPopt = STATE.settings.popt_prefs || {};
+      const recPopt = Object.assign({ bank:true, qr:false, sign:true, logo:true, clientLogo:false, notes:true, tnc:true, gstCol:true, footer:true, watermark:false }, savedPopt);
+
       const payload = {
         invoice_number: invoiceNum,
         client_id: client ? parseInt(s.clientId) : null,
         client_name: s.clientName || '',
-        service_type: s.service,
+        service_type: recInvItems.map(i => i.desc).join(', '),
         issued_date: issueDate,
         due_date: dueDate,
         status: 'Pending',
         currency: '₹',
-        subtotal: s.amount,
-        discount_pct: 0,
-        discount_amt: 0,
-        gst_amount: s.gstAmt || 0,
-        grand_total: s.grand || s.amount,
+        subtotal: recSub,
+        discount_pct: recDiscPct,
+        discount_amt: recDiscAmt,
+        gst_amount: recGstAmt,
+        grand_total: recGrand,
         notes: s.notes || `Auto-generated recurring invoice (${recFreqLabel(s.freq)})`,
         bank_details: STATE.settings.defaultBank || '',
         terms: STATE.settings.defaultTnC || '',
@@ -10160,11 +10284,11 @@ async function runRecurringCheck() {
         client_logo: '',
         signature: STATE.settings.signature || '',
         qr_code: '',
-        template_id: s.template || 2,
+        template_id: s.template || STATE.settings.activeTemplate || 2,
         generated_by: 'OPTMS Tech — Recurring',
         show_generated: 1,
-        pdf_options: { bank:true, qr:false, sign:true, logo:true, clientLogo:false, notes:true, tnc:true, gstCol:true, footer:true, watermark:false },
-        items: [{ desc: s.service, itemType: 'Service', qty: 1, rate: s.amount, gst: s.gst || 0 }]
+        pdf_options: recPopt,
+        items: recInvItems
       };
       await api('api/invoices.php', 'POST', payload);
       toSave[i].nextDate = recNextDate(s.nextDate, s.freq);

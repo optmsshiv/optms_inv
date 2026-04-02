@@ -1299,6 +1299,7 @@ const SERVER = {
               <th onclick="sortTable('issued')" class="sortable">Issue Date <i class="fas fa-sort"></i></th>
               <th onclick="sortTable('due')" class="sortable">Due Date <i class="fas fa-sort"></i></th>
               <th onclick="sortTable('amount')" class="sortable">Amount <i class="fas fa-sort"></i></th>
+              <th style="text-align:center">Paid</th>
               <th onclick="sortTable('status')" class="sortable">Status <i class="fas fa-sort"></i></th>
               <th>Actions</th>
             </tr>
@@ -1325,7 +1326,7 @@ const SERVER = {
               <div class="field"><label>Invoice #</label><input id="f-num" value="" placeholder="Auto-generated" oninput="livePreview()"></div>
               <div class="field"><label>Service Type</label>
                 <select id="f-service" onchange="livePreview()">
-                  <option value="">-- Quick Select Service Type --</option>
+                  <option value="">-- Quick Select Service Type--</option>
                   <option>Website Development</option><option>School ERP</option>
                   <option>Mobile App</option><option>Maintenance</option>
                   <option>Consultation</option><option>Domain & Hosting</option><option>Other</option>
@@ -3634,6 +3635,24 @@ function applyFiltersAndRender() {
     const avatar = c.image
       ? `<div class="cc-avatar" style="background:${c.color}"><img src="${c.image}" alt="${c.name}"></div>`
       : `<div class="cc-avatar" style="background:${c.color}">${initials}</div>`;
+
+    // Paid amount cell
+    const invId = String(inv.id);
+    const paidPayments = STATE.payments.filter(p => p.invoice_id && String(p.invoice_id) === invId);
+    const totalPaid = paidPayments.reduce((s,p) => s + parseFloat(p.amount||0), 0);
+    let paidCell = '';
+    if (inv.status === 'Paid') {
+      paidCell = `<span style="display:inline-flex;align-items:center;gap:4px;background:#E8F5E9;color:#2E7D32;font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px"><i class="fas fa-check" style="font-size:9px"></i> Full</span>`;
+    } else if (inv.status === 'Partial' && totalPaid > 0) {
+      const remaining = Math.max(0, inv.amount - totalPaid);
+      paidCell = `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+        <span style="background:#E8F5E9;color:#2E7D32;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;font-family:var(--mono)">${fmt_money(totalPaid)}</span>
+        <span style="color:var(--red);font-size:10px;font-weight:600;font-family:var(--mono)">-${fmt_money(remaining)}</span>
+      </div>`;
+    } else {
+      paidCell = `<span style="color:var(--muted2);font-size:12px">—</span>`;
+    }
+
     return `<tr data-id="${inv.id}">
       <td><input type="checkbox" class="inv-check" value="${inv.id}"></td>
       <td><code style="font-family:var(--mono);color:var(--teal);font-weight:600">${inv.num}</code></td>
@@ -3642,6 +3661,7 @@ function applyFiltersAndRender() {
       <td>${inv.issued}</td>
       <td>${inv.due}</td>
       <td><strong style="font-family:var(--mono)">${fmt_money(inv.amount)}</strong></td>
+      <td style="text-align:center">${paidCell}</td>
       <td><span class="badge badge-${inv.status.toLowerCase()}">${inv.status}</span></td>
       <td>
         <div class="action-cell">
@@ -3651,7 +3671,7 @@ function applyFiltersAndRender() {
         </div>
       </td>
     </tr>`;
-  }).join('') || `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-file-invoice" style="font-size:32px;margin-bottom:12px;display:block;opacity:.3"></i>No invoices found</td></tr>`;
+  }).join('') || `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-file-invoice" style="font-size:32px;margin-bottom:12px;display:block;opacity:.3"></i>No invoices found</td></tr>`;
 
   renderPagination();
   const info = document.getElementById('tfInfo');
@@ -3888,7 +3908,8 @@ function resetCreateForm() {
   _sv('f-disc', '0');
   const discTypeEl = document.getElementById('f-disc-type'); if (discTypeEl) discTypeEl.value = 'pct';
   const _gstEl2 = document.getElementById('f-gst'); if (_gstEl2) _gstEl2.value = String(STATE.settings.defaultGST ?? 18);
-  const notesEl = document.getElementById('f-notes'); if (notesEl) notesEl.value = '';
+  const DEFAULT_NOTES = 'Thank you for choosing OPTMS Tech. Payment is due within 15 days of invoice date. Late payments may incur a 2% monthly interest charge.';
+  const notesEl = document.getElementById('f-notes'); if (notesEl) notesEl.value = STATE.settings.defaultNotes || DEFAULT_NOTES;
   const svcEl = document.getElementById('f-service'); if (svcEl) svcEl.value = '';
   const currEl = document.getElementById('f-currency'); if (currEl) currEl.value = '₹';
   const tplEl = document.getElementById('f-template'); if (tplEl) tplEl.value = String(STATE.settings.activeTemplate || 1);
@@ -6699,6 +6720,14 @@ window.saveWASettings = async function() {
     wa_auto_remind:   tog('twa3'),
     wa_auto_overdue:  tog('twa4'),
     wa_auto_followup: tog('twa5'),
+    wa_msg_mode:           document.querySelector('input[name="wa-msg-mode"]:checked')?.value || 'session',
+    wa_tpl_name_invoice:   val('tpl-name-invoice'),
+    wa_tpl_name_reminder:  val('tpl-name-reminder'),
+    wa_tpl_name_overdue:   val('tpl-name-overdue'),
+    wa_tpl_name_paid:      val('tpl-name-paid'),
+    wa_tpl_name_followup:  val('tpl-name-followup'),
+    wa_tpl_name_partial:   val('tpl-name-partial'),
+    wa_tpl_name_festival:  val('tpl-name-festival'),
   };
   // Update STATE immediately with all keys
   if (!STATE.settings.wa) STATE.settings.wa = {};
@@ -6714,6 +6743,14 @@ window.saveWASettings = async function() {
     auto_partial: payload.wa_auto_partial,
     auto_remind: payload.wa_auto_remind, auto_overdue: payload.wa_auto_overdue,
     auto_followup: payload.wa_auto_followup,
+    msg_mode: payload.wa_msg_mode,
+    tpl_name_invoice:  payload.wa_tpl_name_invoice,
+    tpl_name_reminder: payload.wa_tpl_name_reminder,
+    tpl_name_overdue:  payload.wa_tpl_name_overdue,
+    tpl_name_paid:     payload.wa_tpl_name_paid,
+    tpl_name_followup: payload.wa_tpl_name_followup,
+    tpl_name_partial:  payload.wa_tpl_name_partial,
+    tpl_name_festival: payload.wa_tpl_name_festival,
   });
   try {
     await api('api/settings.php', 'POST', payload);
@@ -6774,6 +6811,15 @@ function formatWAMsg(tpl, inv, client, settings) {
     }
   }
 
+  // Resolve portal link for this invoice
+  const invId = String(inv.id || inv._dbId || '');
+  let portalLink = '';
+  if (invId && _portalTokenCache && _portalTokenCache[invId]) {
+    portalLink = _portalBaseURL() + '?t=' + _portalTokenCache[invId];
+  } else if (invId && typeof _portalTokenMap !== 'undefined' && _portalTokenMap[invId]) {
+    portalLink = _portalBaseURL() + '?t=' + _portalTokenMap[invId].token;
+  }
+
   return (tpl||'')
     .replace(/{client_name}/g,  c.name||inv.clientName||inv.client_name||'Valued Client')
     .replace(/{invoice_no}/g,   inv.num||inv.invoice_number||'')
@@ -6790,7 +6836,7 @@ function formatWAMsg(tpl, inv, client, settings) {
     .replace(/{days_overdue}/g, String(daysOverdue))
     .replace(/{item_list}/g,    items||'')
     .replace(/{status}/g,       inv.status||'')
-    .replace(/{invoice_link}/g, '')
+    .replace(/{invoice_link}/g, portalLink)
     .replace(/{paid_amount}/g,      fmt_money(paidAmt, sym))
     .replace(/{remaining_amount}/g, fmt_money(remainingAmt, sym))
     .replace(/{payment_method}/g,   inv._payMethod   || '')
@@ -7406,6 +7452,8 @@ function normalizeInvoice(inv) {
   if (!inv.bank && inv.bank_details) inv.bank = inv.bank_details;
   // Unify tnc field aliases
   if (!inv.tnc && inv.terms) inv.tnc = inv.terms;
+  // Fall back to default notes if empty
+  if (!inv.notes) inv.notes = 'Thank you for choosing OPTMS Tech. Payment is due within 15 days of invoice date. Late payments may incur a 2% monthly interest charge.';
   return inv;
 }
 
@@ -7956,7 +8004,7 @@ function populateWAPage() {
   const mode  = wa.msg_mode || 'session';
   const radio = document.querySelector('input[name="wa-msg-mode"][value="' + mode + '"]');
   if (radio) { radio.checked = true; setWAMode(mode); }
-  const tpls  = ['invoice','reminder','overdue','paid','followup','festival'];
+  const tpls  = ['invoice','reminder','overdue','paid','followup','partial','festival'];
   tpls.forEach(t => {
     const nEl = document.getElementById('tpl-name-' + t);
     const lEl = document.getElementById('tpl-lang-' + t);
@@ -7996,6 +8044,8 @@ function getDefaultWATpl(type) {
 💳 *Pay via UPI:* {upi}
 🏦 {bank_details}
 
+🔗 *View Invoice:* {invoice_link}
+
 Thank you for choosing {company_name}!
 📞 {company_phone} | ✉ {company_email}`,
 
@@ -8025,6 +8075,8 @@ Please arrange payment at your earliest convenience.
 💳 *UPI:* {upi}
 🏦 {bank_details}
 
+🔗 *View Invoice:* {invoice_link}
+
 {company_name} | 📞 {company_phone}`,
 
     overdue: `Hi {client_name}! ⚠️ *Overdue Notice*
@@ -8040,6 +8092,8 @@ Please clear this payment immediately to avoid any inconvenience.
 💳 *UPI:* {upi}
 🏦 {bank_details}
 
+🔗 *View Invoice:* {invoice_link}
+
 {company_name} | 📞 {company_phone}`,
 
     followup: `Hi {client_name},
@@ -8052,6 +8106,8 @@ This is a follow-up regarding *Invoice #{invoice_no}* ({currency}{amount}).
 Kindly process the payment immediately or contact us to discuss.
 
 💳 *UPI:* {upi}
+
+🔗 *View Invoice:* {invoice_link}
 
 {company_name} | 📞 {company_phone} | ✉ {company_email}`,
 
@@ -8135,6 +8191,15 @@ function buildWATplParams(tplName, inv, client, settings) {
   const amount    = String(parseFloat(inv.amount||inv.grand_total)||0);
   const daysOver  = dueDate ? String(Math.max(0,Math.floor((new Date()-new Date(dueDate))/86400000))) : '0';
 
+  // Resolve portal link for template params
+  const tplInvId = String(inv.id || inv._dbId || '');
+  let tplPortalLink = '';
+  if (tplInvId && _portalTokenCache && _portalTokenCache[tplInvId]) {
+    tplPortalLink = _portalBaseURL() + '?t=' + _portalTokenCache[tplInvId];
+  } else if (tplInvId && typeof _portalTokenMap !== 'undefined' && _portalTokenMap[tplInvId]) {
+    tplPortalLink = _portalBaseURL() + '?t=' + _portalTokenMap[tplInvId].token;
+  }
+
   // Common params used across most templates
   const common = {
     client_name:    c.name || inv.client_name || 'Valued Client',
@@ -8148,15 +8213,16 @@ function buildWATplParams(tplName, inv, client, settings) {
     upi:            sc.upi || '',
     company_phone:  sc.phone || '',
     days_overdue:   daysOver,
+    portal_link:    tplPortalLink,
   };
 
   // Map template name to ordered params list
   const maps = {
-    invoice_created:   ['client_name','invoice_no','amount','due_date','upi','company_name'],
-    payment_reminder:  ['client_name','invoice_no','amount','due_date','upi','company_name'],
-    payment_overdue:   ['client_name','invoice_no','amount','days_overdue','upi','company_name'],
-    payment_received:  ['client_name','invoice_no','amount','issue_date','company_name'],
-    invoice_followup:  ['client_name','invoice_no','amount','days_overdue','upi','company_phone'],
+    invoice_created:   ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
+    payment_reminder:  ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
+    payment_overdue:   ['client_name','invoice_no','amount','days_overdue','upi','company_name','portal_link'],
+    payment_received:  ['client_name','invoice_no','amount','issue_date','company_name','portal_link'],
+    invoice_followup:  ['client_name','invoice_no','amount','days_overdue','upi','company_phone','portal_link'],
     festival_greeting: ['client_name','company_name','company_phone'],
   };
 
@@ -8172,12 +8238,24 @@ async function sendWA(phone, message, tplName, inv, client) {
   const clean = String(phone).replace(/\D/g, '');
   if (!clean) throw new Error('No phone number');
   if (token && pid) {
+    // Map verbose tplName strings to STATE tpl_name_* keys
+    const TPL_KEY_MAP = {
+      'invoice_created':  'invoice',
+      'payment_received': 'paid',
+      'partial_payment':  'partial',
+      'split_payment':    'paid',
+      'payment_overdue':  'overdue',
+      'payment_reminder': 'reminder',
+      'invoice_followup': 'followup',
+      'festival':         'festival',
+    };
+    const tplKey = TPL_KEY_MAP[tplName] || tplName;
     // Use approved template if name configured AND mode is template
-    const useTemplate = wa.msg_mode === 'template' && tplName && wa['tpl_name_' + tplName];
+    const useTemplate = wa.msg_mode === 'template' && tplKey && wa['tpl_name_' + tplKey];
     const tplOpts = useTemplate ? {
-      name:   wa['tpl_name_' + tplName],
-      lang:   wa['tpl_lang_' + tplName] || 'en',
-      params: inv ? buildWATplParams(wa['tpl_name_' + tplName], inv, client, STATE.settings) : [],
+      name:   wa['tpl_name_' + tplKey],
+      lang:   wa['tpl_lang_' + tplKey] || 'en',
+      params: inv ? buildWATplParams(wa['tpl_name_' + tplKey], inv, client, STATE.settings) : [],
     } : null;
     return await sendWABusinessMsg(clean, message, token, pid, tplOpts);
   }
@@ -8247,6 +8325,14 @@ async function sendWAForInvoice(inv) {
     tplName = 'invoice_created'; statusLabel = 'Invoice';
   }
   const tpl = tplKey || tplDefault;
+  // Ensure portal link is cached before formatting message
+  const invIdForPortal = String(inv.id || inv._dbId || '');
+  if (invIdForPortal && !_portalTokenCache[invIdForPortal]) {
+    try {
+      const pr = await api('api/portal.php', 'POST', { invoice_id: parseInt(invIdForPortal) });
+      if (pr && pr.token) _portalTokenCache[invIdForPortal] = pr.token;
+    } catch(e) { /* portal link unavailable, continue without it */ }
+  }
   const msg = formatWAMsg(tpl, inv, client, STATE.settings);
   // Log message
   logWAMessage({ inv, client, type: tplName, msg, status: 'sending' });
