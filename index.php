@@ -4866,7 +4866,7 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
         <span style="color:${T.grandtext};font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px">Grand Total</span>
         <span style="color:${T.grandtext};font-family:monospace;font-size:19px;font-weight:800;letter-spacing:-1px">${fmt_money(d.grand,d.sym)}</span>
       </div>
-      <!-- Partial payment history (instalments + remaining due) -->
+      <!-- Partial payment history + settlement discount (instalments + remaining due) -->
       ${(()=>{
         const invId2 = d.invId ? String(d.invId) : '';
         const isPartial2 = d.status === 'Partial';
@@ -4879,19 +4879,28 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
             if (da - db !== 0) return da - db;
             return (parseInt(a.id)||0) - (parseInt(b.id)||0);
           });
-        const totalPaid2 = pays2.reduce((s,p) => s + parseFloat(p.amount||0), 0);
-        const remaining2 = Math.max(0, (d.grand||0) - totalPaid2);
+        const totalPaid2   = pays2.reduce((s,p) => s + parseFloat(p.amount||0), 0);
+        const totalSettle2 = pays2.reduce((s,p) => s + parseFloat(p.settlement_discount||0), 0);
+        const remaining2   = Math.max(0, (d.grand||0) - totalPaid2 - totalSettle2);
         if (totalPaid2 < 0.01) return '';
         const instalRows2 = pays2.map((p,i) => {
           const dtF = p.date||p.payment_date ? new Date(p.date||p.payment_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '';
           const meth = p.method||'';
+          const pSettle2 = parseFloat(p.settlement_discount||0);
           return `<div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px dashed ${T.totbr}">
-            <span style="color:#388E3C">${meth.startsWith('Split')?'⚡':'✓'} Instalment ${i+1}${dtF?' · '+dtF:''}${meth?' · '+meth.replace('Split: ','').substring(0,28):''}</span>
+            <span style="color:#388E3C">${meth.startsWith('Split')?'⚡':'✓'} Instalment ${i+1}${dtF?' · '+dtF:''}${meth?' · '+meth.replace('Split: ','').substring(0,28):''}${pSettle2>0?' (incl. '+fmt_money(pSettle2,d.sym)+' disc)':''}</span>
             <span style="font-family:monospace;font-weight:600;color:#388E3C">-${fmt_money(parseFloat(p.amount||0),d.sym)}</span>
           </div>`;
         }).join('');
+        const settleRow2 = totalSettle2 > 0.001
+          ? `<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid ${T.totbr}">
+              <span style="color:#E65100;font-weight:700">✂ Settlement Discount</span>
+              <span style="font-family:monospace;font-weight:700;color:#E65100">-${fmt_money(totalSettle2,d.sym)}</span>
+            </div>`
+          : '';
         const paidLabel = isPaid2 ? '✅ Paid in Full' : `💚 Total Paid${pays2.length>1?' ('+pays2.length+' instalments)':''}`;
         const paidRow2 = `<div style="padding:8px 22px;border-top:1px solid ${T.totbr}">
+          ${settleRow2}
           <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;${pays2.length>1?'border-bottom:2px solid #A5D6A7':''}">
             <span style="color:#388E3C;font-weight:700">${paidLabel}</span>
             <span style="font-family:monospace;font-weight:800;color:#388E3C">-${fmt_money(totalPaid2,d.sym)}</span>
