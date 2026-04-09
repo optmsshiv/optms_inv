@@ -52,7 +52,6 @@ switch ($method) {
       $inv['due']      = $inv['due_date'];
       $inv['amount']   = (float)$inv['grand_total'];
       $inv['disc']     = (float)$inv['discount_pct'];
-      $inv['discount_type'] = $inv['discount_type'] ?? 'percent';
       $inv['currency'] = $inv['currency'];
       $inv['template'] = (int)$inv['template_id'];
       $inv['subtotal'] = (float)$inv['subtotal'];
@@ -89,7 +88,6 @@ switch ($method) {
       $inv['due']       = $inv['due_date'];
       $inv['amount']    = (float)$inv['grand_total'];
       $inv['disc']      = (float)$inv['discount_pct'];
-      $inv['discount_type'] = $inv['discount_type'] ?? 'percent';
       $inv['currency']  = $inv['currency'];
       $inv['template']  = (int)$inv['template_id'];
       $inv['subtotal']  = (float)$inv['subtotal'];
@@ -134,18 +132,16 @@ switch ($method) {
     }
     $stmt = $db->prepare('
       INSERT INTO invoices (invoice_number,client_id,client_name,service_type,issued_date,due_date,
-        status,currency,subtotal,discount_pct,discount_type,discount_amt,gst_amount,grand_total,
+        status,currency,subtotal,discount_pct,discount_amt,gst_amount,grand_total,
         notes,bank_details,terms,company_logo,client_logo,signature,qr_code,
         template_id,generated_by,show_generated,pdf_options,created_by)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
     try {
       $stmt->execute([
         $input['invoice_number'], nullIfEmpty($input['client_id']??null), $input['client_name']??'',
         $input['service_type']??'', nullIfEmpty($input['issued_date']??null), nullIfEmpty($input['due_date']??null),
         $input['status']??'Draft', $input['currency']??'₹',
-        $input['subtotal']??0, $input['discount_pct']??0,
-        in_array($input['discount_type']??'percent', ['percent','flat']) ? $input['discount_type'] : 'percent',
-        $input['discount_amt']??0,
+        $input['subtotal']??0, $input['discount_pct']??0, $input['discount_amt']??0,
         $input['gst_amount']??0, $input['grand_total']??0,
         $input['notes']??'', $input['bank_details']??'', $input['terms']??'',
         $input['company_logo']??'', $input['client_logo']??'',
@@ -194,7 +190,7 @@ switch ($method) {
     if (!$id) { jsonResponse(['error'=>'ID required'], 400); }
     $stmt = $db->prepare('
       UPDATE invoices SET client_id=?,client_name=?,service_type=?,issued_date=?,due_date=?,
-        status=?,currency=?,subtotal=?,discount_pct=?,discount_type=?,discount_amt=?,gst_amount=?,grand_total=?,
+        status=?,currency=?,subtotal=?,discount_pct=?,discount_amt=?,gst_amount=?,grand_total=?,
         notes=?,bank_details=?,terms=?,company_logo=?,client_logo=?,signature=?,qr_code=?,
         template_id=?,generated_by=?,show_generated=?,pdf_options=?
       WHERE id=?');
@@ -203,7 +199,6 @@ switch ($method) {
         nullIfEmpty($input['client_id']??null), $input['client_name']??'', $input['service_type']??'',
         nullIfEmpty($input['issued_date']??null), nullIfEmpty($input['due_date']??null), $input['status']??'Draft',
         $input['currency']??'₹', $input['subtotal']??0, $input['discount_pct']??0,
-        in_array($input['discount_type']??'percent', ['percent','flat']) ? $input['discount_type'] : 'percent',
         $input['discount_amt']??0, $input['gst_amount']??0, $input['grand_total']??0,
         $input['notes']??'', $input['bank_details']??'', $input['terms']??'',
         $input['company_logo']??'', $input['client_logo']??'',

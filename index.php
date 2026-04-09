@@ -5680,7 +5680,7 @@ async function saveInvoice() {
     invoice_number: d.num, client_id: selVal ? parseInt(selVal) : null,
     client_name: d.cname, service_type: d.svc, issued_date: d.date, due_date: d.due,
     status: d.status, currency: d.sym, subtotal: d.sub,
-    discount_pct: d.disc, discount_amt: d.discAmt, discount_type: d.discType, discount_raw: d.discRaw, gst_amount: d.gstAmt, grand_total: d.grand,
+    discount_pct: d.disc, discount_amt: d.discAmt, discount_type: (d.discType==='fixed'?'flat':'percent'), gst_amount: d.gstAmt, grand_total: d.grand,
     notes: d.notes || '', bank_details: d.bank || '', terms: d.tnc || '',
     company_logo: d.companyLogo, client_logo: d.clientLogo,
     signature: d.signature, qr_code: d.qrUrl,
@@ -5846,16 +5846,19 @@ function loadInvoiceIntoForm(inv) {
   document.getElementById('f-date').value     = inv.issued;
   document.getElementById('f-due').value      = inv.due;
   // Restore discount type + raw value.
-  // discount_type is saved going forward. For legacy invoices:
-  //   - if discount_amt is a whole integer (e.g. 7100) → it was a fixed ₹ discount
-  //   - otherwise fall back to pct using disc (the percentage value)
-  const _discAmt = parseFloat(inv.discount_amt) || 0;
-  const _discPct = parseFloat(inv.disc || inv.discount_pct) || 0;
-  const _isLegacyFixed = !inv.discount_type && _discAmt > 0 && Number.isInteger(_discAmt);
-  const _discType = inv.discount_type || (_isLegacyFixed ? 'fixed' : 'pct');
-  const _discRaw  = (inv.discount_raw !== undefined && inv.discount_raw !== null)
-    ? parseFloat(inv.discount_raw)
-    : (_discType === 'fixed' ? _discAmt : _discPct);
+  // discount_type comes from DB as 'percent' or 'flat'; HTML select uses 'pct' or 'fixed'.
+  const _discAmt   = parseFloat(inv.discount_amt) || 0;
+  const _discPct   = parseFloat(inv.disc || inv.discount_pct) || 0;
+  // Translate DB enum value → HTML select value
+  const _dbDiscType = inv.discount_type || '';
+  let _discType;
+  if (_dbDiscType === 'flat')    { _discType = 'fixed'; }
+  else if (_dbDiscType === 'percent') { _discType = 'pct'; }
+  else {
+    // Legacy fallback: discount_amt is a whole integer → was fixed ₹
+    _discType = (_discAmt > 0 && Number.isInteger(_discAmt)) ? 'fixed' : 'pct';
+  }
+  const _discRaw = _discType === 'fixed' ? _discAmt : _discPct;
   document.getElementById('f-disc').value = _discRaw;
   const _discTypeEl = document.getElementById('f-disc-type');
   if (_discTypeEl) _discTypeEl.value = _discType;
