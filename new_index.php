@@ -1325,10 +1325,12 @@ const SERVER = {
             <div class="form-grid g2">
               <div class="field"><label>Invoice #</label><input id="f-num" value="" placeholder="Auto-generated" oninput="livePreview()"></div>
               <div class="field"><label>Service Type</label>
-                <select id="f-service" onchange="onServiceSelect(this.value);livePreview()" style="margin-bottom:5px">
-                  <option value="">-- Select from your services --</option>
+                <select id="f-service" onchange="livePreview()">
+                  <option value="">-- Quick Select Service Type--</option>
+                  <option>Website Development</option><option>School ERP</option>
+                  <option>Mobile App</option><option>Maintenance</option>
+                  <option>Consultation</option><option>Domain & Hosting</option><option>Other</option>
                 </select>
-                <input id="f-service-custom" placeholder="Or type a custom service description…" oninput="syncServiceText(this.value);livePreview()" style="font-size:12.5px">
               </div>
               <div class="field"><label>Issue Date</label><input type="date" id="f-date" oninput="updateDueFromIssue();livePreview()"></div>
               <div class="field"><label>Due Date</label><input type="date" id="f-due" oninput="livePreview()"></div>
@@ -3474,7 +3476,6 @@ window.addEventListener('DOMContentLoaded', () => {
   setTodayDates();
   addItem();
   updateClientDropdown();
-  updateServiceDropdown();
   renderDashboard();
   renderInvoicesTable();
   renderClients();
@@ -3542,7 +3543,7 @@ function showPage(name, el) {
   }
   document.getElementById('breadcrumb').textContent = breadcrumbs[name] || name;
   if (name === 'reports') renderReports();
-  if (name === 'create') { if (!STATE._editingNext) { STATE.editingInvoiceId = null; resetCreateForm(); setTimeout(livePreview,50); } STATE._editingNext = false; updateServiceDropdown(); }
+  if (name === 'create') { if (!STATE._editingNext) { STATE.editingInvoiceId = null; resetCreateForm(); setTimeout(livePreview,50); } STATE._editingNext = false; }
   if (name === 'payments') renderPayments();
   if (name === 'products') renderProducts();
   if (name === 'clients') { updateClientDropdown(); renderClients(); }
@@ -4136,7 +4137,6 @@ function resetCreateForm() {
   const DEFAULT_NOTES = 'Thank you for choosing OPTMS Tech. Payment is due within 15 days of invoice date. Late payments may incur a 2% monthly interest charge.';
   const notesEl = document.getElementById('f-notes'); if (notesEl) notesEl.value = STATE.settings.defaultNotes || DEFAULT_NOTES;
   const svcEl = document.getElementById('f-service'); if (svcEl) svcEl.value = '';
-  const svcCustomEl = document.getElementById('f-service-custom'); if (svcCustomEl) svcCustomEl.value = '';
   const currEl = document.getElementById('f-currency'); if (currEl) currEl.value = '₹';
   const tplEl = document.getElementById('f-template'); if (tplEl) tplEl.value = String(STATE.settings.activeTemplate || 1);
   const clientSelEl = document.getElementById('f-client-select'); if (clientSelEl) clientSelEl.value = '';
@@ -4276,8 +4276,7 @@ function getFormData() {
   const num     = document.getElementById('f-num')?.value||(STATE.settings.prefix||'INV-')+String(STATE.invoices.length+1).padStart(3,'0');
   const date    = document.getElementById('f-date')?.value||'';
   const due     = document.getElementById('f-due')?.value||'';
-  // Service type: read from custom text input (select just triggers autofill)
-  const svc = document.getElementById('f-service-custom')?.value || document.getElementById('f-service')?.value || '';
+  const svc     = document.getElementById('f-service')?.value||'';
   const cname   = document.getElementById('f-cname')?.value||'Client Name';
   const cperson = document.getElementById('f-cperson')?.value||'';
   const cemail  = document.getElementById('f-cemail')?.value||'';
@@ -5836,13 +5835,7 @@ function openPreviewModal(id) {
 function loadInvoiceIntoForm(inv) {
   const c = STATE.clients.find(x=>x.id===inv.client);
   document.getElementById('f-num').value      = inv.num || inv.invoice_number || '';
-  document.getElementById('f-service-custom').value = inv.service || '';
-  // Try to match the select option too
-  const _fsSel = document.getElementById('f-service');
-  if (_fsSel) {
-    const _match = Array.from(_fsSel.options).find(o => o.value === (inv.service||''));
-    _fsSel.value = _match ? (inv.service||'') : '';
-  }
+  document.getElementById('f-service').value  = inv.service || '';
   document.getElementById('f-date').value     = inv.issued;
   document.getElementById('f-due').value      = inv.due;
   document.getElementById('f-disc').value     = inv.disc||0;
@@ -6562,7 +6555,7 @@ async function saveEditProd(id) {
   try {
     await api('api/products.php?id=' + (parseInt(id.replace('p',''))||0), 'PUT', payload);
     STATE.products[idx] = { ...STATE.products[idx], ...payload };
-    renderProducts(); updateServiceDropdown(); toast('✅ Updated!', 'success');
+    renderProducts(); toast('✅ Updated!', 'success');
   } catch(e) { toast('❌ ' + e.message, 'error'); }
 }
 
@@ -6611,7 +6604,7 @@ async function saveNewProduct() {
     const r = await api('api/products.php');
     STATE.products = Array.isArray(r.data) ? r.data : STATE.products;
     document.getElementById('add-product-row')?.remove();
-    renderProducts(); updateServiceDropdown(); toast('✅ "' + n + '" added!', 'success');
+    renderProducts(); toast('✅ "' + n + '" added!', 'success');
   } catch(e) { toast('❌ ' + e.message, 'error'); }
 }
 
@@ -6633,7 +6626,7 @@ async function deleteProduct(id) {
   try {
     await api('api/products.php?id=' + dbId, 'DELETE');
     STATE.products = STATE.products.filter(x => x.id !== id);
-    renderProducts(); updateServiceDropdown(); toast('🗑️ Deleted', 'info');
+    renderProducts(); toast('🗑️ Deleted', 'info');
   } catch(e) { toast('❌ ' + e.message, 'error'); }
 }
 
@@ -7494,73 +7487,6 @@ function getInitials(name) {
 // ══════════════════════════════════════════
 // NEW FEATURE FUNCTIONS
 // ══════════════════════════════════════════
-function updateServiceDropdown() {
-  const sel = document.getElementById('f-service');
-  if (!sel) return;
-  // Group products by category
-  const groups = {};
-  (STATE.products || []).forEach(p => {
-    const cat = p.category || 'General';
-    if (!groups[cat]) groups[cat] = [];
-    groups[cat].push(p);
-  });
-  let html = '<option value="">-- Select from your services --</option>';
-  if (!STATE.products || STATE.products.length === 0) {
-    html += '<option disabled value="">No services yet — add in Services & Products page</option>';
-  } else {
-    Object.entries(groups).forEach(([cat, prods]) => {
-      html += `<optgroup label="${cat}">`;
-      prods.forEach(p => {
-        const rate = parseFloat(p.rate) > 0
-          ? ` — ₹${parseFloat(p.rate).toLocaleString('en-IN', {minimumFractionDigits:0, maximumFractionDigits:2})}`
-          : '';
-        const gst = parseFloat(p.gst) > 0 ? ` | GST ${p.gst}%` : '';
-        html += `<option value="${p.name}" data-rate="${p.rate||0}" data-gst="${p.gst||0}" data-type="${p.category||'Service'}">${p.name}${rate}${gst}</option>`;
-      });
-      html += '</optgroup>';
-    });
-  }
-  sel.innerHTML = html;
-  // Re-match current custom text value if editing
-  const customInp = document.getElementById('f-service-custom');
-  if (customInp && customInp.value) {
-    const match = Array.from(sel.options).find(o => o.value === customInp.value);
-    sel.value = match ? customInp.value : '';
-  }
-}
-
-function onServiceSelect(val) {
-  if (!val) return;
-  // Sync text input
-  const customInp = document.getElementById('f-service-custom');
-  if (customInp) customInp.value = val;
-  // Auto-fill first line item if it's empty
-  if (formItems.length === 1 && !formItems[0].desc && !formItems[0].rate) {
-    const sel = document.getElementById('f-service');
-    const opt = sel ? Array.from(sel.options).find(o => o.value === val) : null;
-    if (opt) {
-      const rate    = parseFloat(opt.dataset.rate) || 0;
-      const gst     = parseFloat(opt.dataset.gst)  || 0;
-      const itype   = opt.dataset.type || 'Service';
-      formItems[0].desc     = val;
-      formItems[0].rate     = rate;
-      formItems[0].gst      = gst;
-      formItems[0].itemType = itype;
-      renderFormItems();
-      livePreview();
-      if (rate > 0) toast(`✅ Auto-filled: ${val} @ ₹${rate.toLocaleString('en-IN')} | GST ${gst}%`, 'success');
-    }
-  }
-}
-
-function syncServiceText(val) {
-  // Keep select in sync when user types manually
-  const sel = document.getElementById('f-service');
-  if (!sel) return;
-  const match = Array.from(sel.options).find(o => o.value === val);
-  sel.value = match ? val : '';
-}
-
 function updateClientDropdown() {
   const s=document.getElementById('f-client-select'); if(!s) return;
   s.innerHTML='<option value="">-- Quick Select Client --</option>'+STATE.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
