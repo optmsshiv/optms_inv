@@ -5845,11 +5845,17 @@ function loadInvoiceIntoForm(inv) {
   }
   document.getElementById('f-date').value     = inv.issued;
   document.getElementById('f-due').value      = inv.due;
-  // Restore discount: prefer raw value + type; fall back to discount_amt for legacy fixed invoices
-  const _discType = inv.discount_type || (parseFloat(inv.discount_amt) > 0 && !(parseFloat(inv.disc||0) > 0) ? 'fixed' : 'pct');
+  // Restore discount type + raw value.
+  // discount_type is saved going forward. For legacy invoices:
+  //   - if discount_amt is a whole integer (e.g. 7100) → it was a fixed ₹ discount
+  //   - otherwise fall back to pct using disc (the percentage value)
+  const _discAmt = parseFloat(inv.discount_amt) || 0;
+  const _discPct = parseFloat(inv.disc || inv.discount_pct) || 0;
+  const _isLegacyFixed = !inv.discount_type && _discAmt > 0 && Number.isInteger(_discAmt);
+  const _discType = inv.discount_type || (_isLegacyFixed ? 'fixed' : 'pct');
   const _discRaw  = (inv.discount_raw !== undefined && inv.discount_raw !== null)
     ? parseFloat(inv.discount_raw)
-    : (_discType === 'fixed' ? parseFloat(inv.discount_amt)||0 : parseFloat(inv.disc)||0);
+    : (_discType === 'fixed' ? _discAmt : _discPct);
   document.getElementById('f-disc').value = _discRaw;
   const _discTypeEl = document.getElementById('f-disc-type');
   if (_discTypeEl) _discTypeEl.value = _discType;
