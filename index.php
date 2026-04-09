@@ -5845,7 +5845,7 @@ function loadInvoiceIntoForm(inv) {
   }
   document.getElementById('f-date').value     = inv.issued;
   document.getElementById('f-due').value      = inv.due;
-    // Restore discount: prefer raw value + type; fall back to discount_amt for legacy fixed invoices
+  // Restore discount: prefer raw value + type; fall back to discount_amt for legacy fixed invoices
   const _discType = inv.discount_type || (parseFloat(inv.discount_amt) > 0 && !(parseFloat(inv.disc||0) > 0) ? 'fixed' : 'pct');
   const _discRaw  = (inv.discount_raw !== undefined && inv.discount_raw !== null)
     ? parseFloat(inv.discount_raw)
