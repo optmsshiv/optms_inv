@@ -2243,14 +2243,28 @@ Kindly process payment immediately or contact us to discuss.
               <details style="margin-top:14px">
                 <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--muted);list-style:none;display:flex;align-items:center;gap:6px"><i class="fas fa-file-alt"></i> Suggested content for Meta approval</summary>
                 <div style="margin-top:10px;background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--border)">
-                  <details style="margin-bottom:6px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--teal)">invoice_created — UTILITY</summary><pre style="font-size:11px;background:#fff;padding:8px;border-radius:6px;margin-top:4px;white-space:pre-wrap;border:1px solid var(--border)">Hi {{1}},
+                  <details style="margin-bottom:6px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--teal)">invoice_created — UTILITY</summary><pre style="font-size:11px;background:#fff;padding:8px;border-radius:6px;margin-top:4px;white-space:pre-wrap;border:1px solid var(--border)">
+                    Hi {{1}},
 
-Your invoice #{{2}} for ₹{{3}} is ready.
-Due Date: {{4}}
-Pay via UPI: {{5}}
-
-Thank you for choosing {{6}}!
-View Invoice: {{7}}</pre></details>
+                       *Invoice -  #{{2}}* from {{6}}
+                       *Summary :*
+                      - Service: {{3}}
+                      - *Issue Date:* {{4}}
+                      - *Due Date:* {{5}}
+                      - *Total Amount Due :* *{{7}}*
+                      *Breakdown*
+                      {{8}}
+                                  
+                      *Pay via UPI:* {{9}}
+                                  
+                      {{10}}
+                      *Invoice Link*
+                      {{11}}
+                                  
+                      Thank you for choosing {{6}}!
+                      {{12}} | ✉ {{13}}
+                  </pre>
+                </details>
                   <details style="margin-bottom:6px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--amber)">payment_reminder — UTILITY</summary><pre style="font-size:11px;background:#fff;padding:8px;border-radius:6px;margin-top:4px;white-space:pre-wrap;border:1px solid var(--border)">Hi {{1}},
 
 Friendly reminder: Invoice #{{2}} for ₹{{3}} is due on {{4}}.
@@ -8685,6 +8699,9 @@ function buildWATplParams(tplName, inv, client, settings) {
     company_name:         sc.company || '',
     upi:                  sc.upi || '',
     company_phone:        sc.phone || '',
+    company_email:        sc.email || '',
+    bank_details:         sc.defaultBank || sc.bank || '',
+    item_list:            (inv.items||[]).map(i => `• ${i.desc||''}: ${(inv.currency||'₹')}${((i.qty||1)*(i.rate||0)).toLocaleString('en-IN')}`).join('') || '',
     days_overdue:         daysOver,
     portal_link:          tplPortalLink,
     settlement_discount:  settleDiscStr,
@@ -8694,7 +8711,7 @@ function buildWATplParams(tplName, inv, client, settings) {
 
   // Map template name to ordered params list
   const maps = {
-    invoice_created:   ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
+    invoice_created:   ['client_name','invoice_no','service','issue_date','due_date','amount','currency','item_list','upi','bank_details','portal_link','company_phone','company_email','company_name'],
     payment_reminder:  ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
     payment_overdue:   ['client_name','invoice_no','amount','days_overdue','upi','company_name','portal_link'],
     payment_received:  ['client_name','invoice_no','amount','settlement_discount','issue_date','company_name','portal_link'],
