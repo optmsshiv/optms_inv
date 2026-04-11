@@ -244,9 +244,16 @@ tr:last-child td{border:none}
 .pmt-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
 .tfoot-label{text-align:right;color:var(--muted);font-size:12px;padding:6px 12px}
 .tfoot-val{font-family:var(--mono);font-size:13px;padding:6px 12px;text-align:right}
-/* tfoot colspan hack: desktop=6 hidden cols, mobile=4 */
-.tfoot-spacer{display:table-cell}
+.tfoot-spacer{padding:0;border:none}
 @media(max-width:600px){.tfoot-spacer{display:none}}
+/* Full-width tfoot row with flex label+val */
+.tfoot-row td{padding:0;border:none}
+.tfoot-inner{display:flex;justify-content:flex-end;align-items:center;gap:0;padding:5px 12px}
+.tfoot-inner .lbl{color:var(--muted);font-size:12px;min-width:80px;text-align:right;padding-right:16px}
+.tfoot-inner .val{font-family:var(--mono);font-size:13px;min-width:90px;text-align:right}
+.tfoot-grand td{padding:0;border:none;border-top:2px solid var(--border);background:var(--bg)}
+.tfoot-grand .tfoot-inner .lbl{font-weight:700;font-size:13px;color:var(--text)}
+.tfoot-grand .tfoot-inner .val{font-size:16px;font-weight:800;color:var(--teal)}
 .pmt-row:last-child{border:none}
 .pmt-ic{width:32px;height:32px;border-radius:8px;background:var(--green-bg);color:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .pmt-info{flex:1;min-width:0}
@@ -354,9 +361,11 @@ tr:last-child td{border:none}
     </div>
   </div>
   <div style="text-align:right">
-    <div class="inv-num"><?= htmlspecialchars($inv['invoice_number'] ?? '') ?></div>
-    <div class="status-pill" style="background:<?= status_bg($inv['status'] ?? '') ?>;border-color:<?= status_col($inv['status'] ?? '') ?>40;color:<?= status_col($inv['status'] ?? '') ?>">
-      <?= status_label($inv['status'] ?? '') ?>
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap">
+      <div class="inv-num"><?= htmlspecialchars($inv['invoice_number'] ?? '') ?></div>
+      <div class="status-pill" style="background:<?= status_bg($inv['status'] ?? '') ?>;border-color:<?= status_col($inv['status'] ?? '') ?>40;color:<?= status_col($inv['status'] ?? '') ?>">
+        <?= status_label($inv['status'] ?? '') ?>
+      </div>
     </div>
   </div>
 </div>
@@ -501,46 +510,20 @@ if ($items):
       $calcGrandTotal = $calcSubtotal - $discountAmt + $calcGst;
     ?>
     <tfoot>
-      <tr>
-        <td colspan="4" class="tfoot-label">Subtotal</td>
-        <td class="tfoot-spacer"></td><td class="tfoot-spacer"></td>
-        <td class="r tfoot-val"><?= fmt_inr($calcSubtotal, $sym) ?></td>
-      </tr>
+      <tr class="tfoot-row"><td colspan="7"><div class="tfoot-inner"><span class="lbl">Subtotal</span><span class="val"><?= fmt_inr($calcSubtotal, $sym) ?></span></div></td></tr>
       <?php if ($discountAmt > 0):
         $amtAfterDisc = $calcSubtotal - $discountAmt;
         $discFactor   = $calcSubtotal > 0 ? (1 - $discountAmt / $calcSubtotal) : 1;
         $calcGstAfter = $calcGst * $discFactor;
         $calcGrandTotal = $amtAfterDisc + $calcGstAfter;
       ?>
-      <tr>
-        <td colspan="4" class="tfoot-label">
-          Discount<?= $discountPct > 0 ? ' (' . number_format($discountPct, 2) . '%)' : '' ?>
-        </td>
-        <td class="tfoot-spacer"></td><td class="tfoot-spacer"></td>
-        <td class="r tfoot-val" style="color:var(--red)">− <?= fmt_inr($discountAmt, $sym) ?></td>
-      </tr>
-      <tr>
-        <td colspan="4" class="tfoot-label">Amount after Discount</td>
-        <td class="tfoot-spacer"></td><td class="tfoot-spacer"></td>
-        <td class="r tfoot-val" style="font-weight:600"><?= fmt_inr($amtAfterDisc, $sym) ?></td>
-      </tr>
-      <tr>
-        <td colspan="4" class="tfoot-label">GST</td>
-        <td class="tfoot-spacer"></td><td class="tfoot-spacer"></td>
-        <td class="r tfoot-val"><?= fmt_inr($calcGstAfter, $sym) ?></td>
-      </tr>
+      <tr class="tfoot-row"><td colspan="7"><div class="tfoot-inner"><span class="lbl">Discount<?= $discountPct > 0 ? ' ('.(int)$discountPct.'%)' : '' ?></span><span class="val" style="color:var(--red)">− <?= fmt_inr($discountAmt, $sym) ?></span></div></td></tr>
+      <tr class="tfoot-row"><td colspan="7"><div class="tfoot-inner"><span class="lbl">After Discount</span><span class="val" style="font-weight:600"><?= fmt_inr($amtAfterDisc, $sym) ?></span></div></td></tr>
+      <tr class="tfoot-row"><td colspan="7"><div class="tfoot-inner"><span class="lbl">GST</span><span class="val"><?= fmt_inr($calcGstAfter, $sym) ?></span></div></td></tr>
       <?php else: ?>
-      <tr>
-        <td colspan="4" class="tfoot-label">GST</td>
-        <td class="tfoot-spacer"></td><td class="tfoot-spacer"></td>
-        <td class="r tfoot-val"><?= fmt_inr($calcGst, $sym) ?></td>
-      </tr>
+      <tr class="tfoot-row"><td colspan="7"><div class="tfoot-inner"><span class="lbl">GST</span><span class="val"><?= fmt_inr($calcGst, $sym) ?></span></div></td></tr>
       <?php endif; ?>
-      <tr style="background:var(--bg);border-top:2px solid var(--border)">
-        <td colspan="4" style="text-align:right;font-weight:700;padding:11px 12px;font-size:13px">Grand Total</td>
-        <td class="tfoot-spacer"></td><td class="tfoot-spacer"></td>
-        <td class="r" style="font-family:var(--mono);font-size:16px;font-weight:800;color:var(--teal);padding:11px 12px"><?= fmt_inr($calcGrandTotal, $sym) ?></td>
-      </tr>
+      <tr class="tfoot-grand"><td colspan="7"><div class="tfoot-inner"><span class="lbl">Grand Total</span><span class="val"><?= fmt_inr($calcGrandTotal, $sym) ?></span></div></td></tr>
     </tfoot>
   </table>
   </div><!-- end table-scroll -->
