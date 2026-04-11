@@ -8700,7 +8700,7 @@ function buildWATplParams(tplName, inv, client, settings) {
     upi:                  sc.upi || '',
     company_phone:        sc.phone || '',
     company_email:        sc.email || '',
-    bank_details:         sc.defaultBank || sc.bank || '',
+    bank_details:         sc.defaultBank || sc.bank || ''.replace(/[\r\n]+/g,' ').trim(),
     item_list:            (inv.items||[]).map(i => `• ${i.desc||''}: ${(inv.currency||'₹')}${((i.qty||1)*(i.rate||0)).toLocaleString('en-IN')}`).join('') || '',
     days_overdue:         daysOver,
     portal_link:          tplPortalLink,
