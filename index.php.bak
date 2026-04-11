@@ -7078,19 +7078,12 @@ window.saveWASettings = async function() {
     wa_auto_followup: tog('twa5'),
     wa_msg_mode:           document.querySelector('input[name="wa-msg-mode"]:checked')?.value || 'session',
     wa_tpl_name_invoice:   val('tpl-name-invoice'),
-    wa_tpl_lang_invoice:   val('tpl-lang-invoice')   || 'en_US',
     wa_tpl_name_reminder:  val('tpl-name-reminder'),
-    wa_tpl_lang_reminder:  val('tpl-lang-reminder')  || 'en_US',
     wa_tpl_name_overdue:   val('tpl-name-overdue'),
-    wa_tpl_lang_overdue:   val('tpl-lang-overdue')   || 'en_US',
     wa_tpl_name_paid:      val('tpl-name-paid'),
-    wa_tpl_lang_paid:      val('tpl-lang-paid')      || 'en_US',
     wa_tpl_name_followup:  val('tpl-name-followup'),
-    wa_tpl_lang_followup:  val('tpl-lang-followup')  || 'en_US',
     wa_tpl_name_partial:   val('tpl-name-partial'),
-    wa_tpl_lang_partial:   val('tpl-lang-partial')   || 'en_US',
     wa_tpl_name_festival:  val('tpl-name-festival'),
-    wa_tpl_lang_festival:  val('tpl-lang-festival')  || 'en_US',
   };
   // Update STATE immediately with all keys
   if (!STATE.settings.wa) STATE.settings.wa = {};
@@ -7108,19 +7101,12 @@ window.saveWASettings = async function() {
     auto_followup: payload.wa_auto_followup,
     msg_mode: payload.wa_msg_mode,
     tpl_name_invoice:  payload.wa_tpl_name_invoice,
-    tpl_lang_invoice:  payload.wa_tpl_lang_invoice,
     tpl_name_reminder: payload.wa_tpl_name_reminder,
-    tpl_lang_reminder: payload.wa_tpl_lang_reminder,
     tpl_name_overdue:  payload.wa_tpl_name_overdue,
-    tpl_lang_overdue:  payload.wa_tpl_lang_overdue,
     tpl_name_paid:     payload.wa_tpl_name_paid,
-    tpl_lang_paid:     payload.wa_tpl_lang_paid,
     tpl_name_followup: payload.wa_tpl_name_followup,
-    tpl_lang_followup: payload.wa_tpl_lang_followup,
     tpl_name_partial:  payload.wa_tpl_name_partial,
-    tpl_lang_partial:  payload.wa_tpl_lang_partial,
     tpl_name_festival: payload.wa_tpl_name_festival,
-    tpl_lang_festival: payload.wa_tpl_lang_festival,
   });
   try {
     await api('api/settings.php', 'POST', payload);
@@ -7963,17 +7949,17 @@ async function loadAllData() {
         msg_mode:      s.wa_msg_mode || 'session',
         // Template names
         tpl_name_invoice:  s.wa_tpl_name_invoice  || '',
-        tpl_lang_invoice:  s.wa_tpl_lang_invoice  || 'en_US',
+        tpl_lang_invoice:  s.wa_tpl_lang_invoice  || 'en',
         tpl_name_reminder: s.wa_tpl_name_reminder || '',
-        tpl_lang_reminder: s.wa_tpl_lang_reminder || 'en_US',
+        tpl_lang_reminder: s.wa_tpl_lang_reminder || 'en',
         tpl_name_overdue:  s.wa_tpl_name_overdue  || '',
-        tpl_lang_overdue:  s.wa_tpl_lang_overdue  || 'en_US',
+        tpl_lang_overdue:  s.wa_tpl_lang_overdue  || 'en',
         tpl_name_paid:     s.wa_tpl_name_paid     || '',
-        tpl_lang_paid:     s.wa_tpl_lang_paid     || 'en_US',
+        tpl_lang_paid:     s.wa_tpl_lang_paid     || 'en',
         tpl_name_followup: s.wa_tpl_name_followup || '',
-        tpl_lang_followup: s.wa_tpl_lang_followup || 'en_US',
+        tpl_lang_followup: s.wa_tpl_lang_followup || 'en',
         tpl_name_festival: s.wa_tpl_name_festival || '',
-        tpl_lang_festival: s.wa_tpl_lang_festival || 'en_US',
+        tpl_lang_festival: s.wa_tpl_lang_festival || 'en',
       };
       // Parse TPL_CUSTOM settings
       if (window.TPL_CUSTOM) {
@@ -8473,7 +8459,7 @@ function populateWAPage() {
     const nEl = document.getElementById('tpl-name-' + t);
     const lEl = document.getElementById('tpl-lang-' + t);
     if (nEl) nEl.value = wa['tpl_name_' + t] || '';
-    if (lEl) lEl.value = wa['tpl_lang_' + t] || 'en_US';
+    if (lEl) lEl.value = wa['tpl_lang_' + t] || 'en';
   });
 }
 
@@ -8723,24 +8709,16 @@ function buildWATplParams(tplName, inv, client, settings) {
     remaining_amount:     remAmtStr,
   };
 
-  // Map template key → ordered params (supports both short keys and verbose keys)
+  // Map template name to ordered params list
+  // invoice_created:   ['client_name','invoice_no','service','issue_date','due_date','amount','currency','item_list','upi','bank_details','portal_link','company_phone','company_email','company_name'],
   const maps = {
-    // Short keys (used after TPL_KEY_MAP lookup in sendWA)
-    invoice:          ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
-    paid:             ['client_name','invoice_no','amount','settlement_discount','issue_date','company_name','portal_link'],
-    partial:          ['client_name','invoice_no','paid_amount','remaining_amount','due_date','portal_link'],
-    reminder:         ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
-    overdue:          ['client_name','invoice_no','amount','days_overdue','upi','company_name','portal_link'],
-    followup:         ['client_name','invoice_no','amount','days_overdue','upi','company_phone','portal_link'],
-    festival:         ['client_name','company_name','company_phone'],
-    // Verbose aliases for backwards compatibility
-    invoice_created:  ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
-    payment_reminder: ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
-    payment_overdue:  ['client_name','invoice_no','amount','days_overdue','upi','company_name','portal_link'],
-    payment_received: ['client_name','invoice_no','amount','settlement_discount','issue_date','company_name','portal_link'],
-    invoice_followup: ['client_name','invoice_no','amount','days_overdue','upi','company_phone','portal_link'],
-    partial_payment:  ['client_name','invoice_no','paid_amount','remaining_amount','due_date','portal_link'],
-    festival_greeting:['client_name','company_name','company_phone'],
+    invoice_created:   ['invoice_no','company_name','client_name','service','issue_date','due_date','amount','upi','bank_details','portal_link'],
+    payment_reminder:  ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
+    payment_overdue:   ['client_name','invoice_no','amount','days_overdue','upi','company_name','portal_link'],
+    payment_received:  ['client_name','invoice_no','amount','settlement_discount','issue_date','company_name','portal_link'],
+    invoice_followup:  ['client_name','invoice_no','amount','days_overdue','upi','company_phone','portal_link'],
+    partial_payment:   ['client_name','invoice_no','paid_amount','remaining_amount','due_date','portal_link'],
+    festival_greeting: ['client_name','company_name','company_phone'],
   };
 
   const paramKeys = maps[tplName] || Object.keys(common);
@@ -8776,8 +8754,8 @@ async function sendWA(phone, message, tplName, inv, client) {
     const useTemplate = wa.msg_mode === 'template' && tplKey && wa['tpl_name_' + tplKey];
     const tplOpts = useTemplate ? {
       name:   wa['tpl_name_' + tplKey],
-      lang:   wa['tpl_lang_' + tplKey] || 'en_US',
-      params: inv ? buildWATplParams(tplKey, inv, client, STATE.settings) : [],
+      lang:   wa['tpl_lang_' + tplKey] || 'en',
+      params: inv ? buildWATplParams(tplName, inv, client, STATE.settings) : [],
     } : null;
     return await sendWABusinessMsg(clean, message, token, pid, tplOpts);
   }
