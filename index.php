@@ -3594,7 +3594,10 @@ function updateDashStats() {
   const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
   const lastYear  = thisMonth === 0 ? thisYear - 1 : thisYear;
 
-  const paid    = STATE.invoices.filter(i=>i.status==='Paid').reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  // const paid    = STATE.invoices.filter(i=>i.status==='Paid').reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  const paid = STATE.payments
+  .filter(p => { const inv = STATE.invoices.find(i => String(i.id) === String(p.invoice_id)); return inv && inv.status === 'Paid'; })
+  .reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
   // Include partial payments actually received (from payments table)
   const partialReceived = STATE.payments
     .filter(p => { const inv = STATE.invoices.find(i=>String(i.id)===String(p.invoice_id)); return inv && inv.status !== 'Paid'; })
