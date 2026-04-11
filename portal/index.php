@@ -147,6 +147,28 @@ function status_col($s) {
         default     => '#888'
     };
 }
+function status_bg($s) {
+    return match($s) {
+        'Paid'      => '#E8F5E9',
+        'Pending'   => '#FFF8E1',
+        'Overdue'   => '#FFEBEE',
+        'Partial'   => '#FFF3E0',
+        'Draft'     => '#F5F5F5',
+        'Cancelled' => '#EEEEEE',
+        default     => '#F5F5F5'
+    };
+}
+function status_label($s) {
+    return match($s) {
+        'Paid'      => '✓ Paid',
+        'Pending'   => '⏳ Pending',
+        'Overdue'   => '⚠ Overdue',
+        'Partial'   => '◑ Partially Paid',
+        'Draft'     => '✎ Draft',
+        'Cancelled' => '✕ Cancelled',
+        default     => $s
+    };
+}
 
 $sym           = $inv['currency'] ?: '₹';
 $totalAmt      = (float)($inv['amount'] ?? 0);
@@ -237,19 +259,56 @@ tr:last-child td{border:none}
 .footer{text-align:center;margin-top:24px;font-size:11px;color:var(--muted);line-height:1.9}
 .error-box{background:#fff;border-radius:14px;border:2px solid #FFCDD2;padding:48px 32px;text-align:center;max-width:460px;margin:80px auto;box-shadow:0 4px 24px rgba(0,0,0,.08)}
 
+@media print{
+  body{padding:0;background:#fff}
+  .sticky-bar,.upi-pay-btns,.wa-contact-btn,.pdf-btn{display:none!important}
+  .card{box-shadow:none;border:1px solid #ddd;break-inside:avoid}
+  .portal-header{border-radius:0;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+}
+
+/* UPI Pay buttons */
+.upi-pay-btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.upi-pay-btn{flex:1;min-width:100px;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 12px;border-radius:10px;font-size:12px;font-weight:700;text-decoration:none;border:2px solid;transition:.2s;cursor:pointer}
+.upi-pay-btn:active{transform:scale(.97)}
+.btn-gpay{background:#fff;color:#1A1A2E;border-color:#E5E7EB}
+.btn-phonepe{background:#5f259f;color:#fff;border-color:#5f259f}
+.btn-paytm{background:#00BAF2;color:#fff;border-color:#00BAF2}
+.btn-upi{background:var(--teal);color:#fff;border-color:var(--teal)}
+
+/* Sticky header */
+.sticky-bar{position:sticky;top:0;z-index:50;background:rgba(245,246,250,.95);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:8px 0;margin-bottom:4px;display:none;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border)}
+.sticky-bar.show{display:flex}
+.sticky-inv{font-family:var(--mono);font-weight:800;font-size:14px;color:var(--teal)}
+.sticky-status{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px}
+
+/* WhatsApp contact btn */
+.wa-contact-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;background:#25D366;color:#fff;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;margin-top:10px;transition:.2s}
+.wa-contact-btn:active{background:#1ebe57}
+
+/* Download PDF btn */
+.pdf-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;background:var(--bg);color:var(--text);border:2px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;margin-top:8px;cursor:pointer;transition:.2s}
+.pdf-btn:active{background:var(--border)}
+
+/* Progress label improvement */
+.progress-meta .paid-label{font-weight:700;color:var(--green)}
+.progress-meta .bal-label{font-weight:700;color:var(--red)}
+
 @media(max-width:600px){
+  body{padding:12px 10px 80px}
   .portal-header{flex-direction:column;align-items:flex-start}
   .info-grid{grid-template-columns:1fr}
-  .amount-strip{grid-template-columns:1fr}
+  .amount-strip{grid-template-columns:1fr 1fr}
   /* Line items table — scrollable on mobile */
   .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:0 0 var(--r) var(--r)}
-  table{font-size:12px;min-width:480px}
-  th,td{padding:7px 8px}
-  /* Hide less important columns on very small screens */
+  table{font-size:12px;min-width:420px}
+  th,td{padding:8px 10px}
   .col-qty,.col-amount{display:none}
   .col-qty-h,.col-amount-h{display:none}
+  .upi-pay-btns{gap:6px}
+  .upi-pay-btn{font-size:11px;padding:9px 8px}
 }
 @media(max-width:400px){
+  .amount-strip{grid-template-columns:1fr}
   table{min-width:360px;font-size:11px}
   th,td{padding:6px 6px}
 }
@@ -258,6 +317,15 @@ tr:last-child td{border:none}
 <body>
 <div class="wrap">
 
+<!-- Sticky bar (shown on scroll) -->
+<?php if (!$error && $inv): ?>
+<div class="sticky-bar" id="stickyBar">
+  <span class="sticky-inv"><?= htmlspecialchars($inv['invoice_number'] ?? '') ?></span>
+  <span class="sticky-status" style="background:<?= status_bg($inv['status'] ?? '') ?>;color:<?= status_col($inv['status'] ?? '') ?>">
+    <?= status_label($inv['status'] ?? '') ?>
+  </span>
+</div>
+<?php endif; ?>
 <?php if ($error): ?>
 <div class="error-box">
   <i class="fas fa-link-slash" style="font-size:44px;color:#FFCDD2;display:block;margin-bottom:18px"></i>
@@ -282,9 +350,8 @@ tr:last-child td{border:none}
   </div>
   <div style="text-align:right">
     <div class="inv-num"><?= htmlspecialchars($inv['invoice_number'] ?? '') ?></div>
-    <div class="status-pill">
-      <span style="width:6px;height:6px;border-radius:50%;background:<?= status_col($inv['status'] ?? '') ?>"></span>
-      <?= htmlspecialchars($inv['status'] ?? '') ?>
+    <div class="status-pill" style="background:<?= status_bg($inv['status'] ?? '') ?>;border-color:<?= status_col($inv['status'] ?? '') ?>40;color:<?= status_col($inv['status'] ?? '') ?>">
+      <?= status_label($inv['status'] ?? '') ?>
     </div>
   </div>
 </div>
@@ -316,8 +383,12 @@ tr:last-child td{border:none}
   <div class="progress-wrap">
     <div class="progress-bar"><div class="progress-fill" style="width:<?= $pct ?>%"></div></div>
     <div class="progress-meta">
-      <span><?= $pct ?>% paid</span>
-      <span><?= count($payments) ?> payment<?= count($payments) !== 1 ? 's' : '' ?></span>
+      <span class="paid-label"><?= fmt_inr($totalCovered, $sym) ?> paid (<?= $pct ?>%)</span>
+      <?php if ($remaining > 0.01): ?>
+      <span class="bal-label"><?= fmt_inr($remaining, $sym) ?> due</span>
+      <?php else: ?>
+      <span style="color:var(--green);font-weight:700">✓ Fully Paid</span>
+      <?php endif; ?>
     </div>
   </div>
   <?php endif; ?>
@@ -517,6 +588,25 @@ if ($items):
       </div>
       <button class="copy-btn" onclick="copyUPI()" id="copyBtn"><i class="fas fa-copy"></i> Copy</button>
     </div>
+
+    <!-- UPI App deep links -->
+    <?php
+      $upiEncoded = urlencode($companyUPI);
+      $payeeName  = urlencode($companyName);
+      $amtParam   = number_format($remaining, 2, '.', '');
+      $upiBase    = "upi://pay?pa={$upiEncoded}&pn={$payeeName}&am={$amtParam}&cu=INR";
+    ?>
+    <div class="upi-pay-btns">
+      <a href="<?= $upiBase ?>&mode=00&purpose=00" class="upi-pay-btn btn-gpay">
+        <i class="fas fa-wallet"></i> GPay
+      </a>
+      <a href="phonepe://pay?pa=<?= $upiEncoded ?>&pn=<?= $payeeName ?>&am=<?= $amtParam ?>&cu=INR" class="upi-pay-btn btn-phonepe">
+        <i class="fas fa-bolt"></i> PhonePe
+      </a>
+      <a href="paytmmp://pay?pa=<?= $upiEncoded ?>&pn=<?= $payeeName ?>&am=<?= $amtParam ?>&cu=INR" class="upi-pay-btn btn-paytm">
+        <i class="fas fa-mobile-alt"></i> Paytm
+      </a>
+    </div>
     <?php if ($companyQR): ?>
     <div style="text-align:center;margin-top:14px">
       <img src="<?= htmlspecialchars($companyQR) ?>" alt="QR Code" style="width:150px;height:150px;border-radius:10px;border:1px solid var(--border)">
@@ -565,6 +655,15 @@ if ($items):
       <?php if ($companyEmail): ?><div class="info-item"><label>Email</label><span class="val"><?= htmlspecialchars($companyEmail) ?></span></div><?php endif; ?>
       <?php if ($companyAddress): ?><div class="info-item" style="grid-column:1/-1"><label>Address</label><span class="val" style="font-weight:400"><?= nl2br(htmlspecialchars($companyAddress)) ?></span></div><?php endif; ?>
     </div>
+    <?php if ($companyPhone): ?>
+    <?php $waPhone = preg_replace('/\D/','',$companyPhone); if(strlen($waPhone)===10) $waPhone='91'.$waPhone; ?>
+    <a href="https://wa.me/<?= $waPhone ?>?text=<?= urlencode('Hi, I have a query regarding Invoice '.$inv['invoice_number']) ?>" class="wa-contact-btn" target="_blank">
+      <i class="fab fa-whatsapp" style="font-size:16px"></i> Chat with us on WhatsApp
+    </a>
+    <?php endif; ?>
+    <button class="pdf-btn" onclick="window.print()">
+      <i class="fas fa-download"></i> Download / Print Invoice
+    </button>
   </div>
 </div>
 
@@ -577,6 +676,17 @@ if ($items):
 </div>
 
 <script>
+// Sticky bar on scroll
+(function(){
+  const bar = document.getElementById('stickyBar');
+  const hdr = document.querySelector('.portal-header');
+  if (!bar || !hdr) return;
+  const obs = new IntersectionObserver(([e]) => {
+    bar.classList.toggle('show', !e.isIntersecting);
+  }, {threshold: 0});
+  obs.observe(hdr);
+})();
+
 function copyUPI() {
   const id  = document.getElementById('upiId')?.textContent?.trim();
   const btn = document.getElementById('copyBtn');

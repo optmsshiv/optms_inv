@@ -8744,13 +8744,13 @@ function buildWATplParams(tplName, inv, client, settings) {
   };
 
   const paramKeys = maps[tplName] || Object.keys(common);
-  return paramKeys.map(k => String(common[k] || '')
-  .replace(/[\r\n\t]+/g, ' ')  // newlines/tabs → single space
-  .replace(/ {4,}/g, '   ')    // 4+ spaces → 3 spaces
-  .trim());
+   return paramKeys.map(k => common[k] || '');
 }
+  // - return paramKeys.map(k => String(common[k] || '')
+  // - replace(/[\r\n\t]+/g, ' ')  // newlines/tabs → single space
+  // - replace(/ {4,}/g, '   ')    // 4+ spaces → 3 spaces
+  // - trim());
 
-// return paramKeys.map(k => common[k] || '');
 // ── Send WA (API first, wa.me fallback) ──────────────────────
 async function sendWA(phone, message, tplName, inv, client) {
   const wa    = STATE.settings.wa || {};
