@@ -2143,7 +2143,7 @@ Thank you! — *{company_name}*
 🔗 View Invoice:
 {invoice_link}
 
-Please arrange payment at your earliest convenience.
+Please make payment at your earliest convenience.
 — {company_name} | 📞 {company_phone}</textarea>
               <div class="wa-char-counter" id="wa-cnt-remind"></div>
             </div>
@@ -8710,8 +8710,9 @@ function buildWATplParams(tplName, inv, client, settings) {
   };
 
   // Map template name to ordered params list
+  // invoice_created:   ['client_name','invoice_no','service','issue_date','due_date','amount','currency','item_list','upi','bank_details','portal_link','company_phone','company_email','company_name'],
   const maps = {
-    invoice_created:   ['client_name','invoice_no','service','issue_date','due_date','amount','currency','item_list','upi','bank_details','portal_link','company_phone','company_email','company_name'],
+    invoice_created: ['invoice_no','company_name','client_name','service','issue_date','due_date','amount','upi','bank_details','portal_link'],
     payment_reminder:  ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
     payment_overdue:   ['client_name','invoice_no','amount','days_overdue','upi','company_name','portal_link'],
     payment_received:  ['client_name','invoice_no','amount','settlement_discount','issue_date','company_name','portal_link'],
