@@ -117,46 +117,7 @@ switch ($method) {
   case 'DELETE':
     $id = (int)($_GET['id'] ?? 0);
     if (!$id) jsonResponse(['error' => 'ID required'], 400);
-
-    // Fetch payment details before deleting (for logging + invoice revert)
-    $pmtStmt = $db->prepare('SELECT invoice_id, invoice_number, amount, settlement_discount FROM payments WHERE id = ?');
-    $pmtStmt->execute([$id]);
-    $pmt = $pmtStmt->fetch();
-
-    // Delete the payment
-    $db->prepare('DELETE FROM payments WHERE id = ?')->execute([$id]);
-
-    // Revert invoice status based on remaining payments
-    if ($pmt && !empty($pmt['invoice_id'])) {
-      $invoiceId = (int)$pmt['invoice_id'];
-
-      // Check if invoice still exists
-      $invStmt = $db->prepare('SELECT id, grand_total FROM invoices WHERE id = ?');
-      $invStmt->execute([$invoiceId]);
-      $inv = $invStmt->fetch();
-
-      if ($inv) {
-        $grandTotal = (float)$inv['grand_total'];
-
-        // Sum remaining payments after deletion
-        $remStmt = $db->prepare('SELECT COALESCE(SUM(amount),0) as paid, COALESCE(SUM(settlement_discount),0) as disc FROM payments WHERE invoice_id = ?');
-        $remStmt->execute([$invoiceId]);
-        $rem = $remStmt->fetch();
-        $totalCovered = (float)$rem['paid'] + (float)$rem['disc'];
-
-        if ($totalCovered <= 0) {
-          // No payments left at all — revert to Pending
-          $db->prepare("UPDATE invoices SET status='Pending' WHERE id = ?")->execute([$invoiceId]);
-        } elseif ($grandTotal > 0 && ($grandTotal - $totalCovered) > 0.01) {
-          // Partially covered — set to Partial
-          $db->prepare("UPDATE invoices SET status='Partial' WHERE id = ?")->execute([$invoiceId]);
-        }
-        // If still fully covered, leave status as Paid
-      }
-    }
-
-    logActivity((int)$_SESSION['user_id'], 'delete', 'payment', $id,
-      'Deleted payment for invoice: ' . ($pmt['invoice_number'] ?? ''));
+    $db->prepare('DELETE FROM payments WHERE id=?')->execute([$id]);
     jsonResponse(['success' => true]);
 
   default:

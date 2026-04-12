@@ -1158,8 +1158,11 @@ const SERVER = {
       <!-- WhatsApp Automation Card -->
       <div id="dashWACard" style="margin-bottom:16px"></div>
       <div id="dashPartialCard" style="margin-bottom:16px"></div>
-      <!-- Combined Outstanding Card -->
-      <div id="s-outstanding-card" style="margin-bottom:16px;background:var(--card);border:2px solid rgba(183,28,28,.18);border-radius:14px;padding:16px 20px;box-shadow:0 2px 12px rgba(183,28,28,.07)"></div>
+      <!-- Revenue + Outstanding Two-Column Row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+        <div id="s-revenue-card" style="background:var(--card);border-radius:14px;padding:16px 20px;box-shadow:var(--shadow)"></div>
+        <div id="s-outstanding-card" style="background:var(--card);border-radius:14px;padding:16px 20px;box-shadow:var(--shadow)"></div>
+      </div>
       <div class="dash-stats-row">
         <div class="stat-card" data-color="teal">
           <div class="stat-icon" style="background:#e0f2f1;color:#00897B"><i class="fas fa-rupee-sign"></i></div>
@@ -2230,13 +2233,13 @@ Kindly process payment immediately or contact us to discuss.
                 Enter template names exactly as approved in <a href="https://business.facebook.com/wa/manage/message-templates/" target="_blank" style="color:var(--teal)">Meta Business Manager</a>. Language: <code>en_US</code>
               </div>
               <div class="form-grid g1" style="gap:10px">
-                <div class="field"><label>📄 Invoice Created</label><div style="display:flex;gap:6px"><input id="tpl-name-invoice" placeholder="invoice_created" style="flex:1"><input id="tpl-lang-invoice" placeholder="en_US" style="width:60px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}due {{5}}upi {{6}}company {{7}}link</div></div>
-                <div class="field"><label>🔔 Payment Reminder</label><div style="display:flex;gap:6px"><input id="tpl-name-reminder" placeholder="payment_reminder" style="flex:1"><input id="tpl-lang-reminder" placeholder="en_US" style="width:60px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}due {{5}}upi {{6}}company {{7}}link</div></div>
-                <div class="field"><label>⚠️ Payment Overdue</label><div style="display:flex;gap:6px"><input id="tpl-name-overdue" placeholder="payment_overdue" style="flex:1"><input id="tpl-lang-overdue" placeholder="en_US" style="width:60px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}days {{5}}upi {{6}}company {{7}}link</div></div>
-                <div class="field"><label>✅ Payment Received</label><div style="display:flex;gap:6px"><input id="tpl-name-paid" placeholder="payment_received" style="flex:1"><input id="tpl-lang-paid" placeholder="en_US" style="width:60px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}disc {{5}}date {{6}}company {{7}}link</div></div>
-                <div class="field"><label>📋 Invoice Follow-up</label><div style="display:flex;gap:6px"><input id="tpl-name-followup" placeholder="invoice_followup" style="flex:1"><input id="tpl-lang-followup" placeholder="en_US" style="width:60px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}days {{5}}upi {{6}}phone {{7}}link</div></div>
-                <div class="field"><label>💚 Partial Payment</label><div style="display:flex;gap:6px"><input id="tpl-name-partial" placeholder="partial_payment" style="flex:1"><input id="tpl-lang-partial" placeholder="en_US" style="width:60px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}paid {{4}}remaining {{5}}due {{6}}link</div></div>
-                <div class="field"><label>🎉 Festival Greeting</label><div style="display:flex;gap:6px"><input id="tpl-name-festival" placeholder="festival_greeting" style="flex:1"><input id="tpl-lang-festival" placeholder="en_US" style="width:60px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}company {{3}}phone</div></div>
+                <div class="field"><label>📄 Invoice Created</label><div style="display:flex;gap:6px"><input id="tpl-name-invoice" placeholder="invoice_created" style="flex:1"><input id="tpl-lang-invoice" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}due {{5}}upi {{6}}company {{7}}link</div></div>
+                <div class="field"><label>🔔 Payment Reminder</label><div style="display:flex;gap:6px"><input id="tpl-name-reminder" placeholder="payment_reminder" style="flex:1"><input id="tpl-lang-reminder" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}due {{5}}upi {{6}}company {{7}}link</div></div>
+                <div class="field"><label>⚠️ Payment Overdue</label><div style="display:flex;gap:6px"><input id="tpl-name-overdue" placeholder="payment_overdue" style="flex:1"><input id="tpl-lang-overdue" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}days {{5}}upi {{6}}company {{7}}link</div></div>
+                <div class="field"><label>✅ Payment Received</label><div style="display:flex;gap:6px"><input id="tpl-name-paid" placeholder="payment_received" style="flex:1"><input id="tpl-lang-paid" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}disc {{5}}date {{6}}company {{7}}link</div></div>
+                <div class="field"><label>📋 Invoice Follow-up</label><div style="display:flex;gap:6px"><input id="tpl-name-followup" placeholder="invoice_followup" style="flex:1"><input id="tpl-lang-followup" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}days {{5}}upi {{6}}phone {{7}}link</div></div>
+                <div class="field"><label>💚 Partial Payment</label><div style="display:flex;gap:6px"><input id="tpl-name-partial" placeholder="partial_payment" style="flex:1"><input id="tpl-lang-partial" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}paid {{4}}remaining {{5}}due {{6}}link</div></div>
+                <div class="field"><label>🎉 Festival Greeting</label><div style="display:flex;gap:6px"><input id="tpl-name-festival" placeholder="festival_greeting" style="flex:1"><input id="tpl-lang-festival" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}company {{3}}phone</div></div>
               </div>
 
               <!-- Suggested template content — collapsible -->
@@ -2499,7 +2502,7 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
             <div class="field"><label>Invoice Prefix</label><input id="sc-prefix" value="OT-2025-"></div>
             <div class="field"><label>UPI ID</label><input id="sc-upi" value="optmstech@upi"></div>
             <div class="field g-full"><label>Default Bank Account Details <span style="font-size:10px;color:var(--muted)">(pre-fills in new invoices)</span></label>
-              <textarea id="sc-bank" style="min-height:64px" placeholder="Bank: SBI | A/C: XXXXXXXXX | IFSC: SBIN0001234 | Name: Your Company | UPI: yourname@upi"></textarea>
+              <textarea id="sc-bank" style="min-height:85px" placeholder="Bank: SBI | A/C: XXXXXXXXX | IFSC: SBIN0001234 | Name: Your Company | UPI: yourname@upi"></textarea>
             </div>
             <div class="field"><label>Default Currency</label>
               <select id="sc-cur"><option value="₹">INR (₹)</option><option value="$">USD ($)</option></select>
@@ -3594,7 +3597,10 @@ function updateDashStats() {
   const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
   const lastYear  = thisMonth === 0 ? thisYear - 1 : thisYear;
 
-  const paid    = STATE.invoices.filter(i=>i.status==='Paid').reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  // const paid    = STATE.invoices.filter(i=>i.status==='Paid').reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  const paid = STATE.payments
+  .filter(p => { const inv = STATE.invoices.find(i => String(i.id) === String(p.invoice_id)); return inv && inv.status === 'Paid'; })
+  .reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
   // Include partial payments actually received (from payments table)
   const partialReceived = STATE.payments
     .filter(p => { const inv = STATE.invoices.find(i=>String(i.id)===String(p.invoice_id)); return inv && inv.status !== 'Paid'; })
@@ -3637,31 +3643,109 @@ function updateDashStats() {
   if(e('s-total'))   e('s-total').textContent   = STATE.invoices.length;
   if(e('s-clients')) e('s-clients').textContent = STATE.clients.length;
 
-  // Combined outstanding card (pending + overdue + partial remaining)
+  // ── Revenue card calculations ─────────────────────────────────
+  // Gross Revenue = all invoices except Draft & Cancelled (total billed)
+  const grossRevenue = STATE.invoices
+    .filter(i => i.status !== 'Draft' && i.status !== 'Cancelled')
+    .reduce((s,i) => s + (parseFloat(i.amount)||0), 0);
+
+  // Settlement discounts written off — only Paid invoices (fully closed)
+  // Partial invoices' discounts are not yet "written off" since invoice is still open
+  const totalSettleDisc = STATE.payments
+    .filter(p => { const inv = STATE.invoices.find(i => String(i.id) === String(p.invoice_id)); return inv && inv.status === 'Paid'; })
+    .reduce((s,p) => s + parseFloat(p.settlement_discount||0), 0);
+
+  // Net Revenue = actual cash collected from all payments (no discounts)
+  // = Gross Revenue – Settlement Discount – (Pending + Overdue + Partial remaining)
+  const netRevenue = paid + partialReceived; // real cash received
+
+  // Recovery rate = net collected vs gross billed
+  const recoveryRate = grossRevenue > 0 ? Math.round((netRevenue / grossRevenue) * 100) : 0;
+  const barPct = Math.min(100, recoveryRate);
+
+  // Revenue card
+  const revEl = e('s-revenue-card');
+  if (revEl) {
+    revEl.innerHTML = `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <div style="width:36px;height:36px;border-radius:9px;background:#C6EFCF;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="fas fa-chart-line" style="color:#1B6B34;font-size:14px"></i>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#5A7A62;margin-bottom:2px">Gross Revenue</div>
+            <div style="font-size:22px;font-weight:800;color:#1B6B34;line-height:1;font-family:var(--mono)">${fmt_money(grossRevenue)}</div>
+            <div style="font-size:11px;color:#7DA88A;margin-top:3px">total billed (excl. draft &amp; cancelled)</div>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:10px;color:#5A7A62;margin-bottom:3px">Net Revenue</div>
+          <div style="font-size:15px;font-weight:800;color:#1B6B34;font-family:var(--mono)">${fmt_money(netRevenue)}</div>
+          <div style="font-size:10px;font-weight:700;background:#C6EFCF;color:#1B6B34;padding:2px 8px;border-radius:20px;border:1px solid #A8DDB8;margin-top:4px;display:inline-block">${recoveryRate}% collected</div>
+        </div>
+      </div>
+      <div style="background:#C6EFCF;border-radius:4px;height:7px;overflow:hidden;margin-bottom:5px">
+        <div style="height:100%;border-radius:4px;background:#2E9E54;width:${barPct}%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+        <span style="font-size:10px;color:#2E9E54">Net collected — ${fmt_money(netRevenue)}</span>
+        ${totalSettleDisc > 0 ? `<span style="font-size:10px;color:#8B6914">Written off — ${fmt_money(totalSettleDisc)}</span>` : ''}
+      </div>
+      <div style="border-top:1px solid #C6EFCF;padding-top:10px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr))">
+        <div style="padding-right:8px;border-right:1px solid #C6EFCF">
+          <div style="font-size:10px;color:#5A7A62;margin-bottom:3px">Net Revenue</div>
+          <div style="font-size:13px;font-weight:700;color:#1B6B34;font-family:var(--mono)">${fmt_money(netRevenue)}</div>
+          <div style="font-size:9px;color:#7DA88A;margin-top:2px">cash collected</div>
+        </div>
+        <div style="padding:0 8px;border-right:1px solid #C6EFCF">
+          <div style="font-size:10px;color:#5A7A62;margin-bottom:3px">Settlement Disc.</div>
+          <div style="font-size:13px;font-weight:700;color:${totalSettleDisc>0?'#8B6914':'var(--muted)'};font-family:var(--mono)">${totalSettleDisc>0?'−'+fmt_money(totalSettleDisc):'—'}</div>
+          <div style="font-size:9px;color:#7DA88A;margin-top:2px">written off</div>
+        </div>
+        <div style="padding-left:8px">
+          <div style="font-size:10px;color:#5A7A62;margin-bottom:3px">Still Pending</div>
+          <div style="font-size:13px;font-weight:700;color:${(pend+over+partialRemaining)>0?'#B85C0A':'var(--muted)'};font-family:var(--mono)">${(pend+over+partialRemaining)>0?fmt_money(pend+over+partialRemaining):'—'}</div>
+          <div style="font-size:9px;color:#7DA88A;margin-top:2px">yet to collect</div>
+        </div>
+      </div>`;
+  }
+
+  // ── Outstanding card ──────────────────────────────────────────
   const combinedOutstanding = pend + over + partialRemaining;
   const combinedCount = pendCnt + overCnt + partialCnt;
   const outEl = e('s-outstanding-card');
   if (outEl) {
-    const urgColor = over > 0 ? '#B71C1C' : combinedOutstanding > 0 ? '#E65100' : '#388E3C';
     outEl.innerHTML = `
-      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-        <div style="flex:1;min-width:160px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${urgColor};opacity:.8;margin-bottom:2px">Total Outstanding</div>
-          <div style="font-size:26px;font-weight:900;color:${urgColor};font-family:var(--mono);line-height:1">${fmt_money(combinedOutstanding)}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:3px">${combinedCount} invoice${combinedCount!==1?'s':''} need attention</div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#B85C0A;margin-bottom:5px">Total Outstanding</div>
+          <div style="font-size:22px;font-weight:800;color:#B85C0A;line-height:1;font-family:var(--mono)">${fmt_money(combinedOutstanding)}</div>
+          <div style="font-size:11px;color:#C8844A;margin-top:4px">${combinedCount} invoice${combinedCount!==1?'s':''} need attention</div>
         </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <div style="text-align:center;padding:8px 14px;background:rgba(230,81,0,.08);border:1.5px solid rgba(230,81,0,.2);border-radius:10px">
-            <div style="font-size:18px;font-weight:800;color:#E65100">${fmt_money(pend)}</div>
-            <div style="font-size:10px;color:var(--muted);font-weight:700">🕐 Pending (${pendCnt})</div>
+        <div style="width:36px;height:36px;border-radius:9px;background:#FDDCB5;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fas fa-exclamation-circle" style="color:#B85C0A;font-size:14px"></i>
+        </div>
+      </div>
+      <div style="border-top:1px solid #F9C49A;padding-top:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+        <div style="text-align:center;padding:9px 6px;background:#FFF8E1;border:1.5px solid #F5D07A;border-radius:10px">
+          <div style="font-size:14px;font-weight:700;color:#7A5800;font-family:var(--mono);margin-bottom:4px">${fmt_money(pend)}</div>
+          <div style="font-size:10px;color:#8B6914;display:flex;align-items:center;justify-content:center;gap:4px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#F5D07A;border:1px solid #D4A817;display:inline-block"></span>
+            Pending (${pendCnt})
           </div>
-          <div style="text-align:center;padding:8px 14px;background:rgba(183,28,28,.08);border:1.5px solid rgba(183,28,28,.2);border-radius:10px">
-            <div style="font-size:18px;font-weight:800;color:#B71C1C">${fmt_money(over)}</div>
-            <div style="font-size:10px;color:var(--muted);font-weight:700">🔴 Overdue (${overCnt})</div>
+        </div>
+        <div style="text-align:center;padding:9px 6px;background:#FFEBEE;border:1.5px solid #F5ABAB;border-radius:10px">
+          <div style="font-size:14px;font-weight:700;color:#8B1A1A;font-family:var(--mono);margin-bottom:4px">${fmt_money(over)}</div>
+          <div style="font-size:10px;color:#B82929;display:flex;align-items:center;justify-content:center;gap:4px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#F5ABAB;border:1px solid #E05555;display:inline-block"></span>
+            Overdue (${overCnt})
           </div>
-          <div style="text-align:center;padding:8px 14px;background:rgba(255,152,0,.08);border:1.5px solid rgba(255,152,0,.25);border-radius:10px">
-            <div style="font-size:18px;font-weight:800;color:#E65100">${fmt_money(partialRemaining)}</div>
-            <div style="font-size:10px;color:var(--muted);font-weight:700">💛 Partial Due (${partialCnt})</div>
+        </div>
+        <div style="text-align:center;padding:9px 6px;background:#F3EFFE;border:1.5px solid #C5B3F0;border-radius:10px">
+          <div style="font-size:14px;font-weight:700;color:#4A2A9E;font-family:var(--mono);margin-bottom:4px">${fmt_money(partialRemaining)}</div>
+          <div style="font-size:10px;color:#6B3FBF;display:flex;align-items:center;justify-content:center;gap:4px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#C5B3F0;border:1px solid #8B6ADE;display:inline-block"></span>
+            Partial (${partialCnt})
           </div>
         </div>
       </div>`;
@@ -7078,12 +7162,19 @@ window.saveWASettings = async function() {
     wa_auto_followup: tog('twa5'),
     wa_msg_mode:           document.querySelector('input[name="wa-msg-mode"]:checked')?.value || 'session',
     wa_tpl_name_invoice:   val('tpl-name-invoice'),
+    wa_tpl_lang_invoice:   val('tpl-lang-invoice')   || 'en_US',
     wa_tpl_name_reminder:  val('tpl-name-reminder'),
+    wa_tpl_lang_reminder:  val('tpl-lang-reminder')  || 'en_US',
     wa_tpl_name_overdue:   val('tpl-name-overdue'),
+    wa_tpl_lang_overdue:   val('tpl-lang-overdue')   || 'en_US',
     wa_tpl_name_paid:      val('tpl-name-paid'),
+    wa_tpl_lang_paid:      val('tpl-lang-paid')      || 'en_US',
     wa_tpl_name_followup:  val('tpl-name-followup'),
+    wa_tpl_lang_followup:  val('tpl-lang-followup')  || 'en_US',
     wa_tpl_name_partial:   val('tpl-name-partial'),
+    wa_tpl_lang_partial:   val('tpl-lang-partial')   || 'en_US',
     wa_tpl_name_festival:  val('tpl-name-festival'),
+    wa_tpl_lang_festival:  val('tpl-lang-festival')  || 'en_US',
   };
   // Update STATE immediately with all keys
   if (!STATE.settings.wa) STATE.settings.wa = {};
@@ -7101,12 +7192,19 @@ window.saveWASettings = async function() {
     auto_followup: payload.wa_auto_followup,
     msg_mode: payload.wa_msg_mode,
     tpl_name_invoice:  payload.wa_tpl_name_invoice,
+    tpl_lang_invoice:  payload.wa_tpl_lang_invoice,
     tpl_name_reminder: payload.wa_tpl_name_reminder,
+    tpl_lang_reminder: payload.wa_tpl_lang_reminder,
     tpl_name_overdue:  payload.wa_tpl_name_overdue,
+    tpl_lang_overdue:  payload.wa_tpl_lang_overdue,
     tpl_name_paid:     payload.wa_tpl_name_paid,
+    tpl_lang_paid:     payload.wa_tpl_lang_paid,
     tpl_name_followup: payload.wa_tpl_name_followup,
+    tpl_lang_followup: payload.wa_tpl_lang_followup,
     tpl_name_partial:  payload.wa_tpl_name_partial,
+    tpl_lang_partial:  payload.wa_tpl_lang_partial,
     tpl_name_festival: payload.wa_tpl_name_festival,
+    tpl_lang_festival: payload.wa_tpl_lang_festival,
   });
   try {
     await api('api/settings.php', 'POST', payload);
@@ -7949,17 +8047,17 @@ async function loadAllData() {
         msg_mode:      s.wa_msg_mode || 'session',
         // Template names
         tpl_name_invoice:  s.wa_tpl_name_invoice  || '',
-        tpl_lang_invoice:  s.wa_tpl_lang_invoice  || 'en',
+        tpl_lang_invoice:  s.wa_tpl_lang_invoice  || 'en_US',
         tpl_name_reminder: s.wa_tpl_name_reminder || '',
-        tpl_lang_reminder: s.wa_tpl_lang_reminder || 'en',
+        tpl_lang_reminder: s.wa_tpl_lang_reminder || 'en_US',
         tpl_name_overdue:  s.wa_tpl_name_overdue  || '',
-        tpl_lang_overdue:  s.wa_tpl_lang_overdue  || 'en',
+        tpl_lang_overdue:  s.wa_tpl_lang_overdue  || 'en_US',
         tpl_name_paid:     s.wa_tpl_name_paid     || '',
-        tpl_lang_paid:     s.wa_tpl_lang_paid     || 'en',
+        tpl_lang_paid:     s.wa_tpl_lang_paid     || 'en_US',
         tpl_name_followup: s.wa_tpl_name_followup || '',
-        tpl_lang_followup: s.wa_tpl_lang_followup || 'en',
+        tpl_lang_followup: s.wa_tpl_lang_followup || 'en_US',
         tpl_name_festival: s.wa_tpl_name_festival || '',
-        tpl_lang_festival: s.wa_tpl_lang_festival || 'en',
+        tpl_lang_festival: s.wa_tpl_lang_festival || 'en_US',
       };
       // Parse TPL_CUSTOM settings
       if (window.TPL_CUSTOM) {
@@ -8459,7 +8557,7 @@ function populateWAPage() {
     const nEl = document.getElementById('tpl-name-' + t);
     const lEl = document.getElementById('tpl-lang-' + t);
     if (nEl) nEl.value = wa['tpl_name_' + t] || '';
-    if (lEl) lEl.value = wa['tpl_lang_' + t] || 'en';
+    if (lEl) lEl.value = wa['tpl_lang_' + t] || 'en_US';
   });
 }
 
@@ -8709,26 +8807,34 @@ function buildWATplParams(tplName, inv, client, settings) {
     remaining_amount:     remAmtStr,
   };
 
-  // Map template name to ordered params list
-  // invoice_created:   ['client_name','invoice_no','service','issue_date','due_date','amount','currency','item_list','upi','bank_details','portal_link','company_phone','company_email','company_name'],
+  // Map template key → ordered params (supports both short keys and verbose keys)
   const maps = {
-    invoice_created:   ['invoice_no','company_name','client_name','service','issue_date','due_date','amount','upi','bank_details','portal_link'],
-    payment_reminder:  ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
-    payment_overdue:   ['client_name','invoice_no','amount','days_overdue','upi','company_name','portal_link'],
-    payment_received:  ['client_name','invoice_no','amount','settlement_discount','issue_date','company_name','portal_link'],
-    invoice_followup:  ['client_name','invoice_no','amount','days_overdue','upi','company_phone','portal_link'],
-    partial_payment:   ['client_name','invoice_no','paid_amount','remaining_amount','due_date','portal_link'],
-    festival_greeting: ['client_name','company_name','company_phone'],
+    // Short keys (used after TPL_KEY_MAP lookup in sendWA)
+    invoice:          ['invoice_no','company_name','client_name','service','issue_date','due_date','amount','upi','portal_link'],
+    paid:             ['client_name','invoice_no','amount','settlement_discount','issue_date','company_name','portal_link'],
+    partial:          ['client_name','invoice_no','paid_amount','remaining_amount','due_date','portal_link'],
+    reminder:         ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
+    overdue:          ['client_name','invoice_no','amount','days_overdue','upi','company_name','portal_link'],
+    followup:         ['client_name','invoice_no','amount','days_overdue','upi','company_phone','portal_link'],
+    festival:         ['client_name','company_name','company_phone'],
+    // Verbose aliases for backwards compatibility
+    invoice_created:  ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
+    payment_reminder: ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
+    payment_overdue:  ['client_name','invoice_no','amount','days_overdue','upi','company_name','portal_link'],
+    payment_received: ['client_name','invoice_no','amount','settlement_discount','issue_date','company_name','portal_link'],
+    invoice_followup: ['client_name','invoice_no','amount','days_overdue','upi','company_phone','portal_link'],
+    partial_payment:  ['client_name','invoice_no','paid_amount','remaining_amount','due_date','portal_link'],
+    festival_greeting:['client_name','company_name','company_phone'],
   };
 
   const paramKeys = maps[tplName] || Object.keys(common);
-  return paramKeys.map(k => String(common[k] || '')
-  .replace(/[\r\n\t]+/g, ' ')  // newlines/tabs → single space
-  .replace(/ {4,}/g, '   ')    // 4+ spaces → 3 spaces
-  .trim());
+   return paramKeys.map(k => common[k] || '');
 }
+  // - return paramKeys.map(k => String(common[k] || '')
+  // - replace(/[\r\n\t]+/g, ' ')  // newlines/tabs → single space
+  // - replace(/ {4,}/g, '   ')    // 4+ spaces → 3 spaces
+  // - trim());
 
-// return paramKeys.map(k => common[k] || '');
 // ── Send WA (API first, wa.me fallback) ──────────────────────
 async function sendWA(phone, message, tplName, inv, client) {
   const wa    = STATE.settings.wa || {};
@@ -8754,8 +8860,8 @@ async function sendWA(phone, message, tplName, inv, client) {
     const useTemplate = wa.msg_mode === 'template' && tplKey && wa['tpl_name_' + tplKey];
     const tplOpts = useTemplate ? {
       name:   wa['tpl_name_' + tplKey],
-      lang:   wa['tpl_lang_' + tplKey] || 'en',
-      params: inv ? buildWATplParams(tplName, inv, client, STATE.settings) : [],
+      lang:   wa['tpl_lang_' + tplKey] || 'en_US',
+      params: inv ? buildWATplParams(tplKey, inv, client, STATE.settings) : [],
     } : null;
     return await sendWABusinessMsg(clean, message, token, pid, tplOpts);
   }

@@ -3649,10 +3649,8 @@ function updateDashStats() {
     .filter(i => i.status !== 'Draft' && i.status !== 'Cancelled')
     .reduce((s,i) => s + (parseFloat(i.amount)||0), 0);
 
-  // Settlement discounts written off — only Paid invoices (fully closed)
-  // Partial invoices' discounts are not yet "written off" since invoice is still open
+  // Settlement discounts written off (all payments across all invoices)
   const totalSettleDisc = STATE.payments
-    .filter(p => { const inv = STATE.invoices.find(i => String(i.id) === String(p.invoice_id)); return inv && inv.status === 'Paid'; })
     .reduce((s,p) => s + parseFloat(p.settlement_discount||0), 0);
 
   // Net Revenue = actual cash collected from all payments (no discounts)
@@ -6400,33 +6398,24 @@ function confirmDelete() {
   const mid = String(STATE.activeMenuInvoiceId);
   const inv = STATE.invoices.find(i => String(i.id) === mid);
   if (!inv) { closeModal('modal-delete'); return; }
-  closeModal('modal-delete');
   api('api/invoices.php?id=' + (parseInt(mid) || 0), 'DELETE')
     .then(() => {
-      // Remove invoice from state
       STATE.invoices = STATE.invoices.filter(i => String(i.id) !== mid);
       STATE.filteredInvoices = STATE.filteredInvoices.filter(i => String(i.id) !== mid);
-
-      // Find payments linked to this invoice
-      const linkedPayments = STATE.payments.filter(p => p.invoice_id && String(p.invoice_id) === mid);
-
-      // Delete each linked payment from DB, then remove from state
-      const deletePromises = linkedPayments
-        .filter(p => p.id)
-        .map(p => api('api/payments.php?id=' + parseInt(p.id), 'DELETE').catch(() => {}));
-
-      Promise.all(deletePromises).then(() => {
-        // Remove deleted payments from STATE entirely (not just mark as deleted)
-        STATE.payments = STATE.payments.filter(p => !p.invoice_id || String(p.invoice_id) !== mid);
-
-        // Update sidebar badge
-        const badge = document.getElementById('badge-invoices');
-        if (badge) badge.textContent = STATE.invoices.length;
-        toast('🗑️ Invoice ' + (inv.num || inv.invoice_number || '') + ' deleted', 'info');
-        renderInvoicesTable(); renderDashRecent(); renderDonutChart(); updateDashStats(); renderPayments();
+      // Mark payments belonging to this invoice as deleted
+      STATE.payments.forEach(p => {
+        if (p.invoice_id && String(p.invoice_id) === mid) {
+          p._invoiceDeleted = true;
+        }
       });
+      // Update sidebar badge
+      const badge = document.getElementById('badge-invoices');
+      if (badge) badge.textContent = STATE.invoices.length;
+      toast('🗑️ Invoice ' + (inv.num || inv.invoice_number || '') + ' deleted', 'info');
+      renderInvoicesTable(); renderDashRecent(); renderDonutChart(); updateDashStats(); renderPayments();
     })
     .catch(e => toast('❌ Delete failed: ' + e.message, 'error'));
+  closeModal('modal-delete');
 }
 
 
