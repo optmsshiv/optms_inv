@@ -8142,6 +8142,8 @@ async function loadAllData() {
         tpl_lang_paid:     s.wa_tpl_lang_paid     || 'en_US',
         tpl_name_followup: s.wa_tpl_name_followup || '',
         tpl_lang_followup: s.wa_tpl_lang_followup || 'en_US',
+        tpl_name_partial:  s.wa_tpl_name_partial  || '',
+        tpl_lang_partial:  s.wa_tpl_lang_partial  || 'en_US',
         tpl_name_festival: s.wa_tpl_name_festival || '',
         tpl_lang_festival: s.wa_tpl_lang_festival || 'en_US',
       };
