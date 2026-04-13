@@ -107,13 +107,7 @@ switch ($method) {
     $userId = $_SESSION['user_id'];
     // Auto-generate number if not provided
     if (empty($input['invoice_number'])) {
-      $status = $input['status'] ?? 'Draft';
-      if ($status === 'Estimate') {
-        // Estimates use QT- prefix
-        $pfx = 'QT-' . date('Y') . '-';
-      } else {
-        $pfx = getSetting('invoice_prefix', 'OT-' . date('Y') . '-');
-      }
+      $pfx = getSetting('invoice_prefix', 'OT-' . date('Y') . '-');
       // Find the highest existing numeric suffix for this prefix to avoid collisions
       $like = $pfx . '%';
       $row  = $db->prepare("SELECT invoice_number FROM invoices WHERE invoice_number LIKE ? ORDER BY id DESC LIMIT 1");

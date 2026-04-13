@@ -34,13 +34,6 @@ function getDB(): PDO {
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ]
         );
-        // Auto-migrate: ensure 'Estimate' is in the status ENUM (safe to run repeatedly)
-        try {
-            $pdo->exec("ALTER TABLE invoices MODIFY COLUMN status ENUM('Draft','Pending','Paid','Overdue','Partial','Cancelled','Estimate') NOT NULL DEFAULT 'Draft'");
-        } catch (\Exception $e) {
-            // Ignore — may already include Estimate, or DB user may not have ALTER privilege
-            error_log('Auto-migrate status ENUM: ' . $e->getMessage());
-        }
     } catch (PDOException $e) {
         error_log('DB connection failed: ' . $e->getMessage());
         while (ob_get_level()) ob_end_clean();

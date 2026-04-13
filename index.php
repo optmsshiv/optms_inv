@@ -465,6 +465,7 @@ canvas { max-width: 100% !important; }
 .badge-overdue   { background: #FFEBEE; color: #C62828; }
 .badge-draft     { background: #F5F5F5; color: #616161; }
 .badge-cancelled { background: #FFCDD2; color: #B71C1C; font-weight:700; }
+.badge-estimate  { background: #E8EAF6; color: #3949AB; font-weight:700; }
 
 /* ══════════════════════════════════════════
    CREATE INVOICE
@@ -513,11 +514,13 @@ select { cursor: pointer; }
 .sr-pill.paid       { border-color: var(--green); color: var(--green); }
 .sr-pill.overdue    { border-color: var(--red); color: var(--red); }
 .sr-pill.cancelled  { border-color: #B71C1C; color: #B71C1C; }
+.sr-pill.estimate   { border-color: #3949AB; color: #3949AB; }
 .status-radio input:checked + .sr-pill.draft      { background: #9E9E9E; color: #fff; }
 .status-radio input:checked + .sr-pill.pending    { background: var(--amber); color: #fff; }
 .status-radio input:checked + .sr-pill.paid       { background: var(--green); color: #fff; }
 .status-radio input:checked + .sr-pill.overdue    { background: var(--red); color: #fff; }
 .status-radio input:checked + .sr-pill.cancelled  { background: #B71C1C; color: #fff; }
+.status-radio input:checked + .sr-pill.estimate   { background: #3949AB; color: #fff; }
 
 /* ── REDESIGNED LINE ITEMS ── */
 .items-head-row {
@@ -1274,7 +1277,7 @@ const SERVER = {
           <input type="text" class="table-search" placeholder="Search invoices…" oninput="filterInvoices(this.value)" id="invSearch">
           <select class="table-filter" onchange="filterByStatus(this.value)" id="statusFilter">
             <option value="">All Status</option>
-            <option>Paid</option><option>Pending</option><option>Partial</option><option>Overdue</option><option>Draft</option><option>Cancelled</option>
+            <option>Paid</option><option>Pending</option><option>Partial</option><option>Overdue</option><option>Draft</option><option>Estimate</option><option>Cancelled</option>
           </select>
           <select class="table-filter" onchange="filterByService(this.value)" id="serviceFilter">
             <option value="">All Services</option>
@@ -1358,7 +1361,8 @@ const SERVER = {
               <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:8px">Payment Status</label>
               <div class="status-toggle-row">
                 <label class="status-radio"><input type="radio" name="inv-status" value="Draft" checked onchange="livePreview()"><span class="sr-pill draft">Draft</span></label>
-                <label class="status-radio"><input type="radio" name="inv-status" value="Pending" onchange="livePreview()"><span class="sr-pill pending">Pending</span></label>
+                <label class="status-radio"><input type="radio" name="inv-status" value="Estimate" onchange="onStatusChange('Estimate');livePreview()"><span class="sr-pill estimate">📋 Estimate</span></label>
+                <label class="status-radio"><input type="radio" name="inv-status" value="Pending" onchange="onStatusChange('Pending');livePreview()"><span class="sr-pill pending">Pending</span></label>
                 <label class="status-radio"><input type="radio" name="inv-status" value="Paid" onchange="livePreview()"><span class="sr-pill paid">Paid</span></label>
                 <label class="status-radio"><input type="radio" name="inv-status" value="Overdue" onchange="livePreview()"><span class="sr-pill overdue">Overdue</span></label>
               </div>
@@ -2046,6 +2050,7 @@ const SERVER = {
           <!-- Tab bar -->
           <div class="wa-tab-bar">
             <button class="wa-tab-btn active" onclick="waTab('inv',this)">📄 Invoice</button>
+            <button class="wa-tab-btn" onclick="waTab('estimate',this)">📋 Estimate</button>
             <button class="wa-tab-btn" onclick="waTab('paid',this)">✅ Receipt</button>
             <button class="wa-tab-btn" onclick="waTab('partial',this)">💚 Partial</button>
             <button class="wa-tab-btn" onclick="waTab('remind',this)">🔔 Reminder</button>
@@ -2084,6 +2089,40 @@ Thank you for choosing {company_name}!
             </div>
             <button class="btn btn-outline" style="font-size:12px;padding:5px 12px" onclick="waTogglePreview('wa-prev-inv')"><i class="fas fa-mobile-alt"></i> Preview</button>
             <div class="wa-preview-wrap" id="wa-prev-inv"><div class="wa-bubble" id="wa-prev-inv-bubble"></div><div class="wa-bubble-meta">Delivered ✓✓</div></div>
+          </div>
+
+          <div class="wa-tab-pane" id="watab-estimate">
+            <div style="background:#E8EAF6;border-radius:8px;padding:10px 14px;font-size:12px;color:#1A237E;margin-bottom:10px;line-height:1.7">
+              <strong>📋 Estimate Template:</strong> Sent automatically when you save an invoice with <strong>Estimate</strong> status. Includes a clear disclaimer and a portal link for client approval.
+            </div>
+            <div class="field">
+              <textarea id="wa-tpl-estimate" style="min-height:200px;font-family:var(--mono);font-size:12.5px" oninput="saveWASettings();waUpdateCounter('wa-tpl-estimate','wa-cnt-estimate');waUpdatePreview('wa-tpl-estimate','wa-prev-estimate')">Hi {client_name}! 👋
+
+📋 *Estimation / Quotation*
+From: *{company_name}*
+
+We have prepared a cost estimate for your requirements:
+
+🔢 Quote No: *#{invoice_no}*
+📅 Date: *{issue_date}*
+💰 Estimated Amount: *{currency}{amount}*
+⏳ Valid Until: *{due_date}*
+📋 Service: {service}
+
+⚠️ *Please note: This is an ESTIMATE only, not a final invoice. Actual charges may vary.*
+
+👁️ View & Review your estimate online:
+{invoice_link}
+
+To *accept* this estimate, reply *APPROVED*.
+To request changes, reply with your feedback.
+
+Thank you for considering {company_name}! 🙏
+📞 {company_phone} | ✉ {company_email}</textarea>
+              <div class="wa-char-counter" id="wa-cnt-estimate"></div>
+            </div>
+            <button class="btn btn-outline" style="font-size:12px;padding:5px 12px" onclick="waTogglePreview('wa-prev-estimate')"><i class="fas fa-mobile-alt"></i> Preview</button>
+            <div class="wa-preview-wrap" id="wa-prev-estimate"><div class="wa-bubble" id="wa-prev-estimate-bubble"></div><div class="wa-bubble-meta">Delivered ✓✓</div></div>
           </div>
 
           <div class="wa-tab-pane" id="watab-paid">
@@ -3851,12 +3890,13 @@ function renderDonutChart() {
   const pending = STATE.invoices.filter(i=>i.status==='Pending').length;
   const overdue = STATE.invoices.filter(i=>i.status==='Overdue').length;
   const draft   = STATE.invoices.filter(i=>i.status==='Draft').length;
+  const estimate = STATE.invoices.filter(i=>i.status==='Estimate').length;
   if (donutChartInstance) donutChartInstance.destroy();
   donutChartInstance = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: ['Paid','Pending','Overdue','Draft'],
-      datasets: [{ data: [paid,pending,overdue,draft], backgroundColor: ['#4CAF50','#FFA726','#EF5350','#BDBDBD'], borderWidth: 2, borderColor: '#fff' }]
+      labels: ['Paid','Pending','Overdue','Draft','Estimate'],
+      datasets: [{ data: [paid,pending,overdue,draft,estimate], backgroundColor: ['#4CAF50','#FFA726','#EF5350','#BDBDBD','#3949AB'], borderWidth: 2, borderColor: '#fff' }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '65%',
@@ -3865,9 +3905,9 @@ function renderDonutChart() {
   });
   const legend = document.getElementById('donutLegend');
   if (!legend) return;
-  const colors = ['#4CAF50','#FFA726','#EF5350','#BDBDBD'];
-  const vals   = [paid,pending,overdue,draft];
-  const labels = ['Paid','Pending','Overdue','Draft'];
+  const colors = ['#4CAF50','#FFA726','#EF5350','#BDBDBD','#3949AB'];
+  const vals   = [paid,pending,overdue,draft,estimate];
+  const labels = ['Paid','Pending','Overdue','Draft','Estimate'];
   legend.innerHTML = labels.map((l,i) => `<div class="dl-item"><div class="dl-dot" style="background:${colors[i]}"></div><span class="dl-label">${l}</span><span class="dl-val">${vals[i]}</span></div>`).join('');
 }
 
@@ -4113,12 +4153,13 @@ function openRowMenu(e, id) {
   const isPaid       = st === 'Paid';
   const isDraft      = st === 'Draft';
   const isCancelled  = st === 'Cancelled';
-  // Edit only allowed for Draft invoices
-  const canEdit      = isDraft;
+  const isEstimate   = st === 'Estimate';
+  // Edit allowed for Draft and Estimate invoices
+  const canEdit      = isDraft || isEstimate;
   const editDisabled = !canEdit;
-  const editReason   = isPaid ? '(paid)' : isCancelled ? '(cancelled)' : !isDraft ? '(locked)' : '';
-  // Mark paid not allowed for Paid, Cancelled, or Draft (must be made Pending first)
-  const canMarkPaid  = !isPaid && !isCancelled && !isDraft;
+  const editReason   = isPaid ? '(paid)' : isCancelled ? '(cancelled)' : (!isDraft && !isEstimate) ? '(locked)' : '';
+  // Mark paid not allowed for Paid, Cancelled, Draft, or Estimate
+  const canMarkPaid  = !isPaid && !isCancelled && !isDraft && !isEstimate;
   // Cancel: not for Paid or already Cancelled
   const canCancel    = !isPaid && !isCancelled;
   const menu = document.getElementById('rowMenu');
@@ -4127,15 +4168,16 @@ function openRowMenu(e, id) {
   menu.innerHTML = `
     <div class="rm-item" onclick="rowMenuAction('preview')"><i class="fas fa-eye"></i> Preview</div>
     <div class="rm-item ${editDisabled?'rm-disabled':''}" onclick="${_editOnclick}" style="${editDisabled?'opacity:.4;cursor:not-allowed;':''}">
-      <i class="fas fa-edit"></i> Edit Invoice ${editDisabled?`<small style="font-size:9px">${editReason}</small>`:''}
+      <i class="fas fa-edit"></i> Edit ${isEstimate?'Estimate':'Invoice'} ${editDisabled?`<small style="font-size:9px">${editReason}</small>`:''}
     </div>
     ${isDraft ? `<div class="rm-item" onclick="rowMenuAction('make-pending')" style="color:#E65100"><i class="fas fa-paper-plane"></i> Make Pending</div>` : ''}
+    ${isEstimate ? `<div class="rm-item" onclick="rowMenuAction('convert-estimate')" style="color:#3949AB;font-weight:700"><i class="fas fa-file-invoice"></i> Convert to Invoice</div>` : ''}
     <div class="rm-item" onclick="rowMenuAction('download')"><i class="fas fa-download"></i> Download PDF</div>
     <div class="rm-item" onclick="rowMenuAction('duplicate')"><i class="fas fa-copy"></i> Duplicate</div>
     <div class="rm-item" onclick="rowMenuAction('wa')"><i class="fab fa-whatsapp"></i> Send WhatsApp</div>
     <div class="rm-item" onclick="rowMenuAction('email')"><i class="fas fa-envelope"></i> Send Email</div>
     <div class="rm-item ${canMarkPaid?'':'rm-disabled'}" onclick="${_paidOnclick}" style="${canMarkPaid?'':'opacity:.4;cursor:not-allowed'}">
-      <i class="fas fa-check-circle"></i> Mark as Paid ${isPaid?'(already paid)':isCancelled?'(cancelled)':isDraft?'(make pending first)':''}
+      <i class="fas fa-check-circle"></i> Mark as Paid ${isPaid?'(already paid)':isCancelled?'(cancelled)':isDraft?'(make pending first)':isEstimate?'(convert to invoice first)':''}
     </div>
     ${canCancel ? `<div class="rm-item" onclick="rowMenuAction('cancel')" style="color:#E65100"><i class="fas fa-ban"></i> Cancel Invoice</div>` : ''}
     <div class="rm-item rm-danger" onclick="rowMenuAction('delete')"><i class="fas fa-trash"></i> Delete</div>`;
@@ -4167,6 +4209,7 @@ function rowMenuAction(action) {
   if (action === 'paid')         { openPaidModal(id); return; }
   if (action === 'delete')       { openDeleteModal(id); return; }
   if (action === 'make-pending') { changeInvoiceStatus(id, 'Pending'); return; }
+  if (action === 'convert-estimate') { convertEstimateToInvoice(id); return; }
   if (action === 'cancel')       { confirmCancelInvoice(id); return; }
 }
 
@@ -4688,7 +4731,8 @@ function buildTpl1(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
     Pending:   'background:#fff;color:#000;border:1.5px dashed #000',
     Draft:     'background:#fff;color:#000;border:1.5px solid #000',
     Partial:   'background:#fff;color:#000;border:1.5px dashed #000',
-    Cancelled: 'background:#000;color:#fff;border:1.5px solid #000'
+    Cancelled: 'background:#000;color:#fff;border:1.5px solid #000',
+    Estimate:  'background:#3949AB;color:#fff;border:1.5px solid #3949AB'
   };
   const pill = pillStyles[d.status] || pillStyles.Draft;
   const th = `padding:10px 8px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:#000;border-bottom:${B};text-align:left`;
@@ -5844,9 +5888,28 @@ async function saveInvoice() {
     }
     // Auto-send WA if automation toggle is ON
     const wa = STATE.settings.wa || {};
-    if (wa.auto_inv === '1') {
-      const saved = STATE.invoices.find(i => (i.num||i.invoice_number) === d.num);
-      if (saved) {
+    const saved = STATE.invoices.find(i => (i.num||i.invoice_number) === d.num);
+    const savedStatus = saved?.status || d.status || '';
+
+    if (savedStatus === 'Draft') {
+      // ❌ Never send WA for internal drafts
+    } else if (savedStatus === 'Estimate') {
+      // ✅ Send estimate-specific WA if toggle is on
+      if (wa.auto_inv === '1' && saved) {
+        const c = STATE.clients.find(x => String(x.id) === String(saved.client)) || {};
+        const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g,'');
+        if (phone) {
+          const tpl = wa.tpl_estimate || getDefaultWATpl('estimate');
+          const msg = formatWAMsg(tpl, saved, c, STATE.settings);
+          logWAMessage({ inv: saved, client: c, type: 'estimate_created', msg, status: 'sending' });
+          sendWA(phone, msg, 'estimate_created', saved, c)
+            .then(r => logWAMessage({ inv: saved, client: c, type: 'estimate_created', msg, status: r ? 'sent_api' : 'sent_web' }))
+            .catch(e => { logWAMessage({ inv: saved, client: c, type: 'estimate_created', msg, status: 'failed', error: e.message }); console.warn('WA estimate send failed:', e.message); });
+        }
+      }
+    } else {
+      // ✅ Send normal invoice WA for Pending / Paid / Overdue etc.
+      if (wa.auto_inv === '1' && saved) {
         const c = STATE.clients.find(x => String(x.id) === String(saved.client)) || {};
         const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g,'');
         if (phone) {
@@ -6490,6 +6553,81 @@ function duplicateInvoice(id) {
   STATE.filteredInvoices = [...STATE.invoices];
   renderInvoicesTable();
   toast(`📋 Duplicated as ${newNum}`, 'success');
+}
+
+// ══════════════════════════════════════════
+// CONVERT ESTIMATE TO INVOICE
+// ══════════════════════════════════════════
+async function convertEstimateToInvoice(id) {
+  const inv = STATE.invoices.find(i => String(i.id) === String(id));
+  if (!inv) return;
+  if (!confirm(`Convert Estimate ${inv.num||inv.invoice_number} to a Pending Invoice?\n\nThe status will change to Pending and a WhatsApp invoice notification will be sent to the client.`)) return;
+
+  const dbId = inv._dbId || parseInt(inv.id) || 0;
+  // Replace QT- prefix with OT- prefix for the invoice number
+  const oldNum = inv.num || inv.invoice_number || '';
+  const newNum = oldNum.replace(/^QT-/, (STATE.settings.prefix || ('OT-' + new Date().getFullYear() + '-')));
+
+  try {
+    await api('api/invoices.php?id=' + dbId, 'PUT', {
+      ...inv,
+      invoice_number: newNum,
+      client_name:    inv.clientName || inv.client_name || '',
+      service_type:   inv.service || inv.service_type || '',
+      issued_date:    inv.issued || inv.issued_date || '',
+      due_date:       inv.due   || inv.due_date || '',
+      status:         'Pending',
+      subtotal:       inv.subtotal || inv.amount || 0,
+      discount_pct:   inv.disc || inv.discount_pct || 0,
+      discount_amt:   inv.discount_amt || 0,
+      discount_type:  inv.discount_type || 'percent',
+      gst_amount:     inv.gst_amount || 0,
+      grand_total:    inv.amount || inv.grand_total || 0,
+      bank_details:   inv.bank || inv.bank_details || '',
+      terms:          inv.tnc  || inv.terms || '',
+      template_id:    inv.template || 1,
+      items:          (inv.items || []).map(i => ({ desc: i.desc||i.description||'', qty: i.qty||1, rate: i.rate||0, gst: i.gst||18 }))
+    });
+
+    // Refresh invoices from server
+    const r = await api('api/invoices.php');
+    STATE.invoices = Array.isArray(r.data) ? r.data.map(normalizeInvoice) : [];
+    STATE.filteredInvoices = [...STATE.invoices];
+    renderInvoicesTable(); renderDonutChart(); renderDashRecent(); updateDashStats();
+    toast(`✅ Estimate converted to Invoice ${newNum}!`, 'success');
+
+    // Auto-send invoice created WhatsApp
+    const convertedInv = STATE.invoices.find(i => (i.num||i.invoice_number) === newNum);
+    if (convertedInv) {
+      setTimeout(() => sendWAForInvoice(convertedInv), 600);
+    }
+  } catch(e) {
+    toast('❌ Conversion failed: ' + e.message, 'error');
+  }
+}
+
+// ── onStatusChange: auto-update invoice number prefix when switching to/from Estimate
+function onStatusChange(newStatus) {
+  const numEl = document.getElementById('f-num');
+  if (!numEl) return;
+  const current = numEl.value || '';
+  const pfx = STATE.settings.prefix || ('OT-' + new Date().getFullYear() + '-');
+  const qtPfx = 'QT-' + new Date().getFullYear() + '-';
+  if (newStatus === 'Estimate') {
+    // Switch OT- prefix to QT- for estimates
+    if (current.startsWith(pfx)) {
+      numEl.value = current.replace(pfx, qtPfx);
+    } else if (!current.startsWith('QT-')) {
+      numEl.value = qtPfx + '001';
+    }
+  } else {
+    // Switch QT- prefix back to OT- when moving away from Estimate
+    if (current.startsWith(qtPfx)) {
+      numEl.value = current.replace(qtPfx, pfx);
+    } else if (current.startsWith('QT-')) {
+      numEl.value = pfx + '001';
+    }
+  }
 }
 
 // ══════════════════════════════════════════
@@ -7206,6 +7344,7 @@ window.saveWASettings = async function() {
     wa_remind_days:   val('wa-remind-days') || '3',
     wa_max_followup:  val('wa-max-followup') || '3',
     wa_tpl_inv:       val('wa-tpl-inv'),
+    wa_tpl_estimate:  val('wa-tpl-estimate'),
     wa_tpl_paid:      val('wa-tpl-paid'),
     wa_tpl_partial:   val('wa-tpl-partial'),
     wa_tpl_remind:    val('wa-tpl-remind'),
@@ -7240,7 +7379,7 @@ window.saveWASettings = async function() {
     token: payload.wa_token, pid: payload.wa_pid, bid: payload.wa_bid,
     test_phone: payload.wa_test_phone,
     remind_days: payload.wa_remind_days, max_followup: payload.wa_max_followup,
-    tpl_inv: payload.wa_tpl_inv, tpl_paid: payload.wa_tpl_paid,
+    tpl_inv: payload.wa_tpl_inv, tpl_estimate: payload.wa_tpl_estimate, tpl_paid: payload.wa_tpl_paid,
     tpl_partial: payload.wa_tpl_partial,
     tpl_remind: payload.wa_tpl_remind, tpl_overdue: payload.wa_tpl_overdue,
     tpl_followup: payload.wa_tpl_followup, tpl_festival: payload.wa_tpl_festival,
@@ -8620,8 +8759,9 @@ function populateWAPage() {
   setV('wa-max-followup',wa.max_followup || '3');
 
   // Templates
-  setV('wa-tpl-inv',     wa.tpl_inv     || getDefaultWATpl('inv'));
-  setV('wa-tpl-paid',    wa.tpl_paid    || getDefaultWATpl('paid'));
+  setV('wa-tpl-inv',      wa.tpl_inv      || getDefaultWATpl('inv'));
+  setV('wa-tpl-estimate', wa.tpl_estimate || getDefaultWATpl('estimate'));
+  setV('wa-tpl-paid',     wa.tpl_paid     || getDefaultWATpl('paid'));
   setV('wa-tpl-remind',  wa.tpl_remind  || getDefaultWATpl('remind'));
   setV('wa-tpl-overdue', wa.tpl_overdue || getDefaultWATpl('overdue'));
   setV('wa-tpl-followup',wa.tpl_followup|| getDefaultWATpl('followup'));
@@ -8665,6 +8805,32 @@ function populateWAClientDropdown() {
 // ── Default rich message templates ───────────────────────────
 function getDefaultWATpl(type) {
   const d = {
+    estimate: `Hi {client_name}! 👋
+
+📋 *Estimation / Quotation*
+From: *{company_name}*
+
+We have prepared a cost estimate for your requirements:
+
+🔢 Quote No: *#{invoice_no}*
+📅 Date: *{issue_date}*
+💰 Estimated Amount: *{currency}{amount}*
+⏳ Valid Until: *{due_date}*
+📋 Service: {service}
+
+{item_list}
+
+⚠️ *Please note: This is an ESTIMATE only, not a final invoice. Actual charges may vary based on the final scope of work.*
+
+👁️ View & Review your estimate online:
+{invoice_link}
+
+To *accept* this estimate, reply *APPROVED*.
+To request changes, reply with your feedback.
+
+Thank you for considering {company_name}! 🙏
+📞 {company_phone} | ✉ {company_email}`,
+
     inv: `Hi {client_name}! 👋
 
 *Invoice #{invoice_no}* from *{company_name}* is ready.
@@ -9004,6 +9170,11 @@ function testWA() {
 
 // ── Send WA for an invoice ────────────────────────────────────
 async function sendWAForInvoice(inv) {
+  // Block WA send for internal drafts
+  if ((inv.status || '') === 'Draft') {
+    toast('⚠️ Draft invoices cannot be sent via WhatsApp. Change status to Pending or Estimate first.', 'warning');
+    return;
+  }
   // Try client lookup by multiple field names
   const clientId = inv.client || inv.client_id;
   const c = STATE.clients.find(x => String(x.id) === String(clientId)) || {};
@@ -9012,11 +9183,13 @@ async function sendWAForInvoice(inv) {
   const phone = (client.wa || client.whatsapp || client.phone || '').replace(/\D/g, '');
   if (!phone) { toast('⚠️ No WhatsApp number for client "' + (client.name||'Unknown') + '"', 'warning'); return; }
   // Pick the correct template based on invoice status
-  // (same logic as auto-send, so manual send always matches automated send)
   const wa = STATE.settings.wa || {};
   let tplKey, tplDefault, tplName, statusLabel;
   const status = inv.status || '';
-  if (status === 'Paid') {
+  if (status === 'Estimate') {
+    tplKey = wa.tpl_estimate; tplDefault = getDefaultWATpl('estimate');
+    tplName = 'estimate_created'; statusLabel = 'Estimate';
+  } else if (status === 'Paid') {
     tplKey = wa.tpl_paid; tplDefault = getDefaultWATpl('paid');
     tplName = 'payment_received'; statusLabel = 'Payment Receipt';
   } else if (status === 'Partial') {
@@ -11118,7 +11291,7 @@ function waTab(key, btn) {
 function waInsertVar(varName) {
   // Find the active tab's textarea
   const key = window._waActiveTab || 'inv';
-  const idMap = { inv:'wa-tpl-inv', paid:'wa-tpl-paid', partial:'wa-tpl-partial',
+  const idMap = { inv:'wa-tpl-inv', estimate:'wa-tpl-estimate', paid:'wa-tpl-paid', partial:'wa-tpl-partial',
                   remind:'wa-tpl-remind', overdue:'wa-tpl-overdue', followup:'wa-tpl-followup' };
   const tId = idMap[key] || 'wa-manual-msg';
   // Also check if manual msg textarea is focused
@@ -11172,9 +11345,9 @@ function waUpdatePreview(textareaId, wrapId) {
 // ── Reset current tab template to default ────────────────────
 function waResetCurrentTab() {
   const key = window._waActiveTab || 'inv';
-  const idMap = { inv:'wa-tpl-inv', paid:'wa-tpl-paid', partial:'wa-tpl-partial',
+  const idMap = { inv:'wa-tpl-inv', estimate:'wa-tpl-estimate', paid:'wa-tpl-paid', partial:'wa-tpl-partial',
                   remind:'wa-tpl-remind', overdue:'wa-tpl-overdue', followup:'wa-tpl-followup' };
-  const tplMap = { inv:'inv', paid:'paid', partial:'partial_receipt',
+  const tplMap = { inv:'inv', estimate:'estimate', paid:'paid', partial:'partial_receipt',
                    remind:'remind', overdue:'overdue', followup:'followup' };
   const tId = idMap[key];
   const tKey = tplMap[key];
@@ -11208,7 +11381,7 @@ if (typeof _origShowPageWA === 'function') {
     _origShowPageWA.call(this, name, el);
     if (name === 'whatsapp') {
       setTimeout(() => {
-        ['inv','paid','partial','remind','overdue','followup'].forEach(k => {
+        ['inv','estimate','paid','partial','remind','overdue','followup'].forEach(k => {
           waUpdateCounter('wa-tpl-' + k, 'wa-cnt-' + k);
         });
         waUpdateCounter('wa-manual-msg','wa-manual-counter');
