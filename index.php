@@ -326,10 +326,10 @@ canvas { max-width: 100% !important; }
   font-weight: 500; color: var(--text2);
 }
 .cal-day.today { background: var(--teal); color: #fff; font-weight: 800; border-radius: 6px; }
-.cal-day.has-due { border: 2px solid var(--teal); border-radius: 6px; color: var(--amber); font-weight: 700; animation: statusGlow-due 2s ease-in-out infinite; }
+.cal-day.has-due { border: 2px solid var(--amber); border-radius: 6px; color: var(--amber); font-weight: 700; animation: statusGlow-due 2s ease-in-out infinite; }
 .cal-day.has-overdue { border: 2px solid var(--red); border-radius: 6px; color: var(--red); font-weight: 700; background: var(--red-bg); animation: statusGlow-overdue 2s ease-in-out infinite; }
 .cal-day.has-paid { border: 2px solid var(--green); border-radius: 6px; color: var(--green); font-weight: 600; animation: statusGlow-paid 2s ease-in-out infinite; }
-.cal-day.has-due::after { content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:4px; height:4px; background:var(--teal); border-radius:50%; }
+.cal-day.has-due::after { content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:4px; height:4px; background:var(--amber); border-radius:50%; }
 .cal-day.has-overdue::after { background: var(--red); content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; }
 .cal-day.has-paid::after { content:'•'; position:absolute; bottom:0px; left:50%; transform:translateX(-50%); font-size:14px; font-weight:900; color:var(--amber); line-height:1; }
 .cal-day.other-month { color: var(--muted2); }
@@ -3768,7 +3768,7 @@ function buildLiveChartData(mode) {
   const now = new Date();
   if (mode === 'monthly') {
     const year = now.getFullYear();
-    const paid = Array(12).fill(0), pend = Array(12).fill(0);
+    const paid = Array(12).fill(0), pend = Array(12).fill(0), over = Array(12).fill(0);
     STATE.invoices.forEach(inv => {
       if (!inv.issued) return;
       const d = new Date(inv.issued);
@@ -3776,12 +3776,13 @@ function buildLiveChartData(mode) {
       const m = d.getMonth();
       if (inv.status === 'Paid')    paid[m] += parseFloat(inv.amount)||0;
       if (inv.status === 'Pending') pend[m] += parseFloat(inv.amount)||0;
+      if (inv.status === 'Overdue') over[m] += parseFloat(inv.amount)||0;
     });
-    return { labels: months, paid, pending: pend };
+    return { labels: months, paid, pending: pend, overdue: over };
   }
   if (mode === 'weekly') {
     const weeks = ['W1','W2','W3','W4','W5','W6','W7','W8'];
-    const paid = Array(8).fill(0), pend = Array(8).fill(0);
+    const paid = Array(8).fill(0), pend = Array(8).fill(0), over = Array(8).fill(0);
     const baseDate = new Date(now.getFullYear(), now.getMonth(), 1);
     STATE.invoices.forEach(inv => {
       if (!inv.issued) return;
@@ -3790,13 +3791,14 @@ function buildLiveChartData(mode) {
       const wk = Math.min(Math.max(Math.floor(diffDays / 7), 0), 7);
       if (inv.status === 'Paid')    paid[wk] += parseFloat(inv.amount)||0;
       if (inv.status === 'Pending') pend[wk] += parseFloat(inv.amount)||0;
+      if (inv.status === 'Overdue') over[wk] += parseFloat(inv.amount)||0;
     });
-    return { labels: weeks, paid, pending: pend };
+    return { labels: weeks, paid, pending: pend, overdue: over };
   }
   // yearly
   const curYear = now.getFullYear();
   const years = [curYear-3, curYear-2, curYear-1, curYear].map(String);
-  const paid = Array(4).fill(0), pend = Array(4).fill(0);
+  const paid = Array(4).fill(0), pend = Array(4).fill(0), over = Array(4).fill(0);
   STATE.invoices.forEach(inv => {
     if (!inv.issued) return;
     const yr = new Date(inv.issued).getFullYear();
@@ -3804,8 +3806,9 @@ function buildLiveChartData(mode) {
     if (idx < 0) return;
     if (inv.status === 'Paid')    paid[idx] += parseFloat(inv.amount)||0;
     if (inv.status === 'Pending') pend[idx] += parseFloat(inv.amount)||0;
+    if (inv.status === 'Overdue') over[idx] += parseFloat(inv.amount)||0;
   });
-  return { labels: years, paid, pending: pend };
+  return { labels: years, paid, pending: pend, overdue: over };
 }
 
 function renderRevenueChart(mode) {
@@ -3818,8 +3821,9 @@ function renderRevenueChart(mode) {
     data: {
       labels: d.labels,
       datasets: [
-        { label: 'Paid', data: d.paid, backgroundColor: 'rgba(0,137,123,.75)', borderRadius: 5, borderSkipped: false },
-        { label: 'Pending', data: d.pending, backgroundColor: 'rgba(249,168,37,.65)', borderRadius: 5, borderSkipped: false }
+        { label: 'Paid',    data: d.paid,    backgroundColor: 'rgba(0,137,123,.75)',  borderRadius: 5, borderSkipped: false },
+        { label: 'Pending', data: d.pending, backgroundColor: 'rgba(249,168,37,.65)', borderRadius: 5, borderSkipped: false },
+        { label: 'Overdue', data: d.overdue, backgroundColor: 'rgba(229,57,53,.60)',  borderRadius: 5, borderSkipped: false }
       ]
     },
     options: {
@@ -3902,13 +3906,23 @@ function renderCalendar() {
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
   const today = new Date();
-  // Build events from live invoices
+  // Build events — use due or due_date fallback; detect overdue even for Pending past due
   const evMap = {};
   STATE.invoices.forEach(inv => {
-    if (!inv.due) return;
-    if (!evMap[inv.due]) evMap[inv.due] = [];
-    const t = inv.status==='Paid'?'paid':inv.status==='Overdue'?'overdue':'due';
-    evMap[inv.due].push({type:t, label:inv.num});
+    const dueFld = inv.due || inv.due_date;
+    if (!dueFld) return;
+    let t;
+    if (inv.status === 'Paid') {
+      t = 'paid';
+    } else if (inv.status === 'Overdue') {
+      t = 'overdue';
+    } else {
+      // Pending/Partial: mark overdue on calendar if past due date
+      const dueD = new Date(dueFld); dueD.setHours(23,59,59,999);
+      t = (!isNaN(dueD) && dueD < today) ? 'overdue' : 'due';
+    }
+    if (!evMap[dueFld]) evMap[dueFld] = [];
+    evMap[dueFld].push({type:t, label:inv.num});
   });
   CAL_EVENTS.forEach(e => { if (!evMap[e.date]) evMap[e.date]=[]; evMap[e.date].push(e); });
   let html = `<div class="cal-month-title">${monthNames[calMonth]} ${calYear}</div><div class="cal-grid">`;
@@ -3918,14 +3932,18 @@ function renderCalendar() {
     const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const evs = evMap[ds]||[];
     const isToday = today.getFullYear()===calYear && today.getMonth()===calMonth && today.getDate()===d;
-    const evType = evs[0]?.type||'';
+    // Priority: overdue > due > paid so overdue always wins on mixed days
+    const hasOverdue = evs.some(e=>e.type==='overdue');
+    const hasDue     = evs.some(e=>e.type==='due');
+    const hasPaid    = evs.some(e=>e.type==='paid');
     let cls = 'cal-day';
     if (isToday) cls += ' today';
-    else if (evType==='due') cls += ' has-due';
-    else if (evType==='overdue') cls += ' has-overdue';
-    else if (evType==='paid') cls += ' has-paid';
+    if (hasOverdue) cls += ' has-overdue';
+    else if (hasDue) cls += ' has-due';
+    else if (hasPaid) cls += ' has-paid';
     const tip = evs.map(e=>e.label).join(', ');
-    const dot = evs.length>1 ? `<span style="position:absolute;top:1px;right:2px;font-size:7px;font-weight:800;color:${isToday?'#fff':'var(--teal)'}">${evs.length}</span>` : '';
+    const dotColor = isToday?'#fff':hasOverdue?'var(--red)':hasDue?'var(--amber)':'var(--green)';
+    const dot = evs.length>1 ? `<span style="position:absolute;top:1px;right:2px;font-size:7px;font-weight:800;color:${dotColor}">${evs.length}</span>` : '';
     html += `<div class="${cls}" title="${tip}" style="position:relative">${d}${dot}</div>`;
   }
   html += '</div>';
