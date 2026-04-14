@@ -999,6 +999,7 @@ const SERVER = {
     remind_days:   <?= json_encode($settings['wa_remind_days']  ?? '3') ?>,
     max_followup:  <?= json_encode($settings['wa_max_followup'] ?? '3') ?>,
     tpl_inv:       <?= json_encode($settings['wa_tpl_inv']      ?? '') ?>,
+    tpl_estimate:  <?= json_encode($settings['wa_tpl_estimate'] ?? '') ?>,
     tpl_paid:      <?= json_encode($settings['wa_tpl_paid']     ?? '') ?>,
     tpl_partial:   <?= json_encode($settings['wa_tpl_partial']  ?? '') ?>,
     tpl_remind:    <?= json_encode($settings['wa_tpl_remind']   ?? '') ?>,
@@ -1011,6 +1012,21 @@ const SERVER = {
     auto_remind:   <?= json_encode($settings['wa_auto_remind']  ?? '1') ?>,
     auto_overdue:  <?= json_encode($settings['wa_auto_overdue'] ?? '1') ?>,
     auto_followup: <?= json_encode($settings['wa_auto_followup']?? '0') ?>,
+    msg_mode:      <?= json_encode($settings['wa_msg_mode']     ?? 'session') ?>,
+    tpl_name_invoice:  <?= json_encode($settings['wa_tpl_name_invoice']  ?? '') ?>,
+    tpl_lang_invoice:  <?= json_encode($settings['wa_tpl_lang_invoice']  ?? 'en_US') ?>,
+    tpl_name_reminder: <?= json_encode($settings['wa_tpl_name_reminder'] ?? '') ?>,
+    tpl_lang_reminder: <?= json_encode($settings['wa_tpl_lang_reminder'] ?? 'en_US') ?>,
+    tpl_name_overdue:  <?= json_encode($settings['wa_tpl_name_overdue']  ?? '') ?>,
+    tpl_lang_overdue:  <?= json_encode($settings['wa_tpl_lang_overdue']  ?? 'en_US') ?>,
+    tpl_name_paid:     <?= json_encode($settings['wa_tpl_name_paid']     ?? '') ?>,
+    tpl_lang_paid:     <?= json_encode($settings['wa_tpl_lang_paid']     ?? 'en_US') ?>,
+    tpl_name_followup: <?= json_encode($settings['wa_tpl_name_followup'] ?? '') ?>,
+    tpl_lang_followup: <?= json_encode($settings['wa_tpl_lang_followup'] ?? 'en_US') ?>,
+    tpl_name_partial:  <?= json_encode($settings['wa_tpl_name_partial']  ?? '') ?>,
+    tpl_lang_partial:  <?= json_encode($settings['wa_tpl_lang_partial']  ?? 'en_US') ?>,
+    tpl_name_festival: <?= json_encode($settings['wa_tpl_name_festival'] ?? '') ?>,
+    tpl_lang_festival: <?= json_encode($settings['wa_tpl_lang_festival'] ?? 'en_US') ?>,
   }
 };
 </script>
@@ -2538,7 +2554,8 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
             <div class="field"><label>Phone</label><input id="sc-phone" value="+91 98765 43210"></div>
             <div class="field"><label>Email</label><input id="sc-email" value="optmstech@gmail.com"></div>
             <div class="field"><label>Website</label><input id="sc-web" value="www.optmstech.in"></div>
-            <div class="field"><label>Invoice Prefix</label><input id="sc-prefix" value="OT-2025-"></div>
+            <div class="field"><label>Invoice Prefix</label><input id="sc-prefix" value="OT-2025-" placeholder="OT-2025-"></div>
+            <div class="field"><label>Estimate / Quotation Prefix</label><input id="sc-estimate-prefix" value="QT-2025-" placeholder="QT-2025-"></div>
             <div class="field"><label>UPI ID</label><input id="sc-upi" value="optmstech@upi"></div>
             <div class="field g-full"><label>Default Bank Account Details <span style="font-size:10px;color:var(--muted)">(pre-fills in new invoices)</span></label>
               <textarea id="sc-bank" style="min-height:85px" placeholder="Bank: SBI | A/C: XXXXXXXXX | IFSC: SBIN0001234 | Name: Your Company | UPI: yourname@upi"></textarea>
@@ -2596,6 +2613,9 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
             </div>
             <div class="field"><label>Invoice Number Prefix</label>
               <input id="sd-prefix" placeholder="OT-2025-" value="">
+            </div>
+            <div class="field"><label>Estimate / Quotation Prefix</label>
+              <input id="sd-estimate-prefix" placeholder="QT-2025-" value="">
             </div>
             <div class="field"><label>Default Currency</label>
               <select id="sd-currency">
@@ -6611,17 +6631,17 @@ function onStatusChange(newStatus) {
   const numEl = document.getElementById('f-num');
   if (!numEl) return;
   const current = numEl.value || '';
-  const pfx = STATE.settings.prefix || ('OT-' + new Date().getFullYear() + '-');
-  const qtPfx = 'QT-' + new Date().getFullYear() + '-';
+  const pfx   = STATE.settings.prefix || ('OT-' + new Date().getFullYear() + '-');
+  const qtPfx = STATE.settings.estimatePrefix || ('QT-' + new Date().getFullYear() + '-');
   if (newStatus === 'Estimate') {
-    // Switch OT- prefix to QT- for estimates
+    // Switch invoice prefix to estimate prefix
     if (current.startsWith(pfx)) {
       numEl.value = current.replace(pfx, qtPfx);
-    } else if (!current.startsWith('QT-')) {
+    } else if (!current.startsWith(qtPfx)) {
       numEl.value = qtPfx + '001';
     }
   } else {
-    // Switch QT- prefix back to OT- when moving away from Estimate
+    // Switch estimate prefix back to invoice prefix
     if (current.startsWith(qtPfx)) {
       numEl.value = current.replace(qtPfx, pfx);
     } else if (current.startsWith('QT-')) {
@@ -7280,6 +7300,7 @@ async function saveCompanySettings() {
     company_email:   document.getElementById('sc-email')?.value   || '',
     company_website: document.getElementById('sc-web')?.value     || '',
     invoice_prefix:  document.getElementById('sc-prefix')?.value  || '',
+    estimate_prefix: document.getElementById('sc-estimate-prefix')?.value || '',
     company_upi:     document.getElementById('sc-upi')?.value     || '',
     company_address: document.getElementById('sc-addr')?.value    || '',
     company_logo:    document.getElementById('sc-logo')?.value    || STATE.settings.logo || '',
@@ -7289,6 +7310,7 @@ async function saveCompanySettings() {
   Object.assign(STATE.settings, {
     company: payload.company_name, gst: payload.company_gst, phone: payload.company_phone,
     email: payload.company_email, website: payload.company_website, prefix: payload.invoice_prefix,
+    estimatePrefix: payload.estimate_prefix,
     upi: payload.company_upi, address: payload.company_address,
     logo: payload.company_logo || STATE.settings.logo,
     signature: payload.company_sign || STATE.settings.signature,
@@ -8165,8 +8187,9 @@ document.addEventListener('click', e => closeAllDropdowns(e));
   STATE.settings.phone     = s.company_phone   || STATE.settings.phone;
   STATE.settings.email     = s.company_email   || STATE.settings.email;
   STATE.settings.website   = s.company_website || STATE.settings.website;
-  STATE.settings.prefix    = s.invoice_prefix  || STATE.settings.prefix;
-  STATE.settings.upi       = s.company_upi     || STATE.settings.upi;
+  STATE.settings.prefix          = s.invoice_prefix   || STATE.settings.prefix;
+  STATE.settings.estimatePrefix  = s.estimate_prefix  || ('QT-' + new Date().getFullYear() + '-');
+  STATE.settings.upi             = s.company_upi      || STATE.settings.upi;
   STATE.settings.address   = s.company_address || STATE.settings.address;
   STATE.settings.logo      = s.company_logo    || '';
   STATE.settings.signature = s.company_sign    || '';
@@ -8256,13 +8279,14 @@ async function loadAllData() {
         test_phone:    s.wa_test_phone   || '',
         remind_days:   s.wa_remind_days  || '3',
         max_followup:  s.wa_max_followup || '3',
-        tpl_inv:       s.wa_tpl_inv      || '',
-        tpl_paid:      s.wa_tpl_paid     || '',
-        tpl_partial:   s.wa_tpl_partial  || '',
-        tpl_remind:    s.wa_tpl_remind   || '',
-        tpl_overdue:   s.wa_tpl_overdue  || '',
-        tpl_followup:  s.wa_tpl_followup || '',
-        tpl_festival:  s.wa_tpl_festival || '',
+        tpl_inv:       s.wa_tpl_inv       || '',
+        tpl_estimate:  s.wa_tpl_estimate  || '',
+        tpl_paid:      s.wa_tpl_paid      || '',
+        tpl_partial:   s.wa_tpl_partial   || '',
+        tpl_remind:    s.wa_tpl_remind    || '',
+        tpl_overdue:   s.wa_tpl_overdue   || '',
+        tpl_followup:  s.wa_tpl_followup  || '',
+        tpl_festival:  s.wa_tpl_festival  || '',
         auto_inv:      s.wa_auto_inv      !== undefined ? s.wa_auto_inv      : '0',
         auto_paid:     s.wa_auto_paid     !== undefined ? s.wa_auto_paid     : '1',
         auto_partial:  s.wa_auto_partial  !== undefined ? s.wa_auto_partial  : '1',
@@ -8328,6 +8352,7 @@ async function loadAllData() {
       STATE.settings.email     = s.company_email   || STATE.settings.email;
       STATE.settings.website   = s.company_website || STATE.settings.website;
       STATE.settings.prefix    = s.invoice_prefix  || STATE.settings.prefix;
+      STATE.settings.estimatePrefix = s.estimate_prefix || STATE.settings.estimatePrefix || ('QT-' + new Date().getFullYear() + '-');
       STATE.settings.upi       = s.company_upi     || STATE.settings.upi;
       STATE.settings.address   = s.company_address || STATE.settings.address;
       STATE.settings.logo      = s.company_logo    || '';
@@ -8503,6 +8528,7 @@ window.saveInvoiceDefaults = async function() {
     due_days:        document.getElementById('sd-due')?.value     || '15',
     active_template: document.getElementById('sd-tpl')?.value     || '1',
     invoice_prefix:  document.getElementById('sd-prefix')?.value  || STATE.settings.prefix || 'OT-',
+    estimate_prefix: document.getElementById('sd-estimate-prefix')?.value || STATE.settings.estimatePrefix || 'QT-',
     default_currency:document.getElementById('sd-currency')?.value|| '₹',
     default_bank:    document.getElementById('sd-bank')?.value    || '',
     default_tnc:     document.getElementById('sd-tnc')?.value     || '',
@@ -8512,6 +8538,7 @@ window.saveInvoiceDefaults = async function() {
   STATE.settings.dueDays        = parseInt(payload.due_days);
   STATE.settings.activeTemplate = parseInt(payload.active_template);
   if (payload.invoice_prefix) STATE.settings.prefix = payload.invoice_prefix;
+  if (payload.estimate_prefix) STATE.settings.estimatePrefix = payload.estimate_prefix;
   if (payload.default_tnc !== undefined) STATE.settings.defaultTnC = payload.default_tnc;
   try {
     await api('api/settings.php', 'POST', payload);
@@ -8628,14 +8655,16 @@ function populateSettingsForm() {
   set('sc-email',   s.email);
   renderCategoryList();
   renderItemTypeList();
-  set('sc-prefix',  s.prefix);
-  set('sc-upi',     s.upi);
+  set('sc-prefix',          s.prefix);
+  set('sc-estimate-prefix', s.estimatePrefix);
+  set('sc-upi',             s.upi);
   set('sc-addr',    s.address);
   set('sc-logo',    s.logo);
   set('sc-sign',    s.signature);
   set('sc-bank',    s.defaultBank || STATE.settings.defaultBank || '');
   // Invoice defaults
-  set('sd-prefix',  s.prefix);
+  set('sd-prefix',          s.prefix);
+  set('sd-estimate-prefix', s.estimatePrefix);
   set('sd-due',     s.dueDays);
   set('sd-bank',    s.defaultBank || '');
   set('sd-tnc',     s.defaultTnC  || '');

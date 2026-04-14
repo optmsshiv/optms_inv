@@ -109,8 +109,8 @@ switch ($method) {
     if (empty($input['invoice_number'])) {
       $status = $input['status'] ?? 'Draft';
       if ($status === 'Estimate') {
-        // Estimates use QT- prefix
-        $pfx = 'QT-' . date('Y') . '-';
+        // Estimates use configurable estimate prefix (falls back to QT-YYYY-)
+        $pfx = getSetting('estimate_prefix', 'QT-' . date('Y') . '-');
       } else {
         $pfx = getSetting('invoice_prefix', 'OT-' . date('Y') . '-');
       }
