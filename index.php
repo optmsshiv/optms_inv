@@ -9125,7 +9125,7 @@ function buildWATplParams(tplName, inv, client, settings) {
     overdue:          ['client_name','invoice_no','amount','days_overdue','upi','company_name','portal_link'],
     followup:         ['client_name','invoice_no','amount','days_overdue','upi','company_phone','portal_link'],
     festival:         ['client_name','company_name','company_phone'],
-    estimate:         ['company_name','client_name','invoice_no','issue_date','amount','due_date','service','portal_link','company_phone','email'],
+    estimate:         ['company_name','client_name','invoice_no','issue_date','amount','due_date','service','portal_link'],
     // Verbose aliases for backwards compatibility
     invoice_created:  ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
     payment_reminder: ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
