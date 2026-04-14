@@ -179,7 +179,7 @@ function status_label($s) {
 }
 
 $sym           = $inv['currency'] ?: '₹';
-$isEstimate    = ($inv['status'] ?? '') === 'Estimate';
+$isEstimate    = ($inv['status'] ?? '') === 'Estimate'|| str_starts_with($inv['invoice_number'] ?? '', 'QT-');
 $totalAmt      = (float)($inv['amount'] ?? 0);
 $totalCash     = array_sum(array_column($payments, 'amount'));
 $totalSettle   = array_sum(array_column($payments, 'settlement_discount'));
