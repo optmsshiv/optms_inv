@@ -1009,6 +1009,7 @@ const SERVER = {
     tpl_followup:  <?= json_encode($settings['wa_tpl_followup'] ?? '') ?>,
     tpl_festival:  <?= json_encode($settings['wa_tpl_festival'] ?? '') ?>,
     auto_inv:      <?= json_encode($settings['wa_auto_inv']     ?? '0') ?>,
+    auto_estimate: <?= json_encode($settings['wa_auto_estimate']?? '0') ?>,
     auto_paid:     <?= json_encode($settings['wa_auto_paid']    ?? '1') ?>,
     auto_partial:  <?= json_encode($settings['wa_auto_partial'] ?? '1') ?>,
     auto_remind:   <?= json_encode($settings['wa_auto_remind']  ?? '1') ?>,
@@ -2031,6 +2032,10 @@ const SERVER = {
               <div style="padding:8px 12px;margin:-4px 0 8px;background:var(--teal-bg);border-radius:0 0 8px 8px;font-size:11px;color:var(--teal)" id="twa1-hint">
               When ON: sends invoice details, amount, due date, UPI, and item list to client automatically
               </div>
+              <div class="toggle-item" style="flex-wrap:wrap;gap:6px">
+                <span style="flex:1"><strong>New Estimate</strong> — auto-send when estimate is saved</span>
+                <div class="tog <?= (($settings['wa_auto_estimate']??'0')==='1')?'on':'' ?>" id="twa7" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_estimate', this)"></div>
+              </div>
               <div class="toggle-item"><span><strong>Payment Receipt</strong> — when fully paid</span><div class="tog <?= (($settings['wa_auto_paid']??'1')!=='0')?'on':'' ?>" id="twa2" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_paid', this)"></div></div>
               <div class="toggle-item"><span><strong>Partial Payment</strong> — on partial receipt</span><div class="tog <?= (($settings['wa_auto_partial']??'1')!=='0')?'on':'' ?>" id="twa6" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_partial', this)"></div></div>
               <div class="toggle-item"><span><strong>Due Soon Reminder</strong> — before due date</span><div class="tog <?= (($settings['wa_auto_remind']??'1')!=='0')?'on':'' ?>" id="twa3" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_remind', this)"></div></div>
@@ -2276,6 +2281,7 @@ Kindly process payment immediately or contact us to discuss.
               </div>
               <div class="form-grid g1" style="gap:10px">
                 <div class="field"><label>📄 Invoice Created</label><div style="display:flex;gap:6px"><input id="tpl-name-invoice" placeholder="invoice_created" style="flex:1"><input id="tpl-lang-invoice" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}due {{5}}upi {{6}}company {{7}}link</div></div>
+                <div class="field"><label>📋 Estimate / Quote</label><div style="display:flex;gap:6px"><input id="tpl-name-estimate" placeholder="estimate_created" style="flex:1"><input id="tpl-lang-estimate" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}quote# {{3}}amount {{4}}valid_until {{5}}service {{6}}company {{7}}link</div></div>
                 <div class="field"><label>🔔 Payment Reminder</label><div style="display:flex;gap:6px"><input id="tpl-name-reminder" placeholder="payment_reminder" style="flex:1"><input id="tpl-lang-reminder" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}due {{5}}upi {{6}}company {{7}}link</div></div>
                 <div class="field"><label>⚠️ Payment Overdue</label><div style="display:flex;gap:6px"><input id="tpl-name-overdue" placeholder="payment_overdue" style="flex:1"><input id="tpl-lang-overdue" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}days {{5}}upi {{6}}company {{7}}link</div></div>
                 <div class="field"><label>✅ Payment Received</label><div style="display:flex;gap:6px"><input id="tpl-name-paid" placeholder="payment_received" style="flex:1"><input id="tpl-lang-paid" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}disc {{5}}date {{6}}company {{7}}link</div></div>
@@ -2288,6 +2294,19 @@ Kindly process payment immediately or contact us to discuss.
               <details style="margin-top:14px">
                 <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--muted);list-style:none;display:flex;align-items:center;gap:6px"><i class="fas fa-file-alt"></i> Suggested content for Meta approval</summary>
                 <div style="margin-top:10px;background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--border)">
+                  <details style="margin-bottom:6px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#3949AB">estimate_created — UTILITY</summary><pre style="font-size:11px;background:#fff;padding:8px;border-radius:6px;margin-top:4px;white-space:pre-wrap;border:1px solid var(--border)">Hi {{1}},
+
+📋 *Estimate #{{2}}* from {{6}}
+
+💰 Estimated Amount: *{{3}}*
+⏳ Valid Until: *{{4}}*
+📋 Service: {{5}}
+
+⚠️ This is an ESTIMATE only, not a final invoice.
+
+👁️ View &amp; Review: {{7}}
+
+To accept, reply *APPROVED*. — {{6}}</pre></details>
                   <details style="margin-bottom:6px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--teal)">invoice_created — UTILITY</summary><pre style="font-size:11px;background:#fff;padding:8px;border-radius:6px;margin-top:4px;white-space:pre-wrap;border:1px solid var(--border)">
 Hi {{1}},
 
@@ -5901,8 +5920,8 @@ async function saveInvoice() {
     if (savedStatus === 'Draft') {
       // ❌ Never send WA for internal drafts
     } else if (savedStatus === 'Estimate') {
-      // ✅ Send estimate-specific WA if toggle is on
-      if (wa.auto_inv === '1' && saved) {
+      // ✅ Send estimate-specific WA if the Estimate automation toggle is on
+      if (wa.auto_estimate === '1' && saved) {
         const c = STATE.clients.find(x => String(x.id) === String(saved.client)) || {};
         const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g,'');
         if (phone) {
@@ -7365,6 +7384,7 @@ window.saveWASettings = async function() {
     wa_tpl_followup:  val('wa-tpl-followup'),
     wa_tpl_festival:  val('wa-tpl-festival'),
     wa_auto_inv:      tog('twa1'),
+    wa_auto_estimate: tog('twa7'),
     wa_auto_paid:     tog('twa2'),
     wa_auto_partial:  tog('twa6'),
     wa_auto_remind:   tog('twa3'),
@@ -7373,6 +7393,8 @@ window.saveWASettings = async function() {
     wa_msg_mode:           document.querySelector('input[name="wa-msg-mode"]:checked')?.value || 'session',
     wa_tpl_name_invoice:   val('tpl-name-invoice'),
     wa_tpl_lang_invoice:   val('tpl-lang-invoice')   || 'en_US',
+    wa_tpl_name_estimate:  val('tpl-name-estimate'),
+    wa_tpl_lang_estimate:  val('tpl-lang-estimate')  || 'en_US',
     wa_tpl_name_reminder:  val('tpl-name-reminder'),
     wa_tpl_lang_reminder:  val('tpl-lang-reminder')  || 'en_US',
     wa_tpl_name_overdue:   val('tpl-name-overdue'),
@@ -7396,13 +7418,16 @@ window.saveWASettings = async function() {
     tpl_partial: payload.wa_tpl_partial,
     tpl_remind: payload.wa_tpl_remind, tpl_overdue: payload.wa_tpl_overdue,
     tpl_followup: payload.wa_tpl_followup, tpl_festival: payload.wa_tpl_festival,
-    auto_inv: payload.wa_auto_inv, auto_paid: payload.wa_auto_paid,
+    auto_inv: payload.wa_auto_inv, auto_estimate: payload.wa_auto_estimate,
+    auto_paid: payload.wa_auto_paid,
     auto_partial: payload.wa_auto_partial,
     auto_remind: payload.wa_auto_remind, auto_overdue: payload.wa_auto_overdue,
     auto_followup: payload.wa_auto_followup,
     msg_mode: payload.wa_msg_mode,
     tpl_name_invoice:  payload.wa_tpl_name_invoice,
     tpl_lang_invoice:  payload.wa_tpl_lang_invoice,
+    tpl_name_estimate: payload.wa_tpl_name_estimate,
+    tpl_lang_estimate: payload.wa_tpl_lang_estimate,
     tpl_name_reminder: payload.wa_tpl_name_reminder,
     tpl_lang_reminder: payload.wa_tpl_lang_reminder,
     tpl_name_overdue:  payload.wa_tpl_name_overdue,
@@ -7975,7 +8000,7 @@ function renderDashKpis() {
   const wa     = STATE.settings.wa || {};
   const hasAPI = !!(wa.token && wa.pid);
   const mode   = wa.msg_mode === 'template' ? '✅ Template Mode' : '💬 Session Mode';
-  const onCount = [wa.auto_inv==='1', wa.auto_paid!=='0', wa.auto_partial!=='0', wa.auto_remind!=='0', wa.auto_overdue!=='0', wa.auto_followup==='1'].filter(Boolean).length;
+  const onCount = [wa.auto_inv==='1', wa.auto_estimate==='1', wa.auto_paid!=='0', wa.auto_partial!=='0', wa.auto_remind!=='0', wa.auto_overdue!=='0', wa.auto_followup==='1'].filter(Boolean).length;
 
   const pendWA   = STATE.invoices.filter(i => i.status==='Pending' || i.status==='Overdue').length;
   const overWA   = STATE.invoices.filter(i => i.status==='Overdue').length;
@@ -8284,6 +8309,7 @@ async function loadAllData() {
         tpl_followup:  s.wa_tpl_followup || '',
         tpl_festival:  s.wa_tpl_festival || '',
         auto_inv:      s.wa_auto_inv      !== undefined ? s.wa_auto_inv      : '0',
+        auto_estimate: s.wa_auto_estimate !== undefined ? s.wa_auto_estimate : '0',
         auto_paid:     s.wa_auto_paid     !== undefined ? s.wa_auto_paid     : '1',
         auto_partial:  s.wa_auto_partial  !== undefined ? s.wa_auto_partial  : '1',
         auto_remind:   s.wa_auto_remind   !== undefined ? s.wa_auto_remind   : '1',
@@ -8293,6 +8319,8 @@ async function loadAllData() {
         // Template names
         tpl_name_invoice:  s.wa_tpl_name_invoice  || '',
         tpl_lang_invoice:  s.wa_tpl_lang_invoice  || 'en_US',
+        tpl_name_estimate: s.wa_tpl_name_estimate || '',
+        tpl_lang_estimate: s.wa_tpl_lang_estimate || 'en_US',
         tpl_name_reminder: s.wa_tpl_name_reminder || '',
         tpl_lang_reminder: s.wa_tpl_lang_reminder || 'en_US',
         tpl_name_overdue:  s.wa_tpl_name_overdue  || '',
@@ -8795,6 +8823,7 @@ function populateWAPage() {
 
   // Toggles
   setTog('twa1', wa.auto_inv     === '1');
+  setTog('twa7', wa.auto_estimate === '1');
   setTog('twa2', wa.auto_paid    !== '0');
   setTog('twa6', wa.auto_partial !== '0');
   setTog('twa3', wa.auto_remind  !== '0');
@@ -8805,7 +8834,7 @@ function populateWAPage() {
   const mode  = wa.msg_mode || 'session';
   const radio = document.querySelector('input[name="wa-msg-mode"][value="' + mode + '"]');
   if (radio) { radio.checked = true; setWAMode(mode); }
-  const tpls  = ['invoice','reminder','overdue','paid','followup','partial','festival'];
+  const tpls  = ['invoice','estimate','reminder','overdue','paid','followup','partial','festival'];
   tpls.forEach(t => {
     const nEl = document.getElementById('tpl-name-' + t);
     const lEl = document.getElementById('tpl-lang-' + t);
