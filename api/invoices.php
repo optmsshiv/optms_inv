@@ -189,20 +189,10 @@ switch ($method) {
     $id    = (int)($_GET['id'] ?? $input['id'] ?? 0);
     if (!$id) { jsonResponse(['error'=>'ID required'], 400); }
     // Validate status if being updated edited here (guards against DB ENUM not yet migrated)
-
-
-    // Validate status — if not provided, fetch existing from DB (prevents overwrite on edit)
-      $allowedStatuses = ['Draft','Pending','Paid','Overdue','Partial','Cancelled','Estimate'];
-      if (!isset($input['status']) || $input['status'] === '' || $input['status'] === null) {
-          $existingRow = $db->prepare('SELECT status FROM invoices WHERE id = ?');
-          $existingRow->execute([$id]);
-          $existingData = $existingRow->fetch();
-          $input['status'] = $existingData['status'] ?? 'Draft';
-      } elseif (!in_array($input['status'], $allowedStatuses, true)) {
-          $input['status'] = 'Draft';
-      }
-      // edit above to only validate if status is being updated, otherwise fetch existing status from DB to prevent overwrite
-      
+    $allowedStatuses = ['Draft','Pending','Paid','Overdue','Partial','Cancelled','Estimate'];
+    if (isset($input['status']) && !in_array($input['status'], $allowedStatuses, true)) {
+      $input['status'] = 'Draft';
+    }
     $allowed = ['notes','bank_details','terms','status'];
     $sets=[]; $vals=[];
     foreach($allowed as $f) {
@@ -218,11 +208,25 @@ switch ($method) {
     $input = json_decode(file_get_contents('php://input'), true);
     $id    = (int)($_GET['id'] ?? $input['id'] ?? 0);
     if (!$id) { jsonResponse(['error'=>'ID required'], 400); }
+
+
     // Validate status
+   // $allowedStatuses = ['Draft','Pending','Paid','Overdue','Partial','Cancelled','Estimate'];
+   // if (isset($input['status']) && !in_array($input['status'], $allowedStatuses, true)) {
+   //   $input['status'] = 'Draft';
+   // }
+   // Validate status — never overwrite with Draft if not explicitly sent
     $allowedStatuses = ['Draft','Pending','Paid','Overdue','Partial','Cancelled','Estimate'];
-    if (isset($input['status']) && !in_array($input['status'], $allowedStatuses, true)) {
+    if (!isset($input['status']) || $input['status'] === '' || $input['status'] === null) {
+      $existingRow = $db->prepare('SELECT status FROM invoices WHERE id = ?');
+      $existingRow->execute([$id]);
+      $existingData = $existingRow->fetch();
+      $input['status'] = $existingData['status'] ?? 'Draft';
+    } elseif (!in_array($input['status'], $allowedStatuses, true)) {
       $input['status'] = 'Draft';
     }
+
+
     $stmt = $db->prepare('
       UPDATE invoices SET client_id=?,client_name=?,service_type=?,issued_date=?,due_date=?,
         status=?,currency=?,subtotal=?,discount_pct=?,discount_type=?,discount_amt=?,gst_amount=?,grand_total=?,
