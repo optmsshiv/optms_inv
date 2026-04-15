@@ -138,7 +138,7 @@ try {
 
     // ── POST: save reminder settings ──────────────────────────────
     if ($method === 'POST') {
-        // FIX #5: Validate channel against allowed list
+        // validate channel against allowed list, default to 'whatsapp' if invalid or missing
         $channel = in_array($body['channel'] ?? '', ALLOWED_CHANNELS) ? $body['channel'] : 'whatsapp';
 
         $stmt = $db->prepare(
