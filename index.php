@@ -6561,6 +6561,10 @@ async function changeInvoiceStatus(id, newStatus) {
     STATE.filteredInvoices = [...STATE.invoices];
     renderInvoicesTable(); renderDonutChart(); renderDashRecent(); updateDashStats();
     toast(`${label}: ${inv.num||inv.invoice_number}`, 'success');
+    // Auto-send WA when Estimate → Pending
+    if (newStatus === 'Pending' && prevStatus === 'Estimate') {
+      setTimeout(() => sendWAForInvoice(inv), 600);
+    }
   } catch(e) { toast('❌ Failed: ' + e.message, 'error'); }
 }
 
