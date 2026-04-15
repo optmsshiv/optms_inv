@@ -2,9 +2,7 @@
 // ═══════════════════════════════════════════════════════
 //  API: /api/invoices.php — Invoices CRUD
 // ═══════════════════════════════════════════════════════
-// ob_start();                          // buffer any stray output/notices
-// Replace ob_start() at top of invoices.php with:
-ob_start(function($buffer) { return ''; }); // silently discard instead of prepend
+ob_start();                          // buffer any stray output/notices
 error_reporting(0);                  // suppress warnings from leaking into JSON
 require_once __DIR__ . '/../includes/auth.php';
 
