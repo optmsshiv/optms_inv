@@ -29,7 +29,6 @@ try {
 
 $companyName = $settings['company_name'] ?? 'OPTMS Tech';
 $prefix      = $settings['invoice_prefix'] ?? 'OT-' . date('Y') . '-';
-$estPrefix   = $settings['estimate_prefix'] ?? 'QT-' . date('Y') . '-';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -989,7 +988,6 @@ const SERVER = {
   user:     <?= json_encode(['id'=>(int)$user['id'],'name'=>$user['name'],'email'=>$user['email'],'role'=>$user['role'],'avatar'=>$user['avatar']??'']) ?>,
   settings: <?= json_encode($settings) ?>,
   prefix:   <?= json_encode($prefix) ?>,
-  estPrefix: <?= json_encode($estPrefix) ?>,
   appUrl:   '<?= rtrim(APP_URL, '/') ?>',
   year:     <?= date('Y') ?>,
   // WA settings pre-loaded from DB for instant toggle restore
@@ -1001,7 +999,6 @@ const SERVER = {
     remind_days:   <?= json_encode($settings['wa_remind_days']  ?? '3') ?>,
     max_followup:  <?= json_encode($settings['wa_max_followup'] ?? '3') ?>,
     tpl_inv:       <?= json_encode($settings['wa_tpl_inv']      ?? '') ?>,
-    tpl_estimate:  <?= json_encode($settings['wa_tpl_estimate'] ?? '') ?>,
     tpl_paid:      <?= json_encode($settings['wa_tpl_paid']     ?? '') ?>,
     tpl_partial:   <?= json_encode($settings['wa_tpl_partial']  ?? '') ?>,
     tpl_remind:    <?= json_encode($settings['wa_tpl_remind']   ?? '') ?>,
@@ -1009,7 +1006,6 @@ const SERVER = {
     tpl_followup:  <?= json_encode($settings['wa_tpl_followup'] ?? '') ?>,
     tpl_festival:  <?= json_encode($settings['wa_tpl_festival'] ?? '') ?>,
     auto_inv:      <?= json_encode($settings['wa_auto_inv']     ?? '0') ?>,
-    auto_estimate: <?= json_encode($settings['wa_auto_estimate']?? '0') ?>,
     auto_paid:     <?= json_encode($settings['wa_auto_paid']    ?? '1') ?>,
     auto_partial:  <?= json_encode($settings['wa_auto_partial'] ?? '1') ?>,
     auto_remind:   <?= json_encode($settings['wa_auto_remind']  ?? '1') ?>,
@@ -2032,10 +2028,6 @@ const SERVER = {
               <div style="padding:8px 12px;margin:-4px 0 8px;background:var(--teal-bg);border-radius:0 0 8px 8px;font-size:11px;color:var(--teal)" id="twa1-hint">
               When ON: sends invoice details, amount, due date, UPI, and item list to client automatically
               </div>
-              <div class="toggle-item" style="flex-wrap:wrap;gap:6px">
-                <span style="flex:1"><strong>New Estimate</strong> — auto-send when estimate is saved</span>
-                <div class="tog <?= (($settings['wa_auto_estimate']??'0')==='1')?'on':'' ?>" id="twa7" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_estimate', this)"></div>
-              </div>
               <div class="toggle-item"><span><strong>Payment Receipt</strong> — when fully paid</span><div class="tog <?= (($settings['wa_auto_paid']??'1')!=='0')?'on':'' ?>" id="twa2" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_paid', this)"></div></div>
               <div class="toggle-item"><span><strong>Partial Payment</strong> — on partial receipt</span><div class="tog <?= (($settings['wa_auto_partial']??'1')!=='0')?'on':'' ?>" id="twa6" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_partial', this)"></div></div>
               <div class="toggle-item"><span><strong>Due Soon Reminder</strong> — before due date</span><div class="tog <?= (($settings['wa_auto_remind']??'1')!=='0')?'on':'' ?>" id="twa3" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_remind', this)"></div></div>
@@ -2281,7 +2273,6 @@ Kindly process payment immediately or contact us to discuss.
               </div>
               <div class="form-grid g1" style="gap:10px">
                 <div class="field"><label>📄 Invoice Created</label><div style="display:flex;gap:6px"><input id="tpl-name-invoice" placeholder="invoice_created" style="flex:1"><input id="tpl-lang-invoice" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}due {{5}}upi {{6}}company {{7}}link</div></div>
-                <div class="field"><label>📋 Estimate / Quote</label><div style="display:flex;gap:6px"><input id="tpl-name-estimate" placeholder="estimate_created" style="flex:1"><input id="tpl-lang-estimate" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}quote# {{3}}amount {{4}}valid_until {{5}}service {{6}}company {{7}}link</div></div>
                 <div class="field"><label>🔔 Payment Reminder</label><div style="display:flex;gap:6px"><input id="tpl-name-reminder" placeholder="payment_reminder" style="flex:1"><input id="tpl-lang-reminder" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}due {{5}}upi {{6}}company {{7}}link</div></div>
                 <div class="field"><label>⚠️ Payment Overdue</label><div style="display:flex;gap:6px"><input id="tpl-name-overdue" placeholder="payment_overdue" style="flex:1"><input id="tpl-lang-overdue" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}days {{5}}upi {{6}}company {{7}}link</div></div>
                 <div class="field"><label>✅ Payment Received</label><div style="display:flex;gap:6px"><input id="tpl-name-paid" placeholder="payment_received" style="flex:1"><input id="tpl-lang-paid" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}disc {{5}}date {{6}}company {{7}}link</div></div>
@@ -2294,19 +2285,6 @@ Kindly process payment immediately or contact us to discuss.
               <details style="margin-top:14px">
                 <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--muted);list-style:none;display:flex;align-items:center;gap:6px"><i class="fas fa-file-alt"></i> Suggested content for Meta approval</summary>
                 <div style="margin-top:10px;background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--border)">
-                  <details style="margin-bottom:6px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#3949AB">estimate_created — UTILITY</summary><pre style="font-size:11px;background:#fff;padding:8px;border-radius:6px;margin-top:4px;white-space:pre-wrap;border:1px solid var(--border)">Hi {{1}},
-
-📋 *Estimate #{{2}}* from {{6}}
-
-💰 Estimated Amount: *{{3}}*
-⏳ Valid Until: *{{4}}*
-📋 Service: {{5}}
-
-⚠️ This is an ESTIMATE only, not a final invoice.
-
-👁️ View &amp; Review: {{7}}
-
-To accept, reply *APPROVED*. — {{6}}</pre></details>
                   <details style="margin-bottom:6px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--teal)">invoice_created — UTILITY</summary><pre style="font-size:11px;background:#fff;padding:8px;border-radius:6px;margin-top:4px;white-space:pre-wrap;border:1px solid var(--border)">
 Hi {{1}},
 
@@ -2561,7 +2539,6 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
             <div class="field"><label>Email</label><input id="sc-email" value="optmstech@gmail.com"></div>
             <div class="field"><label>Website</label><input id="sc-web" value="www.optmstech.in"></div>
             <div class="field"><label>Invoice Prefix</label><input id="sc-prefix" value="OT-2025-"></div>
-            <div class="field"><label>Estimate/Quote Prefix</label><input id="sc-estimate-prefix" placeholder="QT-<?= date('Y') ?>-" value="QT-<?= date('Y') ?>-"></div>
             <div class="field"><label>UPI ID</label><input id="sc-upi" value="optmstech@upi"></div>
             <div class="field g-full"><label>Default Bank Account Details <span style="font-size:10px;color:var(--muted)">(pre-fills in new invoices)</span></label>
               <textarea id="sc-bank" style="min-height:85px" placeholder="Bank: SBI | A/C: XXXXXXXXX | IFSC: SBIN0001234 | Name: Your Company | UPI: yourname@upi"></textarea>
@@ -2619,9 +2596,6 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
             </div>
             <div class="field"><label>Invoice Number Prefix</label>
               <input id="sd-prefix" placeholder="OT-2025-" value="">
-            </div>
-            <div class="field"><label>Estimate / Quote Prefix</label>
-              <input id="sd-estimate-prefix" placeholder="QT-<?= date('Y') ?>-" value="">
             </div>
             <div class="field"><label>Default Currency</label>
               <select id="sd-currency">
@@ -5920,8 +5894,8 @@ async function saveInvoice() {
     if (savedStatus === 'Draft') {
       // ❌ Never send WA for internal drafts
     } else if (savedStatus === 'Estimate') {
-      // ✅ Send estimate-specific WA if the Estimate automation toggle is on
-      if (wa.auto_estimate === '1' && saved) {
+      // ✅ Send estimate-specific WA if toggle is on
+      if (wa.auto_inv === '1' && saved) {
         const c = STATE.clients.find(x => String(x.id) === String(saved.client)) || {};
         const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g,'');
         if (phone) {
@@ -6637,21 +6611,20 @@ function onStatusChange(newStatus) {
   const numEl = document.getElementById('f-num');
   if (!numEl) return;
   const current = numEl.value || '';
-  const pfx    = STATE.settings.prefix    || ('OT-' + new Date().getFullYear() + '-');
-  const estPfx = STATE.settings.estPrefix || ('QT-' + new Date().getFullYear() + '-');
+  const pfx = STATE.settings.prefix || ('OT-' + new Date().getFullYear() + '-');
+  const qtPfx = 'QT-' + new Date().getFullYear() + '-';
   if (newStatus === 'Estimate') {
-    // Switch invoice prefix to estimate prefix
+    // Switch OT- prefix to QT- for estimates
     if (current.startsWith(pfx)) {
-      numEl.value = current.replace(pfx, estPfx);
-    } else if (!current.startsWith(estPfx)) {
-      numEl.value = estPfx + '001';
+      numEl.value = current.replace(pfx, qtPfx);
+    } else if (!current.startsWith('QT-')) {
+      numEl.value = qtPfx + '001';
     }
   } else {
-    // Switch estimate prefix back to invoice prefix when moving away from Estimate
-    if (current.startsWith(estPfx)) {
-      numEl.value = current.replace(estPfx, pfx);
+    // Switch QT- prefix back to OT- when moving away from Estimate
+    if (current.startsWith(qtPfx)) {
+      numEl.value = current.replace(qtPfx, pfx);
     } else if (current.startsWith('QT-')) {
-      // Legacy fallback for old QT- numbers
       numEl.value = pfx + '001';
     }
   }
@@ -7307,7 +7280,6 @@ async function saveCompanySettings() {
     company_email:   document.getElementById('sc-email')?.value   || '',
     company_website: document.getElementById('sc-web')?.value     || '',
     invoice_prefix:  document.getElementById('sc-prefix')?.value  || '',
-    estimate_prefix: document.getElementById('sc-estimate-prefix')?.value || '',
     company_upi:     document.getElementById('sc-upi')?.value     || '',
     company_address: document.getElementById('sc-addr')?.value    || '',
     company_logo:    document.getElementById('sc-logo')?.value    || STATE.settings.logo || '',
@@ -7317,7 +7289,6 @@ async function saveCompanySettings() {
   Object.assign(STATE.settings, {
     company: payload.company_name, gst: payload.company_gst, phone: payload.company_phone,
     email: payload.company_email, website: payload.company_website, prefix: payload.invoice_prefix,
-    estPrefix: payload.estimate_prefix,
     upi: payload.company_upi, address: payload.company_address,
     logo: payload.company_logo || STATE.settings.logo,
     signature: payload.company_sign || STATE.settings.signature,
@@ -7381,7 +7352,6 @@ window.saveWASettings = async function() {
     wa_tpl_followup:  val('wa-tpl-followup'),
     wa_tpl_festival:  val('wa-tpl-festival'),
     wa_auto_inv:      tog('twa1'),
-    wa_auto_estimate: tog('twa7'),
     wa_auto_paid:     tog('twa2'),
     wa_auto_partial:  tog('twa6'),
     wa_auto_remind:   tog('twa3'),
@@ -7390,8 +7360,6 @@ window.saveWASettings = async function() {
     wa_msg_mode:           document.querySelector('input[name="wa-msg-mode"]:checked')?.value || 'session',
     wa_tpl_name_invoice:   val('tpl-name-invoice'),
     wa_tpl_lang_invoice:   val('tpl-lang-invoice')   || 'en_US',
-    wa_tpl_name_estimate:  val('tpl-name-estimate'),
-    wa_tpl_lang_estimate:  val('tpl-lang-estimate')  || 'en_US',
     wa_tpl_name_reminder:  val('tpl-name-reminder'),
     wa_tpl_lang_reminder:  val('tpl-lang-reminder')  || 'en_US',
     wa_tpl_name_overdue:   val('tpl-name-overdue'),
@@ -7415,16 +7383,13 @@ window.saveWASettings = async function() {
     tpl_partial: payload.wa_tpl_partial,
     tpl_remind: payload.wa_tpl_remind, tpl_overdue: payload.wa_tpl_overdue,
     tpl_followup: payload.wa_tpl_followup, tpl_festival: payload.wa_tpl_festival,
-    auto_inv: payload.wa_auto_inv, auto_estimate: payload.wa_auto_estimate,
-    auto_paid: payload.wa_auto_paid,
+    auto_inv: payload.wa_auto_inv, auto_paid: payload.wa_auto_paid,
     auto_partial: payload.wa_auto_partial,
     auto_remind: payload.wa_auto_remind, auto_overdue: payload.wa_auto_overdue,
     auto_followup: payload.wa_auto_followup,
     msg_mode: payload.wa_msg_mode,
     tpl_name_invoice:  payload.wa_tpl_name_invoice,
     tpl_lang_invoice:  payload.wa_tpl_lang_invoice,
-    tpl_name_estimate: payload.wa_tpl_name_estimate,
-    tpl_lang_estimate: payload.wa_tpl_lang_estimate,
     tpl_name_reminder: payload.wa_tpl_name_reminder,
     tpl_lang_reminder: payload.wa_tpl_lang_reminder,
     tpl_name_overdue:  payload.wa_tpl_name_overdue,
@@ -7997,7 +7962,7 @@ function renderDashKpis() {
   const wa     = STATE.settings.wa || {};
   const hasAPI = !!(wa.token && wa.pid);
   const mode   = wa.msg_mode === 'template' ? '✅ Template Mode' : '💬 Session Mode';
-  const onCount = [wa.auto_inv==='1', wa.auto_estimate==='1', wa.auto_paid!=='0', wa.auto_partial!=='0', wa.auto_remind!=='0', wa.auto_overdue!=='0', wa.auto_followup==='1'].filter(Boolean).length;
+  const onCount = [wa.auto_inv==='1', wa.auto_paid!=='0', wa.auto_partial!=='0', wa.auto_remind!=='0', wa.auto_overdue!=='0', wa.auto_followup==='1'].filter(Boolean).length;
 
   const pendWA   = STATE.invoices.filter(i => i.status==='Pending' || i.status==='Overdue').length;
   const overWA   = STATE.invoices.filter(i => i.status==='Overdue').length;
@@ -8201,7 +8166,6 @@ document.addEventListener('click', e => closeAllDropdowns(e));
   STATE.settings.email     = s.company_email   || STATE.settings.email;
   STATE.settings.website   = s.company_website || STATE.settings.website;
   STATE.settings.prefix    = s.invoice_prefix  || STATE.settings.prefix;
-  STATE.settings.estPrefix = s.estimate_prefix || SERVER.estPrefix || STATE.settings.estPrefix || ('QT-' + new Date().getFullYear() + '-');
   STATE.settings.upi       = s.company_upi     || STATE.settings.upi;
   STATE.settings.address   = s.company_address || STATE.settings.address;
   STATE.settings.logo      = s.company_logo    || '';
@@ -8220,12 +8184,6 @@ document.addEventListener('click', e => closeAllDropdowns(e));
 // and unifies field aliases (bank_details→bank, terms→tnc, etc.)
 function normalizeInvoice(inv) {
   if (!inv || typeof inv !== 'object') return inv;
-  // Guard: if status came back empty (ENUM mismatch in DB), restore from invoice_number prefix
-  if (!inv.status || inv.status === '') {
-    const num = inv.num || inv.invoice_number || '';
-    const estPfx = STATE.settings.estPrefix || ('QT-' + new Date().getFullYear() + '-');
-    inv.status = num.startsWith(estPfx) || num.startsWith('QT-') ? 'Estimate' : 'Draft';
-  }
   // Parse pdf_options JSON string from DB into object
   if (inv.pdf_options && typeof inv.pdf_options === 'string') {
     try { inv.pdf_options = JSON.parse(inv.pdf_options); } catch(e) { inv.pdf_options = null; }
@@ -8306,7 +8264,6 @@ async function loadAllData() {
         tpl_followup:  s.wa_tpl_followup || '',
         tpl_festival:  s.wa_tpl_festival || '',
         auto_inv:      s.wa_auto_inv      !== undefined ? s.wa_auto_inv      : '0',
-        auto_estimate: s.wa_auto_estimate !== undefined ? s.wa_auto_estimate : '0',
         auto_paid:     s.wa_auto_paid     !== undefined ? s.wa_auto_paid     : '1',
         auto_partial:  s.wa_auto_partial  !== undefined ? s.wa_auto_partial  : '1',
         auto_remind:   s.wa_auto_remind   !== undefined ? s.wa_auto_remind   : '1',
@@ -8316,8 +8273,6 @@ async function loadAllData() {
         // Template names
         tpl_name_invoice:  s.wa_tpl_name_invoice  || '',
         tpl_lang_invoice:  s.wa_tpl_lang_invoice  || 'en_US',
-        tpl_name_estimate: s.wa_tpl_name_estimate || '',
-        tpl_lang_estimate: s.wa_tpl_lang_estimate || 'en_US',
         tpl_name_reminder: s.wa_tpl_name_reminder || '',
         tpl_lang_reminder: s.wa_tpl_lang_reminder || 'en_US',
         tpl_name_overdue:  s.wa_tpl_name_overdue  || '',
@@ -8373,7 +8328,6 @@ async function loadAllData() {
       STATE.settings.email     = s.company_email   || STATE.settings.email;
       STATE.settings.website   = s.company_website || STATE.settings.website;
       STATE.settings.prefix    = s.invoice_prefix  || STATE.settings.prefix;
-      STATE.settings.estPrefix = s.estimate_prefix || SERVER.estPrefix || STATE.settings.estPrefix || ('QT-' + new Date().getFullYear() + '-');
       STATE.settings.upi       = s.company_upi     || STATE.settings.upi;
       STATE.settings.address   = s.company_address || STATE.settings.address;
       STATE.settings.logo      = s.company_logo    || '';
@@ -8549,7 +8503,6 @@ window.saveInvoiceDefaults = async function() {
     due_days:        document.getElementById('sd-due')?.value     || '15',
     active_template: document.getElementById('sd-tpl')?.value     || '1',
     invoice_prefix:  document.getElementById('sd-prefix')?.value  || STATE.settings.prefix || 'OT-',
-    estimate_prefix: document.getElementById('sd-estimate-prefix')?.value || STATE.settings.estPrefix || 'QT-',
     default_currency:document.getElementById('sd-currency')?.value|| '₹',
     default_bank:    document.getElementById('sd-bank')?.value    || '',
     default_tnc:     document.getElementById('sd-tnc')?.value     || '',
@@ -8559,7 +8512,6 @@ window.saveInvoiceDefaults = async function() {
   STATE.settings.dueDays        = parseInt(payload.due_days);
   STATE.settings.activeTemplate = parseInt(payload.active_template);
   if (payload.invoice_prefix) STATE.settings.prefix = payload.invoice_prefix;
-  if (payload.estimate_prefix) STATE.settings.estPrefix = payload.estimate_prefix;
   if (payload.default_tnc !== undefined) STATE.settings.defaultTnC = payload.default_tnc;
   try {
     await api('api/settings.php', 'POST', payload);
@@ -8677,7 +8629,6 @@ function populateSettingsForm() {
   renderCategoryList();
   renderItemTypeList();
   set('sc-prefix',  s.prefix);
-  set('sc-estimate-prefix', s.estPrefix || SERVER.estPrefix || '');
   set('sc-upi',     s.upi);
   set('sc-addr',    s.address);
   set('sc-logo',    s.logo);
@@ -8685,7 +8636,6 @@ function populateSettingsForm() {
   set('sc-bank',    s.defaultBank || STATE.settings.defaultBank || '');
   // Invoice defaults
   set('sd-prefix',  s.prefix);
-  set('sd-estimate-prefix', s.estPrefix || SERVER.estPrefix || '');
   set('sd-due',     s.dueDays);
   set('sd-bank',    s.defaultBank || '');
   set('sd-tnc',     s.defaultTnC  || '');
@@ -8820,7 +8770,6 @@ function populateWAPage() {
 
   // Toggles
   setTog('twa1', wa.auto_inv     === '1');
-  setTog('twa7', wa.auto_estimate === '1');
   setTog('twa2', wa.auto_paid    !== '0');
   setTog('twa6', wa.auto_partial !== '0');
   setTog('twa3', wa.auto_remind  !== '0');
@@ -8831,7 +8780,7 @@ function populateWAPage() {
   const mode  = wa.msg_mode || 'session';
   const radio = document.querySelector('input[name="wa-msg-mode"][value="' + mode + '"]');
   if (radio) { radio.checked = true; setWAMode(mode); }
-  const tpls  = ['invoice','estimate','reminder','overdue','paid','followup','partial','festival'];
+  const tpls  = ['invoice','reminder','overdue','paid','followup','partial','festival'];
   tpls.forEach(t => {
     const nEl = document.getElementById('tpl-name-' + t);
     const lEl = document.getElementById('tpl-lang-' + t);
@@ -9122,7 +9071,6 @@ function buildWATplParams(tplName, inv, client, settings) {
     overdue:          ['client_name','invoice_no','amount','days_overdue','upi','company_name','portal_link'],
     followup:         ['client_name','invoice_no','amount','days_overdue','upi','company_phone','portal_link'],
     festival:         ['client_name','company_name','company_phone'],
-    estimate:         ['company_name','client_name','invoice_no','issue_date','amount','due_date','service','portal_link'],
     // Verbose aliases for backwards compatibility
     invoice_created:  ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
     payment_reminder: ['client_name','invoice_no','amount','due_date','upi','company_name','portal_link'],
@@ -9131,7 +9079,6 @@ function buildWATplParams(tplName, inv, client, settings) {
     invoice_followup: ['client_name','invoice_no','amount','days_overdue','upi','company_phone','portal_link'],
     partial_payment:  ['client_name','invoice_no','paid_amount','remaining_amount','due_date','portal_link'],
     festival_greeting:['client_name','company_name','company_phone'],
-    estimate_created: ['client_name','company_name','invoice_no','issue_date','amount','due_date','service','portal_link'],
   };
 
   const paramKeys = maps[tplName] || Object.keys(common);
@@ -9152,7 +9099,6 @@ async function sendWA(phone, message, tplName, inv, client) {
   if (token && pid) {
     // Map verbose tplName strings to STATE tpl_name_* keys
     const TPL_KEY_MAP = {
-      'estimate_created': 'estimate',
       'invoice_created':  'invoice',
       'payment_received': 'paid',
       'partial_payment':  'partial',
@@ -10307,7 +10253,7 @@ async function _renderPortalTable(search) {
     return;
   }
 
-  const statusColors = {Paid:'#388E3C',Pending:'#F9A825',Overdue:'#C62828',Partial:'#E65100',Draft:'#9E9E9E',Cancelled:'#757575',Estimate:'#3949AB'};
+  const statusColors = {Paid:'#388E3C',Pending:'#F9A825',Overdue:'#C62828',Partial:'#E65100',Draft:'#9E9E9E',Cancelled:'#757575'};
   tbody.innerHTML = rows.map(inv => {
     const c   = STATE.clients.find(x => String(x.id) === String(inv.client)) || {};
     const t   = _portalTokenMap[String(inv.id)];
@@ -10334,9 +10280,7 @@ async function _renderPortalTable(search) {
           : `<span style="color:var(--muted)">—</span>`}
       </td>
       <td style="white-space:nowrap">
-        <button onclick="(async(btn)=>{ btn.disabled=true; btn.innerHTML='<i class=\'fas fa-spinner fa-spin\'></i>'; 
-          try{ const r=await api('api/portal.php','POST',{invoice_id:${inv.id}}); if(r&&r.token){ _portalTokenCache['${inv.id}']=r.token; 
-          toast('🔗 Link generated!','success'); _renderPortalTable(); }else{ toast('❌ Failed','error'); } }catch(e){ toast('❌ '+e.message,'error'); } btn.disabled=false; })(this)"
+        <button onclick="(async()=>{ await renderPortalLink('${inv.id}'); })()"
           title="${t ? 'Regenerate link' : 'Generate link'}"
           style="padding:4px 8px;background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal);border-radius:6px;cursor:pointer;font-size:11px;margin-right:3px">
           <i class="fas fa-${t ? 'sync-alt' : 'link'}"></i>
