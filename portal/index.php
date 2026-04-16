@@ -788,8 +788,28 @@ if ($items):
 <?php endif; ?>
 </script>
 
-<!-- Notes & T&C -->
-<?php if (!empty($inv['notes']) || !empty($inv['terms']) || !empty($inv['bank_details'])): ?>
+<!-- Thank You (Paid) / Notes & T&C (others) -->
+<?php if (($inv['status'] ?? '') === 'Paid'): ?>
+<div class="card" style="border-color:#C8E6C9;background:linear-gradient(135deg,#F1FFF3,#E8F5E9)">
+  <div class="card-body" style="text-align:center;padding:32px 24px">
+    <div style="font-size:48px;margin-bottom:12px">🎉</div>
+    <div style="font-size:20px;font-weight:800;color:var(--green);margin-bottom:8px">Thank You!</div>
+    <div style="font-size:13px;color:#2E7D32;font-weight:500;margin-bottom:6px">
+      Payment received for invoice <strong><?= htmlspecialchars($inv['invoice_number'] ?? '') ?></strong>
+    </div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.7;max-width:320px;margin:0 auto">
+      We truly appreciate your prompt payment and your trust in <strong><?= htmlspecialchars($companyName) ?></strong>. Looking forward to serving you again!
+    </div>
+    <?php if ($companyPhone): ?>
+    <?php $waPhone = preg_replace('/\D/','',$companyPhone); if(strlen($waPhone)===10) $waPhone='91'.$waPhone; ?>
+    <a href="https://wa.me/<?= $waPhone ?>?text=<?= urlencode('Hi '.$companyName.', thank you for the service!') ?>" target="_blank"
+       style="display:inline-flex;align-items:center;gap:6px;margin-top:18px;padding:9px 20px;background:#25D366;color:#fff;border-radius:24px;font-size:12px;font-weight:700;text-decoration:none">
+      <i class="fab fa-whatsapp" style="font-size:15px"></i> Say Hi on WhatsApp
+    </a>
+    <?php endif; ?>
+  </div>
+</div>
+<?php elseif (!empty($inv['notes']) || !empty($inv['terms']) || !empty($inv['bank_details'])): ?>
 <div class="card">
   <div class="card-head"><i class="fas fa-sticky-note"></i> Notes & Terms</div>
   <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
