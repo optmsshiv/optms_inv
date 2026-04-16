@@ -133,6 +133,11 @@ if (!$error && $invoiceId > 0) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────
+function fmt_date($d) {
+    if (!$d || $d === '—') return '—';
+    $ts = strtotime($d);
+    return $ts ? date('d M Y', $ts) : htmlspecialchars($d);
+}
 function fmt_inr($n, $sym = '₹') {
     return $sym . number_format((float)$n, 2, '.', ',');
 }
@@ -144,6 +149,7 @@ function status_col($s) {
         'Partial'   => '#E65100',
         'Draft'     => '#9E9E9E',
         'Cancelled' => '#757575',
+        'Estimate'  => '#3949AB',
         default     => '#888'
     };
 }
@@ -155,6 +161,7 @@ function status_bg($s) {
         'Partial'   => '#FFF3E0',
         'Draft'     => '#F5F5F5',
         'Cancelled' => '#EEEEEE',
+        'Estimate'  => '#E8EAF6',
         default     => '#F5F5F5'
     };
 }
@@ -166,11 +173,13 @@ function status_label($s) {
         'Partial'   => '◑ Partially Paid',
         'Draft'     => '✎ Draft',
         'Cancelled' => '✕ Cancelled',
+        'Estimate'  => '📋 Estimate',
         default     => $s
     };
 }
 
 $sym           = $inv['currency'] ?: '₹';
+$isEstimate    = ($inv['status'] ?? '') === 'Estimate';
 $totalAmt      = (float)($inv['amount'] ?? 0);
 $totalCash     = array_sum(array_column($payments, 'amount'));
 $totalSettle   = array_sum(array_column($payments, 'settlement_discount'));
@@ -192,7 +201,7 @@ $companyQR      = $settings['company_qr']      ?? '';
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Invoice <?= htmlspecialchars($inv['invoice_number'] ?? '') ?> — <?= htmlspecialchars($companyName) ?></title>
+<title><?= ($inv['status'] ?? '') === 'Estimate' ? 'Estimate' : 'Invoice' ?> <?= htmlspecialchars($inv['invoice_number'] ?? '') ?> — <?= htmlspecialchars($companyName) ?></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -314,6 +323,19 @@ tr:last-child td{border:none}
 .pdf-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;background:var(--bg);color:var(--text);border:2px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;margin-top:8px;cursor:pointer;transition:.2s}
 .pdf-btn:active{background:var(--border)}
 
+/* Estimate banner */
+.estimate-banner{background:linear-gradient(135deg,#E8EAF6,#C5CAE9);border:1.5px solid #9FA8DA;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:flex-start;gap:14px}
+.estimate-banner-icon{width:42px;height:42px;background:#3949AB;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;flex-shrink:0}
+.estimate-banner-body{flex:1}
+.estimate-banner-title{font-size:15px;font-weight:800;color:#1A237E;margin-bottom:4px}
+.estimate-banner-sub{font-size:12px;color:#3949AB;line-height:1.6}
+.estimate-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.btn-approve{flex:1;min-width:120px;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;background:#388E3C;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);transition:.2s;text-decoration:none}
+.btn-approve:active{background:#2E7D32}
+.btn-reject{flex:1;min-width:120px;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;background:#fff;color:#C62828;border:2px solid #FFCDD2;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);transition:.2s;text-decoration:none}
+.btn-reject:active{background:#FFEBEE}
+.estimate-responded{display:none;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:700;text-align:center;margin-top:10px}
+
 /* Progress label improvement */
 .progress-meta .paid-label{font-weight:700;color:var(--green)}
 .progress-meta .bal-label{font-weight:700;color:var(--red)}
@@ -329,7 +351,7 @@ tr:last-child td{border:none}
   .inv-right{width:100%}
   .inv-num-row{flex-direction:row;align-items:center;justify-content:space-between;width:100%}
   .inv-num-row{display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px}
-  .info-grid{grid-template-columns:1fr}
+  .info-grid{grid-template-columns:1fr 1fr}
   /* Hide table, show cards on mobile */
   .line-table{display:none}
   .line-cards{display:block}
@@ -394,13 +416,45 @@ tr:last-child td{border:none}
   </div>
 </div>
 
+<!-- Estimate notice banner -->
+<?php if ($isEstimate): ?>
+<div class="estimate-banner">
+  <div class="estimate-banner-icon"><i class="fas fa-file-alt"></i></div>
+  <div class="estimate-banner-body">
+    <div class="estimate-banner-title">📋 This is an Estimate / Quotation</div>
+    <div class="estimate-banner-sub">
+      This is <strong>not a final invoice</strong>. Actual charges may vary based on the final scope of work.<br>
+      Valid until: <strong><?= fmt_date($inv['due_date'] ?? '') ?></strong>
+    </div>
+    <div class="estimate-actions">
+      <a href="<?= 'https://wa.me/' . (function() use ($companyPhone) { $w=preg_replace('/\D/','',$companyPhone); return strlen($w)===10?'91'.$w:$w; })() ?>?text=<?= urlencode('Hi, I APPROVE the Estimate '.$inv['invoice_number'].' for '.$companyName.'. Please proceed.') ?>" class="btn-approve" target="_blank">
+        <i class="fas fa-check-circle"></i> Approve via WhatsApp
+      </a>
+      <a href="<?= 'https://wa.me/' . (function() use ($companyPhone) { $w=preg_replace('/\D/','',$companyPhone); return strlen($w)===10?'91'.$w:$w; })() ?>?text=<?= urlencode('Hi, I have feedback on Estimate '.$inv['invoice_number'].' from '.$companyName.'. ') ?>" class="btn-reject" target="_blank">
+        <i class="fas fa-comment-dots"></i> Request Changes
+      </a>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
 <!-- Amount summary -->
 <div class="card">
   <div class="amount-strip" style="border-radius:12px 12px 0 0">
     <div class="amt-cell">
-      <div class="lbl">Invoice Total</div>
+      <div class="lbl"><?= $isEstimate ? 'Estimated Total' : 'Invoice Total' ?></div>
       <div class="val" style="color:var(--teal)"><?= fmt_inr($totalAmt, $sym) ?></div>
     </div>
+    <?php if ($isEstimate): ?>
+    <div class="amt-cell">
+      <div class="lbl">Valid Until</div>
+      <div class="val" style="color:#3949AB;font-size:13px"><?= fmt_date($inv['due_date'] ?? '') ?></div>
+    </div>
+    <div class="amt-cell">
+      <div class="lbl">Status</div>
+      <div class="val" style="color:#3949AB;font-size:13px">Awaiting Approval</div>
+    </div>
+    <?php else: ?>
     <div class="amt-cell">
       <div class="lbl">Amount Paid</div>
       <div class="val" style="color:var(--green)"><?= fmt_inr($totalCovered, $sym) ?></div>
@@ -416,8 +470,9 @@ tr:last-child td{border:none}
         <?= $remaining > 0 ? fmt_inr($remaining, $sym) : '✓ Cleared' ?>
       </div>
     </div>
+    <?php endif; ?>
   </div>
-  <?php if ($totalAmt > 0): ?>
+  <?php if ($totalAmt > 0 && !$isEstimate): ?>
   <div class="progress-wrap">
     <div class="progress-bar"><div class="progress-fill" style="width:<?= $pct ?>%"></div></div>
     <div class="progress-meta">
@@ -432,18 +487,18 @@ tr:last-child td{border:none}
   <?php endif; ?>
 </div>
 
-<!-- Invoice details -->
+<!-- Invoice / Estimate details -->
 <div class="card">
-  <div class="card-head"><i class="fas fa-file-invoice"></i> Invoice Details</div>
+  <div class="card-head"><i class="fas fa-file-invoice"></i> <?= $isEstimate ? 'Estimate Details' : 'Invoice Details' ?></div>
   <div class="card-body">
     <div class="info-grid">
-      <div class="info-item"><label>Invoice #</label><span class="val" style="font-family:var(--mono)"><?= htmlspecialchars($inv['invoice_number'] ?? '') ?></span></div>
+      <div class="info-item"><label><?= $isEstimate ? 'Quote #' : 'Invoice #' ?></label><span class="val" style="font-family:var(--mono)"><?= htmlspecialchars($inv['invoice_number'] ?? '') ?></span></div>
       <div class="info-item"><label>Service</label><span class="val"><?= htmlspecialchars($inv['service_type'] ?? '—') ?></span></div>
-      <div class="info-item"><label>Issue Date</label><span class="val"><?= htmlspecialchars($inv['issue_date'] ?? '—') ?></span></div>
-      <div class="info-item"><label>Due Date</label>
-        <span class="val" style="color:<?= $inv['status']==='Overdue' ? 'var(--red)' : 'inherit' ?>">
-          <?= htmlspecialchars($inv['due_date'] ?? '—') ?>
-          <?php if ($inv['status']==='Overdue'): ?> <i class="fas fa-exclamation-triangle" style="color:var(--red);font-size:11px"></i><?php endif; ?>
+      <div class="info-item"><label><?= $isEstimate ? 'Date Issued' : 'Issue Date' ?></label><span class="val"><?= fmt_date($inv['issue_date'] ?? '') ?></span></div>
+      <div class="info-item"><label><?= $isEstimate ? 'Valid Until' : 'Due Date' ?></label>
+        <span class="val" style="color:<?= (!$isEstimate && $inv['status']==='Overdue') ? 'var(--red)' : 'inherit' ?>">
+          <?= fmt_date($inv['due_date'] ?? '') ?>
+          <?php if (!$isEstimate && $inv['status']==='Overdue'): ?> <i class="fas fa-exclamation-triangle" style="color:var(--red);font-size:11px"></i><?php endif; ?>
         </span>
       </div>
       <?php if (!empty($inv['gst_rate'])): ?>
@@ -479,7 +534,7 @@ $items = $iStmt->fetchAll(PDO::FETCH_ASSOC);
 if ($items):
 ?>
 <div class="card" style="padding:0">
-  <div class="card-head" style="padding:14px 18px"><i class="fas fa-list-ul"></i> Line Items</div>
+  <div class="card-head" style="padding:14px 18px"><i class="fas fa-list-ul"></i> <?= $isEstimate ? 'Estimate Items' : 'Line Items' ?></div>
 
   <!-- Desktop table -->
   <div class="line-table">
@@ -599,8 +654,8 @@ if ($items):
 </div>
 <?php endif; ?>
 
-<!-- Payment history -->
-<?php if ($payments): ?>
+<!-- Payment history (not shown for estimates) -->
+<?php if ($payments && !$isEstimate): ?>
 <div class="card">
   <div class="card-head"><i class="fas fa-receipt"></i> Payment History</div>
   <div class="card-body" style="padding:0 18px">
@@ -609,7 +664,7 @@ if ($items):
       <div class="pmt-ic"><i class="fas fa-check"></i></div>
       <div class="pmt-info">
         <div class="pmt-method"><?= htmlspecialchars($p['method'] ?? 'Payment') ?></div>
-        <div class="pmt-date"><?= htmlspecialchars($p['payment_date'] ?? '') ?></div>
+        <div class="pmt-date"><?= fmt_date($p['payment_date'] ?? '') ?></div>
         <?php if (!empty($p['transaction_id'])): ?>
         <div class="pmt-txn">Ref: <?= htmlspecialchars($p['transaction_id']) ?></div>
         <?php endif; ?>
@@ -635,8 +690,8 @@ if ($items):
 </div>
 <?php endif; ?>
 
-<!-- Pay now (only if balance due) -->
-<?php if ($remaining > 0.01 && $companyUPI): ?>
+<!-- Pay now (only if balance due and not an estimate) -->
+<?php if ($remaining > 0.01 && $companyUPI && !$isEstimate): ?>
 <div class="card">
   <div class="card-head"><i class="fas fa-mobile-alt"></i> Pay Now</div>
   <div class="card-body">
@@ -720,18 +775,18 @@ if ($items):
     </div>
     <?php if ($companyPhone): ?>
     <?php $waPhone = preg_replace('/\D/','',$companyPhone); if(strlen($waPhone)===10) $waPhone='91'.$waPhone; ?>
-    <a href="https://wa.me/<?= $waPhone ?>?text=<?= urlencode('Hi, I have a query regarding Invoice '.$inv['invoice_number']) ?>" class="wa-contact-btn" target="_blank">
+    <a href="https://wa.me/<?= $waPhone ?>?text=<?= urlencode('Hi, I have a query regarding '.($isEstimate?'Estimate':'Invoice').' '.$inv['invoice_number']) ?>" class="wa-contact-btn" target="_blank">
       <i class="fab fa-whatsapp" style="font-size:16px"></i> Chat with us on WhatsApp
     </a>
     <?php endif; ?>
     <button class="pdf-btn" onclick="window.print()">
-      <i class="fas fa-download"></i> Download / Print Invoice
+      <i class="fas fa-download"></i> Download / Print <?= $isEstimate ? 'Estimate' : 'Invoice' ?>
     </button>
   </div>
 </div>
 
 <div class="footer">
-  <div>This is a secure, read-only view of your invoice.</div>
+  <div>This is a secure, read-only view of your <?= $isEstimate ? 'estimate' : 'invoice' ?>.</div>
   <div>Generated by <strong><?= htmlspecialchars($companyName) ?></strong> · Powered by OPTMS Invoice Manager</div>
 </div>
 
@@ -767,6 +822,20 @@ function fallback(text,cb) {
   document.body.appendChild(ta); ta.focus(); ta.select(); try{document.execCommand('copy');}catch(e){}
   document.body.removeChild(ta); cb();
 }
+
+<?php if ($isEstimate): ?>
+// Show a brief toast when approve/reject links are tapped
+document.querySelectorAll('.btn-approve,.btn-reject').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const isApprove = this.classList.contains('btn-approve');
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:'+(isApprove?'#388E3C':'#3949AB')+';color:#fff;padding:10px 22px;border-radius:24px;font-size:13px;font-weight:700;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,.18);transition:opacity .4s';
+    toast.textContent = isApprove ? '✅ Opening WhatsApp to approve…' : '💬 Opening WhatsApp for feedback…';
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 2800);
+  });
+});
+<?php endif; ?>
 </script>
 </body>
 </html>

@@ -205,6 +205,7 @@ $companyQR      = $settings['company_qr']      ?? '';
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -295,7 +296,8 @@ tr:last-child td{border:none}
 
 @media print{
   body{padding:0;background:#fff}
-  .sticky-bar,.upi-pay-btns,.wa-contact-btn,.pdf-btn{display:none!important}
+  .sticky-bar,.upi-pay-btns,.wa-contact-btn,.pdf-btn,.copy-btn{display:none!important}
+  .qr-section{display:block!important}
   .card{box-shadow:none;border:1px solid #ddd;break-inside:avoid}
   .portal-header{border-radius:0;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 }
@@ -369,6 +371,18 @@ tr:last-child td{border:none}
   .amount-strip{grid-template-columns:1fr}
   table{min-width:360px;font-size:11px}
   th,td{padding:6px 6px}
+}
+
+/* Dynamic UPI QR */
+.qr-section{text-align:center;margin-top:16px;padding-top:16px;border-top:1px dashed var(--border)}
+.qr-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:10px}
+.qr-wrap{display:inline-block;padding:10px;background:#fff;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.qr-wrap canvas,.qr-wrap img{display:block;border-radius:6px}
+.qr-hint{font-size:11px;color:var(--muted);margin-top:8px}
+.qr-amt{font-size:13px;font-weight:700;color:var(--teal);font-family:var(--mono);margin-top:4px}
+@media print{
+  .qr-section{display:block!important}
+  .upi-pay-btns,.copy-btn{display:none!important}
 }
 </style>
 </head>
@@ -725,15 +739,49 @@ if ($items):
         <i class="fas fa-mobile-alt"></i> Paytm
       </a>
     </div>
+    <!-- Dynamic UPI QR Code -->
+    <div class="qr-section">
+      <div class="qr-label"><i class="fas fa-qrcode"></i> Scan to Pay</div>
+      <div class="qr-wrap">
+        <div id="upiQrCode"></div>
+      </div>
+      <div class="qr-amt"><?= fmt_inr($remaining, $sym) ?></div>
+      <div class="qr-hint">Open any UPI app &amp; scan — amount is pre-filled</div>
+    </div>
+
     <?php if ($companyQR): ?>
     <div style="text-align:center;margin-top:14px">
-      <img src="<?= htmlspecialchars($companyQR) ?>" alt="QR Code" style="width:150px;height:150px;border-radius:10px;border:1px solid var(--border)">
-      <div style="font-size:11px;color:var(--muted);margin-top:6px">Scan & Pay</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px">Or use saved QR</div>
+      <img src="<?= htmlspecialchars($companyQR) ?>" alt="QR Code" style="width:130px;height:130px;border-radius:10px;border:1px solid var(--border)">
     </div>
     <?php endif; ?>
   </div>
 </div>
 <?php endif; ?>
+
+<script>
+// Generate dynamic UPI QR as soon as DOM is ready
+(function() {
+  var upiString = <?= json_encode($upiBase) ?>;
+  function renderQR() {
+    var el = document.getElementById('upiQrCode');
+    if (!el || typeof QRCode === 'undefined') return;
+    new QRCode(el, {
+      text       : upiString,
+      width      : 160,
+      height     : 160,
+      colorDark  : '#00695C',
+      colorLight : '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderQR);
+  } else {
+    renderQR();
+  }
+})();
+</script>
 
 <!-- Notes & T&C -->
 <?php if (!empty($inv['notes']) || !empty($inv['terms']) || !empty($inv['bank_details'])): ?>
