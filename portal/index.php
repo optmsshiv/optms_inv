@@ -739,7 +739,9 @@ if ($items):
         <i class="fas fa-mobile-alt"></i> Paytm
       </a>
     </div>
-    <!-- Dynamic UPI QR Code -->
+    <!-- Dynamic UPI QR Code — only for Pending, Overdue, Partial -->
+    <?php $invStatus = $inv['status'] ?? ''; ?>
+    <?php if (in_array($invStatus, ['Pending', 'Overdue', 'Partial'])): ?>
     <div class="qr-section">
       <div class="qr-label"><i class="fas fa-qrcode"></i> Scan to Pay</div>
       <div class="qr-wrap">
@@ -748,6 +750,7 @@ if ($items):
       <div class="qr-amt"><?= fmt_inr($remaining, $sym) ?></div>
       <div class="qr-hint">Open any UPI app &amp; scan — amount is pre-filled</div>
     </div>
+    <?php endif; ?>
 
     <?php if ($companyQR): ?>
     <div style="text-align:center;margin-top:14px">
@@ -760,7 +763,8 @@ if ($items):
 <?php endif; ?>
 
 <script>
-// Generate dynamic UPI QR as soon as DOM is ready
+// Generate dynamic UPI QR — only for Pending / Overdue / Partial
+<?php if (in_array($inv['status'] ?? '', ['Pending', 'Overdue', 'Partial'])): ?>
 (function() {
   var upiString = <?= json_encode($upiBase) ?>;
   function renderQR() {
@@ -781,6 +785,7 @@ if ($items):
     renderQR();
   }
 })();
+<?php endif; ?>
 </script>
 
 <!-- Notes & T&C -->
