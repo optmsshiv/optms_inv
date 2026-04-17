@@ -2561,7 +2561,7 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
             <div class="field"><label>Email</label><input id="sc-email" value="optmstech@gmail.com"></div>
             <div class="field"><label>Website</label><input id="sc-web" value="www.optmstech.in"></div>
             <div class="field"><label>Invoice Prefix</label><input id="sc-prefix" value="OT-2025-"></div>
-            <div class="field"><label>Estimate/Quote Prefix</label><input id="sc-estimate-prefix" placeholder="QT-<?= date('Y') ?>-" value="QT-<?= date('Y') ?>-"></div>
+            <div class="field"><label>Estimate/Quote Prefix</label><input id="sc-estimate-prefix" placeholder="QT-<?= date('Y') ?>-" value="<?= htmlspecialchars($estPrefix) ?>"></div>
             <div class="field"><label>UPI ID</label><input id="sc-upi" value="optmstech@upi"></div>
             <div class="field g-full"><label>Default Bank Account Details <span style="font-size:10px;color:var(--muted)">(pre-fills in new invoices)</span></label>
               <textarea id="sc-bank" style="min-height:85px" placeholder="Bank: SBI | A/C: XXXXXXXXX | IFSC: SBIN0001234 | Name: Your Company | UPI: yourname@upi"></textarea>
@@ -8684,7 +8684,8 @@ async function saveItemTypes() {
 // ── populateSettingsForm: load saved settings into the form fields ──
 function populateSettingsForm() {
   const s = STATE.settings;
-  const set = (id, val) => { const e=document.getElementById(id); if(e && val) e.value=val; };
+  const set = (id, val) => { const e=document.getElementById(id); if(e && val !== undefined && val !== null) e.value=val; };
+  // Company details
   set('sc-name',    s.company);
   set('sc-gst',     s.gst);
   set('sc-phone',   s.phone);
