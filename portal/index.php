@@ -206,8 +206,6 @@ $companyQR      = $settings['company_qr']      ?? '';
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -448,11 +446,83 @@ tr:last-child td{border:none}
 }
 
 @media print{
-  body{padding:0;background:#fff}
-  .sticky-bar,.upi-pay-btns,.wa-contact-btn,.pdf-btn,.pdf-dl-btn,.copy-btn,.overdue-banner{display:none!important}
+  /* ── Reset & page setup ── */
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+  @page{margin:12mm 14mm;size:A4 portrait}
+  body{padding:0!important;background:#fff!important;font-size:13px!important;color:#111!important}
+  html{background:#fff!important;font-size:13px}
+
+  /* ── Hide interactive / screen-only elements ── */
+  .sticky-bar,.upi-pay-btns,.wa-contact-btn,.pdf-btn,.pdf-dl-btn,
+  .copy-btn,.overdue-banner,.qr-hint,.estimate-actions,
+  .btn-approve,.btn-reject{display:none!important}
+
+  /* ── Show things normally hidden on screen ── */
   .qr-section,.receipt-card{display:block!important}
-  .card{box-shadow:none;border:1px solid #ddd;break-inside:avoid}
-  .portal-header{border-radius:0;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+
+  /* ── Flatten card chrome — no shadows, subtle borders ── */
+  .card{box-shadow:none!important;border:1px solid #ddd!important;border-radius:6px!important;margin-bottom:10px!important;break-inside:avoid}
+  .card-head{padding:9px 14px!important;font-size:11px!important;background:#f8f8f8!important;border-bottom:1px solid #ddd!important}
+  .card-body{padding:12px 14px!important}
+
+  /* ── Header — keep gradient, reduce padding ── */
+  .portal-header{border-radius:6px!important;padding:14px 18px!important;margin-bottom:10px!important;background:linear-gradient(135deg,#00897B,#00695C)!important;color:#fff!important}
+  .brand-name{font-size:14px!important}
+  .inv-num{font-size:16px!important}
+
+  /* ── Amount strip ── */
+  .amount-strip{border-radius:0 0 6px 6px!important}
+  .amt-cell{padding:10px!important}
+  .amt-cell .val{font-size:14px!important}
+
+  /* ── Progress bar ── */
+  .progress-wrap{padding:8px 14px 10px!important}
+  .progress-bar{height:5px!important}
+
+  /* ── Timeline compact ── */
+  .timeline-card{break-inside:avoid}
+  .tl-label{font-size:8px!important}
+  .tl-date{font-size:8px!important}
+
+  /* ── Tables ── */
+  table{font-size:12px!important;min-width:unset!important}
+  th{font-size:9px!important;padding:7px 10px!important}
+  td{padding:7px 10px!important}
+  .line-table{display:block!important}
+  .line-cards{display:none!important}
+  .col-qty,.col-amount,.col-qty-h,.col-amount-h{display:table-cell!important}
+
+  /* ── Receipt card ── */
+  .receipt-head{border-radius:4px 4px 0 0!important;padding:12px 16px!important}
+  .receipt-stamp{width:44px!important;height:44px!important;font-size:8px!important}
+  .receipt-row{padding:6px 0!important;font-size:11px!important}
+
+  /* ── Info grid ── */
+  .info-grid{gap:7px!important}
+  .info-item .val{font-size:12px!important}
+  .info-item label{font-size:9px!important}
+
+  /* ── Payment rows ── */
+  .pmt-row{padding:7px 0!important}
+  .pmt-method{font-size:11px!important}
+  .pmt-amt{font-size:12px!important}
+
+  /* ── QR section — center and compact ── */
+  .qr-section{margin-top:10px!important;padding-top:10px!important}
+  .qr-wrap{padding:7px!important}
+
+  /* ── Footer ── */
+  .footer{margin-top:14px!important;font-size:10px!important;border-top:1px solid #ddd;padding-top:8px}
+
+  /* ── Estimate banner ── */
+  .estimate-banner{padding:10px 14px!important;margin-bottom:10px!important}
+  .estimate-ref-notice{padding:7px 12px!important;margin-bottom:10px!important}
+
+  /* ── Thank you card ── */
+  .card[style*="linear-gradient(135deg, rgb(249"]{break-inside:avoid}
+
+  /* ── Wrap max width ── */
+  .wrap{max-width:100%!important}
 }
 </style>
 </head>
@@ -1124,50 +1194,14 @@ function fallback(text,cb) {
   document.body.removeChild(ta); cb();
 }
 
-// ── #1 Real PDF download via jsPDF + html2canvas ──────────────
+// ── #1 Native print-to-PDF (vector quality) ───────────────────
 function downloadPDF() {
-  const btns = document.querySelectorAll('.pdf-dl-btn');
-  btns.forEach(b => { b.classList.add('loading'); b.innerHTML='<i class="fas fa-spinner fa-spin"></i> Generating PDF…'; });
-
-  // Hide elements we don't want in PDF
-  const hide = document.querySelectorAll('.sticky-bar,.upi-pay-btns,.wa-contact-btn,.pdf-btn,.pdf-dl-btn,.copy-btn,.overdue-banner');
-  hide.forEach(el => el.style.setProperty('display','none','important'));
-
-  const wrap = document.querySelector('.wrap');
-  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-  html2canvas(wrap, {
-    scale       : 2,
-    useCORS     : true,
-    logging     : false,
-    backgroundColor: isDark ? '#0F1117' : '#F5F6FA',
-    windowWidth : 750
-  }).then(canvas => {
-    const { jsPDF } = window.jspdf;
-    const pdf    = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-    const pW     = pdf.internal.pageSize.getWidth();
-    const pH     = pdf.internal.pageSize.getHeight();
-    const imgW   = pW;
-    const imgH   = (canvas.height * pW) / canvas.width;
-    const pages  = Math.ceil(imgH / pH);
-
-    for (let i = 0; i < pages; i++) {
-      if (i > 0) pdf.addPage();
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, -(i * pH), imgW, imgH);
-    }
-
-    const fname = <?= json_encode(($isEstimate ? 'Estimate' : 'Invoice') . '-' . ($inv['invoice_number'] ?? 'doc') . '.pdf') ?>;
-    pdf.save(fname);
-
-    // Restore hidden elements
-    hide.forEach(el => el.style.removeProperty('display'));
-    btns.forEach(b => { b.classList.remove('loading'); b.innerHTML='<i class="fas fa-file-pdf"></i> Download as PDF'; });
-  }).catch(err => {
-    console.error('PDF error:', err);
-    hide.forEach(el => el.style.removeProperty('display'));
-    btns.forEach(b => { b.classList.remove('loading'); b.innerHTML='<i class="fas fa-file-pdf"></i> Download as PDF'; });
-    alert('PDF generation failed. Try using the Print option instead.');
-  });
+  // Give the browser a hint about the filename via <title>
+  const origTitle = document.title;
+  document.title = <?= json_encode(($isEstimate ? 'Estimate' : 'Invoice') . '-' . ($inv['invoice_number'] ?? 'doc')) ?>;
+  window.print();
+  // Restore title after print dialog closes
+  setTimeout(() => { document.title = origTitle; }, 1000);
 }
 
 // ── Dynamic UPI QR (Pending / Overdue / Partial only) ─────────
