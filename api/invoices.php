@@ -107,20 +107,21 @@ if (!in_array($inputStatus, $allowedStatuses, true)) $inputStatus = 'Draft';
 $input['status'] = $inputStatus;
 
 // ═══════════════════════════════════════════════════════
-// Force regenerate number if status/prefix mismatch
-// ═══════════════════════════════════════════════════════
+// NEW: Force regenerate number if status/prefix mismatch
+// ══════════════════════════════════════════════════════
 // If status is Estimate but number doesn't have estimate prefix, clear it
 if ($inputStatus === 'Estimate' && !empty($input['invoice_number'])) {
     $estimatePrefix = getSetting('estimate_prefix', 'QT-' . date('Y') . '-');
     if (strpos($input['invoice_number'], $estimatePrefix) !== 0) {
+        // Number doesn't match estimate prefix, clear it to trigger auto-generation
         $input['invoice_number'] = '';
     }
 }
 // If status is NOT Estimate but number has estimate prefix, clear it
 if ($inputStatus !== 'Estimate' && !empty($input['invoice_number'])) {
     $invoicePrefix = getSetting('invoice_prefix', 'OT-' . date('Y') . '-');
-    // Check if it starts with estimate prefix (QT-) or doesn't match invoice prefix
     $estimatePrefix = getSetting('estimate_prefix', 'QT-' . date('Y') . '-');
+    // If number starts with estimate prefix, clear it
     if (strpos($input['invoice_number'], $estimatePrefix) === 0) {
         $input['invoice_number'] = '';
     }
@@ -171,7 +172,7 @@ try {
 $stmt->execute([
 $input['invoice_number'], nullIfEmpty($input['client_id']??null), $input['client_name']??'',
 $input['service_type']??'', nullIfEmpty($input['issued_date']??null), nullIfEmpty($input['due_date']??null),
-$input['status']??'Draft', $input['currency']??'₹',
+$input['status']??'Draft', $input['currency']??'',
 $input['subtotal']??0, $input['discount_pct']??0,
 in_array($input['discount_type']??'percent', ['percent','flat']) ? $input['discount_type'] : 'percent',
 $input['discount_amt']??0,
