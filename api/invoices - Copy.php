@@ -119,13 +119,13 @@ switch ($method) {
       } else {
         $pfx = getSetting('invoice_prefix', 'OT-' . date('Y') . '-');
       }
-      // Find the highest existing numeric suffix for this prefix to avoid collisions
+      // Find the highest existing numeric suffix for THIS prefix only
       $like = $pfx . '%';
-      $row  = $db->prepare("SELECT invoice_number FROM invoices WHERE invoice_number LIKE ? ORDER BY id DESC LIMIT 1");
+      $row  = $db->prepare("SELECT invoice_number FROM invoices WHERE invoice_number LIKE ? ORDER BY LENGTH(invoice_number) DESC, invoice_number DESC LIMIT 1");
       $row->execute([$like]);
       $last = $row->fetchColumn();
       if ($last) {
-        // Extract trailing digits from last invoice number
+        // Extract trailing digits from last number with this prefix
         preg_match('/(\d+)$/', $last, $m);
         $cnt = isset($m[1]) ? ((int)$m[1] + 1) : 1;
       } else {
@@ -133,13 +133,14 @@ switch ($method) {
         $cnt = 1;
       }
       $input['invoice_number'] = $pfx . str_pad($cnt, 3, '0', STR_PAD_LEFT);
-      // Safety: if still collides (race condition), fall back to MAX id + 1
+      // Safety: if still collides, keep incrementing within same prefix (never jump to MAX id)
       try {
         $check = $db->prepare('SELECT id FROM invoices WHERE invoice_number = ?');
         $check->execute([$input['invoice_number']]);
-        if ($check->fetch()) {
-          $maxId = (int)$db->query('SELECT COALESCE(MAX(id),0)+1 FROM invoices')->fetchColumn();
-          $input['invoice_number'] = $pfx . str_pad($maxId, 3, '0', STR_PAD_LEFT);
+        while ($check->fetch()) {
+          $cnt++;
+          $input['invoice_number'] = $pfx . str_pad($cnt, 3, '0', STR_PAD_LEFT);
+          $check->execute([$input['invoice_number']]);
         }
       } catch (\Exception $e) { /* ignore safety check errors */ }
     }
