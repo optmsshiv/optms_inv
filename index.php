@@ -4474,7 +4474,22 @@ function fillClientForm(val) {
 // ══════════════════════════════════════════
 function getFormData() {
   const tpl     = parseInt(document.getElementById('f-template')?.value)||1;
-  const num = document.getElementById('f-num')?.value || '';
+  // FIX: never send blank invoice_number — auto-generate from prefix if field is empty
+  const _numRaw = document.getElementById('f-num')?.value || '';
+  const _status = document.querySelector('input[name="inv-status"]:checked')?.value || 'Draft';
+  const _estPfx = STATE.settings.estPrefix || ('QT-' + new Date().getFullYear() + '-');
+  const _invPfx = STATE.settings.prefix    || ('OT-' + new Date().getFullYear() + '-');
+  let num = _numRaw;
+  if (!num) {
+    const _pfx = (_status === 'Estimate') ? _estPfx : _invPfx;
+    let _seq = 1;
+    STATE.invoices.forEach(inv => {
+      const n = inv.num || inv.invoice_number || '';
+      if (n.startsWith(_pfx)) { const s = parseInt(n.slice(_pfx.length), 10); if (!isNaN(s) && s >= _seq) _seq = s + 1; }
+    });
+    num = _pfx + String(_seq).padStart(3, '0');
+    const _fnEl = document.getElementById('f-num'); if (_fnEl) _fnEl.value = num;
+  }
  // const num     = document.getElementById('f-num')?.value||(STATE.settings.prefix||'INV-')+String(STATE.invoices.length+1).padStart(3,'0');
   const date    = document.getElementById('f-date')?.value||'';
   const due     = document.getElementById('f-due')?.value||'';
@@ -5879,10 +5894,11 @@ async function saveInvoice() {
   if (!d.cname || d.cname === 'Client Name') { toast('⚠️ Please enter client name', 'warning'); return; }
   if (formItems.length === 0) { toast('⚠️ Add at least one line item', 'warning'); return; }
   const selVal = document.getElementById('f-client-select')?.value;
-  // ── FIX: capture before any reset so WA logic knows if this is a new save ──
+
+  // FIX: capture BEFORE any reset — tells WA block if this is new vs edit
   const isNewSave = !STATE.editingInvoiceId;
-  // ── FIX: capture form WA/phone now, before form is reset after navigation ──
-  const formPhone = (document.getElementById('f-cwa')?.value || '').replace(/\D/g,'');
+  // FIX: capture phone from form NOW before page navigates away and resets form
+  const formPhone = (document.getElementById('f-cwa')?.value || '').replace(/\D/g, '');
 
   const payload = {
     invoice_number: d.num, client_id: selVal ? parseInt(selVal) : null,
@@ -5935,36 +5951,30 @@ async function saveInvoice() {
       }
     }
 
-    // ── Auto-send WA — only on NEW save, never on edit ───────────────
-    if (!isNewSave) return; // ← FIX: skip WA entirely when editing
+    // ── Auto-send WA: only on NEW save, never on edit ──────────────────
+    if (!isNewSave) return; // FIX: skip WA entirely for edits
 
     const wa = STATE.settings.wa || {};
-    // ── FIX: robust invoice lookup — try .num, .invoice_number, or client_name match ──
+
+    // FIX: robust lookup — match by .num or .invoice_number
     const saved = STATE.invoices.find(i =>
-      (i.num && i.num === d.num) ||
-      (i.invoice_number && i.invoice_number === d.num)
+      (i.num && i.num === d.num) || (i.invoice_number && i.invoice_number === d.num)
     );
     const savedStatus = saved?.status || d.status || '';
 
-    // ── Helper: resolve phone from client record OR form field ────────
+    // FIX: helper that resolves phone from client record + form field fallback
     const resolvePhone = (inv) => {
-      const c = STATE.clients.find(x => String(x.id) === String(inv?.client || inv?.client_id)) || {};
-      // FIX: also fall back to the WA number typed in the form (f-cwa)
-      return {
-        c,
-        phone: (c.wa || c.whatsapp || c.phone || formPhone || '').replace(/\D/g,'')
-      };
+      const c = STATE.clients.find(x => String(x.id) === String(inv?.client || inv?.client_id || selVal)) || {};
+      return { c, phone: (c.wa || c.whatsapp || c.phone || formPhone || '').replace(/\D/g, '') };
     };
 
     if (savedStatus === 'Draft') {
-      // ❌ Never send WA for drafts
+      // Never send WA for drafts
 
     } else if (savedStatus === 'Estimate') {
-      // ✅ Estimate WA — respects auto_estimate toggle
-      // FIX: allow sending even if `saved` is undefined (use d as fallback for msg data)
-      const autoOn = wa.auto_estimate === '1';
-      if (autoOn) {
-        const invForWA = saved || { num: d.num, client: selVal, client_name: d.cname, amount: d.grand, due: d.due, service: d.svc, status: 'Estimate' };
+      // FIX: fire even if `saved` is undefined — use form data as fallback
+      if (wa.auto_estimate === '1') {
+        const invForWA = saved || { num: d.num, client: selVal, client_id: selVal, client_name: d.cname, amount: d.grand, due: d.due, service: d.svc, status: 'Estimate' };
         const { c, phone } = resolvePhone(invForWA);
         if (phone) {
           const tpl = wa.tpl_estimate || getDefaultWATpl('estimate');
@@ -5974,14 +5984,14 @@ async function saveInvoice() {
             .then(res => logWAMessage({ inv: invForWA, client: c, type: 'estimate_created', msg, status: res ? 'sent_api' : 'sent_web' }))
             .catch(e => { logWAMessage({ inv: invForWA, client: c, type: 'estimate_created', msg, status: 'failed', error: e.message }); console.warn('WA estimate send failed:', e.message); });
         } else {
-          console.warn('WA estimate: no phone found for client, skipping auto-send');
+          console.warn('WA estimate: no phone number found — add WhatsApp number to client profile');
         }
       }
 
     } else {
-      // ✅ Normal invoice WA for Pending / Paid / Overdue etc.
+      // Normal invoice WA for Pending / Paid / Overdue etc.
       if (wa.auto_inv === '1') {
-        const invForWA = saved || { num: d.num, client: selVal, client_name: d.cname, amount: d.grand, due: d.due, service: d.svc, status: d.status };
+        const invForWA = saved || { num: d.num, client: selVal, client_id: selVal, client_name: d.cname, amount: d.grand, due: d.due, service: d.svc, status: d.status };
         const { c, phone } = resolvePhone(invForWA);
         if (phone) {
           const tpl = wa.tpl_inv || getDefaultWATpl('inv');
@@ -5989,9 +5999,9 @@ async function saveInvoice() {
           logWAMessage({ inv: invForWA, client: c, type: 'invoice_created', msg, status: 'sending' });
           sendWA(phone, msg, 'invoice_created', invForWA, c)
             .then(res => logWAMessage({ inv: invForWA, client: c, type: 'invoice_created', msg, status: res ? 'sent_api' : 'sent_web' }))
-            .catch(e => { logWAMessage({ inv: invForWA, client: c, type: 'invoice_created', msg, status: 'failed', error: e.message }); console.warn('WA send failed:', e.message); });
+            .catch(e => { logWAMessage({ inv: invForWA, client: c, type: 'invoice_created', msg, status: 'failed', error: e.message }); console.warn('WA invoice send failed:', e.message); });
         } else {
-          console.warn('WA invoice: no phone found for client, skipping auto-send');
+          console.warn('WA invoice: no phone number found — add WhatsApp number to client profile');
         }
       }
     }
@@ -6721,23 +6731,42 @@ function onStatusChange(newStatus) {
     const numEl = document.getElementById('f-num');
     if (!numEl) return;
 
-    // ═══════════════════════════════════════════════════════
-    
-    // This forces the backend to query DB and generate the next QT- number.
-    // ═══════════════════════════════════════════════════════
+    const estPfx = STATE.settings.estPrefix || ('QT-' + new Date().getFullYear() + '-');
+    const invPfx = STATE.settings.prefix    || ('OT-' + new Date().getFullYear() + '-');
+
     if (newStatus === 'Estimate') {
-        numEl.value = '';  // Clear → backend will auto-generate correct QT-XXX
+        // FIX: auto-generate estimate number client-side (never leave blank)
+        let nextSeq = 1;
+        STATE.invoices.forEach(inv => {
+            const n = inv.num || inv.invoice_number || '';
+            if (n.startsWith(estPfx)) {
+                const seq = parseInt(n.slice(estPfx.length), 10);
+                if (!isNaN(seq) && seq >= nextSeq) nextSeq = seq + 1;
+            }
+        });
+        if (nextSeq === 1) {
+            const estCount = STATE.invoices.filter(i => i.status === 'Estimate').length;
+            if (estCount > 0) nextSeq = estCount + 1;
+        }
+        numEl.value = estPfx + String(nextSeq).padStart(3, '0');
         return;
     }
-    
-    // If switching back to normal Invoice, also clear so backend regenerates correct prefix
-    const estPfx = STATE.settings.estPrefix || ('QT-' + new Date().getFullYear() + '-');
+
+    // Switching back to Invoice from Estimate: regenerate invoice number
     const current = numEl.value || '';
     if (current.startsWith(estPfx)) {
-        numEl.value = '';  // Clear → backend will auto-generate correct OT/INV-XXX
+        let nextInvSeq = 1;
+        STATE.invoices.forEach(inv => {
+            const n = inv.num || inv.invoice_number || '';
+            if (n.startsWith(invPfx)) {
+                const seq = parseInt(n.slice(invPfx.length), 10);
+                if (!isNaN(seq) && seq >= nextInvSeq) nextInvSeq = seq + 1;
+            }
+        });
+        if (nextInvSeq === 1 && STATE.invoices.length > 0) nextInvSeq = STATE.invoices.length + 1;
+        numEl.value = invPfx + String(nextInvSeq).padStart(3, '0');
     }
 }
-
 // ══════════════════════════════════════════
 // CLIENTS
 // ══════════════════════════════════════════
