@@ -27,9 +27,23 @@ try {
     error_log('Settings load error: ' . $e->getMessage());
 }
 
-$companyName = $settings['company_name'] ?? 'OPTMS Tech';
-$prefix      = $settings['invoice_prefix'] ?? 'OT-' . date('Y') . '-';
-$estPrefix   = $settings['estimate_prefix'] ?? 'QT-' . date('Y') . '-';
+$companyName    = $settings['company_name']     ?? 'OPTMS Tech';
+$prefix         = $settings['invoice_prefix']   ?? 'OT-' . date('Y') . '-';
+$estPrefix      = $settings['estimate_prefix']  ?? 'QT-' . date('Y') . '-';
+$companyGst     = $settings['company_gst']      ?? '';
+$companyPhone   = $settings['company_phone']    ?? '';
+$companyEmail   = $settings['company_email']    ?? '';
+$companyWebsite = $settings['company_website']  ?? '';
+$companyUpi     = $settings['company_upi']      ?? '';
+$companyAddress = $settings['company_address']  ?? '';
+$companyLogo    = $settings['company_logo']     ?? '';
+$companySign    = $settings['company_sign']     ?? '';
+$companyBank    = $settings['company_bank']     ?? '';
+$defaultGst     = $settings['default_gst']      ?? '';
+$dueDays        = $settings['due_days']         ?? '';
+$activeTemplate = $settings['active_template']  ?? '';
+$defaultTnc     = $settings['default_tnc']      ?? '';
+$defaultCurrency= $settings['default_currency'] ?? '₹';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1009,7 +1023,7 @@ const SERVER = {
     tpl_followup:  <?= json_encode($settings['wa_tpl_followup'] ?? '') ?>,
     tpl_festival:  <?= json_encode($settings['wa_tpl_festival'] ?? '') ?>,
     auto_inv:      <?= json_encode($settings['wa_auto_inv']     ?? '0') ?>,
-    auto_estimate: <?= json_encode($settings['wa_auto_estimate']?? '0') ?>,
+    auto_estimate: <?= json_encode($settings['wa_auto_estimate']?? '1') ?>,
     auto_paid:     <?= json_encode($settings['wa_auto_paid']    ?? '1') ?>,
     auto_partial:  <?= json_encode($settings['wa_auto_partial'] ?? '1') ?>,
     auto_remind:   <?= json_encode($settings['wa_auto_remind']  ?? '1') ?>,
@@ -2034,7 +2048,7 @@ const SERVER = {
               </div>
               <div class="toggle-item" style="flex-wrap:wrap;gap:6px">
                 <span style="flex:1"><strong>New Estimate</strong> — auto-send when estimate is saved</span>
-                <div class="tog <?= (($settings['wa_auto_estimate']??'0')==='1')?'on':'' ?>" id="twa7" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_estimate', this)"></div>
+                <div class="tog <?= (($settings['wa_auto_estimate']??'1')==='1')?'on':'' ?>" id="twa7" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_estimate', this)"></div>
               </div>
               <div class="toggle-item"><span><strong>Payment Receipt</strong> — when fully paid</span><div class="tog <?= (($settings['wa_auto_paid']??'1')!=='0')?'on':'' ?>" id="twa2" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_paid', this)"></div></div>
               <div class="toggle-item"><span><strong>Partial Payment</strong> — on partial receipt</span><div class="tog <?= (($settings['wa_auto_partial']??'1')!=='0')?'on':'' ?>" id="twa6" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_partial', this)"></div></div>
@@ -2555,14 +2569,14 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
         <div class="settings-block">
           <div class="sb-title"><i class="fas fa-building"></i> Company Profile</div>
           <div class="form-grid g2">
-            <div class="field"><label>Company Name</label><input id="sc-name" value="OPTMS Tech"></div>
-            <div class="field"><label>GST Number</label><input id="sc-gst" value="22AAAAA0000A1Z5"></div>
-            <div class="field"><label>Phone</label><input id="sc-phone" value="+91 98765 43210"></div>
-            <div class="field"><label>Email</label><input id="sc-email" value="optmstech@gmail.com"></div>
-            <div class="field"><label>Website</label><input id="sc-web" value="www.optmstech.in"></div>
-            <div class="field"><label>Invoice Prefix</label><input id="sc-prefix" value="OT-2025-"></div>
+            <div class="field"><label>Company Name</label><input id="sc-name" value="<?= htmlspecialchars($companyName) ?>"></div>
+            <div class="field"><label>GST Number</label><input id="sc-gst" value="<?= htmlspecialchars($companyGst) ?>"></div>
+            <div class="field"><label>Phone</label><input id="sc-phone" value="<?= htmlspecialchars($companyPhone) ?>"></div>
+            <div class="field"><label>Email</label><input id="sc-email" value="<?= htmlspecialchars($companyEmail) ?>"></div>
+            <div class="field"><label>Website</label><input id="sc-web" value="<?= htmlspecialchars($companyWebsite) ?>"></div>
+            <div class="field"><label>Invoice Prefix</label><input id="sc-prefix" value="<?= htmlspecialchars($prefix) ?>"></div>
             <div class="field"><label>Estimate/Quote Prefix</label><input id="sc-estimate-prefix" placeholder="QT-<?= date('Y') ?>-" value="<?= htmlspecialchars($estPrefix) ?>"></div>
-            <div class="field"><label>UPI ID</label><input id="sc-upi" value="optmstech@upi"></div>
+            <div class="field"><label>UPI ID</label><input id="sc-upi" value="<?= htmlspecialchars($companyUpi) ?>"></div>
             <div class="field g-full"><label>Default Bank Account Details <span style="font-size:10px;color:var(--muted)">(pre-fills in new invoices)</span></label>
               <textarea id="sc-bank" style="min-height:85px" placeholder="Bank: SBI | A/C: XXXXXXXXX | IFSC: SBIN0001234 | Name: Your Company | UPI: yourname@upi"></textarea>
             </div>
@@ -4460,7 +4474,23 @@ function fillClientForm(val) {
 // ══════════════════════════════════════════
 function getFormData() {
   const tpl     = parseInt(document.getElementById('f-template')?.value)||1;
-  const num     = document.getElementById('f-num')?.value||(STATE.settings.prefix||'INV-')+String(STATE.invoices.length+1).padStart(3,'0');
+  // FIX: never send blank invoice_number — auto-generate from prefix if field is empty
+  const _numRaw = document.getElementById('f-num')?.value || '';
+  const _status = document.querySelector('input[name="inv-status"]:checked')?.value || 'Draft';
+  const _estPfx = STATE.settings.estPrefix || ('QT-' + new Date().getFullYear() + '-');
+  const _invPfx = STATE.settings.prefix    || ('OT-' + new Date().getFullYear() + '-');
+  let num = _numRaw;
+  if (!num) {
+    const _pfx = (_status === 'Estimate') ? _estPfx : _invPfx;
+    let _seq = 1;
+    STATE.invoices.forEach(inv => {
+      const n = inv.num || inv.invoice_number || '';
+      if (n.startsWith(_pfx)) { const s = parseInt(n.slice(_pfx.length), 10); if (!isNaN(s) && s >= _seq) _seq = s + 1; }
+    });
+    num = _pfx + String(_seq).padStart(3, '0');
+    const _fnEl = document.getElementById('f-num'); if (_fnEl) _fnEl.value = num;
+  }
+ // const num     = document.getElementById('f-num')?.value||(STATE.settings.prefix||'INV-')+String(STATE.invoices.length+1).padStart(3,'0');
   const date    = document.getElementById('f-date')?.value||'';
   const due     = document.getElementById('f-due')?.value||'';
   // Service type: read from custom text input (select just triggers autofill)
@@ -5864,6 +5894,12 @@ async function saveInvoice() {
   if (!d.cname || d.cname === 'Client Name') { toast('⚠️ Please enter client name', 'warning'); return; }
   if (formItems.length === 0) { toast('⚠️ Add at least one line item', 'warning'); return; }
   const selVal = document.getElementById('f-client-select')?.value;
+
+  // FIX: capture BEFORE any reset — tells WA block if this is new vs edit
+  const isNewSave = !STATE.editingInvoiceId;
+  // FIX: capture phone from form NOW before page navigates away and resets form
+  const formPhone = (document.getElementById('f-cwa')?.value || '').replace(/\D/g, '');
+
   const payload = {
     invoice_number: d.num, client_id: selVal ? parseInt(selVal) : null,
     client_name: d.cname, service_type: d.svc, issued_date: d.date, due_date: d.due,
@@ -5877,7 +5913,7 @@ async function saveInvoice() {
     items: formItems.map(i => ({ desc: i.desc, itemType: i.itemType||'Service', qty: parseFloat(i.qty)||1, rate: parseFloat(i.rate)||0, gst: (i.gst !== undefined && i.gst !== null && i.gst !== '') ? parseFloat(i.gst) : 18 }))
   };
   try {
-    if (STATE.editingInvoiceId) {
+    if (!isNewSave) {
       const inv = STATE.invoices.find(i => String(i.id) === String(STATE.editingInvoiceId));
       const dbId = inv?._dbId || parseInt(inv?.id) || 0;
       await api('api/invoices.php?id=' + dbId, 'PUT', payload);
@@ -5914,39 +5950,58 @@ async function saveInvoice() {
           .catch(() => {});
       }
     }
-    // Auto-send WA if automation toggle is ON
+
+    // ── Auto-send WA: only on NEW save, never on edit ──────────────────
+    if (!isNewSave) return; // FIX: skip WA entirely for edits
+
     const wa = STATE.settings.wa || {};
-    const saved = STATE.invoices.find(i => (i.num||i.invoice_number) === d.num);
+
+    // FIX: robust lookup — match by .num or .invoice_number
+    const saved = STATE.invoices.find(i =>
+      (i.num && i.num === d.num) || (i.invoice_number && i.invoice_number === d.num)
+    );
     const savedStatus = saved?.status || d.status || '';
 
+    // FIX: helper that resolves phone from client record + form field fallback
+    const resolvePhone = (inv) => {
+      const c = STATE.clients.find(x => String(x.id) === String(inv?.client || inv?.client_id || selVal)) || {};
+      return { c, phone: (c.wa || c.whatsapp || c.phone || formPhone || '').replace(/\D/g, '') };
+    };
+
     if (savedStatus === 'Draft') {
-      // ❌ Never send WA for internal drafts
+      // Never send WA for drafts
+
     } else if (savedStatus === 'Estimate') {
-      // ✅ Send estimate-specific WA if the Estimate automation toggle is on
-      if (wa.auto_estimate === '1' && saved) {
-        const c = STATE.clients.find(x => String(x.id) === String(saved.client)) || {};
-        const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g,'');
+      // FIX: fire even if `saved` is undefined — use form data as fallback
+      if (wa.auto_estimate === '1') {
+        const invForWA = saved || { num: d.num, client: selVal, client_id: selVal, client_name: d.cname, amount: d.grand, due: d.due, service: d.svc, status: 'Estimate' };
+        const { c, phone } = resolvePhone(invForWA);
         if (phone) {
           const tpl = wa.tpl_estimate || getDefaultWATpl('estimate');
-          const msg = formatWAMsg(tpl, saved, c, STATE.settings);
-          logWAMessage({ inv: saved, client: c, type: 'estimate_created', msg, status: 'sending' });
-          sendWA(phone, msg, 'estimate_created', saved, c)
-            .then(r => logWAMessage({ inv: saved, client: c, type: 'estimate_created', msg, status: r ? 'sent_api' : 'sent_web' }))
-            .catch(e => { logWAMessage({ inv: saved, client: c, type: 'estimate_created', msg, status: 'failed', error: e.message }); console.warn('WA estimate send failed:', e.message); });
+          const msg = formatWAMsg(tpl, invForWA, c, STATE.settings);
+          logWAMessage({ inv: invForWA, client: c, type: 'estimate_created', msg, status: 'sending' });
+          sendWA(phone, msg, 'estimate_created', invForWA, c)
+            .then(res => logWAMessage({ inv: invForWA, client: c, type: 'estimate_created', msg, status: res ? 'sent_api' : 'sent_web' }))
+            .catch(e => { logWAMessage({ inv: invForWA, client: c, type: 'estimate_created', msg, status: 'failed', error: e.message }); console.warn('WA estimate send failed:', e.message); });
+        } else {
+          console.warn('WA estimate: no phone number found — add WhatsApp number to client profile');
         }
       }
+
     } else {
-      // ✅ Send normal invoice WA for Pending / Paid / Overdue etc.
-      if (wa.auto_inv === '1' && saved) {
-        const c = STATE.clients.find(x => String(x.id) === String(saved.client)) || {};
-        const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g,'');
+      // Normal invoice WA for Pending / Paid / Overdue etc.
+      if (wa.auto_inv === '1') {
+        const invForWA = saved || { num: d.num, client: selVal, client_id: selVal, client_name: d.cname, amount: d.grand, due: d.due, service: d.svc, status: d.status };
+        const { c, phone } = resolvePhone(invForWA);
         if (phone) {
           const tpl = wa.tpl_inv || getDefaultWATpl('inv');
-          const msg = formatWAMsg(tpl, saved, c, STATE.settings);
-          logWAMessage({ inv: saved, client: c, type: 'invoice_created', msg, status: 'sending' });
-          sendWA(phone, msg, 'invoice_created', saved, c)
-            .then(r => logWAMessage({ inv: saved, client: c, type: 'invoice_created', msg, status: r ? 'sent_api' : 'sent_web' }))
-            .catch(e => { logWAMessage({ inv: saved, client: c, type: 'invoice_created', msg, status: 'failed', error: e.message }); console.warn('WA send failed:', e.message); });
+          const msg = formatWAMsg(tpl, invForWA, c, STATE.settings);
+          logWAMessage({ inv: invForWA, client: c, type: 'invoice_created', msg, status: 'sending' });
+          sendWA(phone, msg, 'invoice_created', invForWA, c)
+            .then(res => logWAMessage({ inv: invForWA, client: c, type: 'invoice_created', msg, status: res ? 'sent_api' : 'sent_web' }))
+            .catch(e => { logWAMessage({ inv: invForWA, client: c, type: 'invoice_created', msg, status: 'failed', error: e.message }); console.warn('WA invoice send failed:', e.message); });
+        } else {
+          console.warn('WA invoice: no phone number found — add WhatsApp number to client profile');
         }
       }
     }
@@ -6648,30 +6703,70 @@ async function convertEstimateToInvoice(id) {
 }
 
 // ── onStatusChange: auto-update invoice number prefix when switching to/from Estimate
-function onStatusChange(newStatus) {
-  const numEl = document.getElementById('f-num');
-  if (!numEl) return;
-  const current = numEl.value || '';
-  const pfx    = STATE.settings.prefix    || ('OT-' + new Date().getFullYear() + '-');
-  const estPfx = STATE.settings.estPrefix || ('QT-' + new Date().getFullYear() + '-');
-  if (newStatus === 'Estimate') {
-    // Switch invoice prefix to estimate prefix
-    if (current.startsWith(pfx)) {
-      numEl.value = current.replace(pfx, estPfx);
-    } else if (!current.startsWith(estPfx)) {
-      numEl.value = estPfx + '001';
-    }
-  } else {
-    // Switch estimate prefix back to invoice prefix when moving away from Estimate
-    if (current.startsWith(estPfx)) {
-      numEl.value = current.replace(estPfx, pfx);
-    } else if (current.startsWith('QT-')) {
-      // Legacy fallback for old QT- numbers
-      numEl.value = pfx + '001';
-    }
-  }
-}
+//function onStatusChange(newStatus) {
+//  const numEl = document.getElementById('f-num');
+//  if (!numEl) return;
+//  const current = numEl.value || '';
+//  const pfx    = STATE.settings.prefix    || ('OT-' + new Date().getFullYear() + '-');
+//  const estPfx = STATE.settings.estPrefix || ('QT-' + new Date().getFullYear() + '-');
+//  if (newStatus === 'Estimate') {
+//    // Switch invoice prefix to estimate prefix
+//    if (current.startsWith(pfx)) {
+//      numEl.value = current.replace(pfx, estPfx);
+//    } else if (!current.startsWith(estPfx)) {
+//      numEl.value = estPfx + '001';
+//    }
+//  } else {
+//    // Switch estimate prefix back to invoice prefix when moving away from Estimate
+//    if (current.startsWith(estPfx)) {
+//      numEl.value = current.replace(estPfx, pfx);
+//    } else if (current.startsWith('QT-')) {
+//      // Legacy fallback for old QT- numbers
+//      numEl.value = pfx + '001';
+//    }
+//  }
+//}
 
+function onStatusChange(newStatus) {
+    const numEl = document.getElementById('f-num');
+    if (!numEl) return;
+
+    const estPfx = STATE.settings.estPrefix || ('QT-' + new Date().getFullYear() + '-');
+    const invPfx = STATE.settings.prefix    || ('OT-' + new Date().getFullYear() + '-');
+
+    if (newStatus === 'Estimate') {
+        // FIX: auto-generate estimate number client-side (never leave blank)
+        let nextSeq = 1;
+        STATE.invoices.forEach(inv => {
+            const n = inv.num || inv.invoice_number || '';
+            if (n.startsWith(estPfx)) {
+                const seq = parseInt(n.slice(estPfx.length), 10);
+                if (!isNaN(seq) && seq >= nextSeq) nextSeq = seq + 1;
+            }
+        });
+        if (nextSeq === 1) {
+            const estCount = STATE.invoices.filter(i => i.status === 'Estimate').length;
+            if (estCount > 0) nextSeq = estCount + 1;
+        }
+        numEl.value = estPfx + String(nextSeq).padStart(3, '0');
+        return;
+    }
+
+    // Switching back to Invoice from Estimate: regenerate invoice number
+    const current = numEl.value || '';
+    if (current.startsWith(estPfx)) {
+        let nextInvSeq = 1;
+        STATE.invoices.forEach(inv => {
+            const n = inv.num || inv.invoice_number || '';
+            if (n.startsWith(invPfx)) {
+                const seq = parseInt(n.slice(invPfx.length), 10);
+                if (!isNaN(seq) && seq >= nextInvSeq) nextInvSeq = seq + 1;
+            }
+        });
+        if (nextInvSeq === 1 && STATE.invoices.length > 0) nextInvSeq = STATE.invoices.length + 1;
+        numEl.value = invPfx + String(nextInvSeq).padStart(3, '0');
+    }
+}
 // ══════════════════════════════════════════
 // CLIENTS
 // ══════════════════════════════════════════
@@ -8321,7 +8416,7 @@ async function loadAllData() {
         tpl_followup:  s.wa_tpl_followup || '',
         tpl_festival:  s.wa_tpl_festival || '',
         auto_inv:      s.wa_auto_inv      !== undefined ? s.wa_auto_inv      : '0',
-        auto_estimate: s.wa_auto_estimate !== undefined ? s.wa_auto_estimate : '0',
+        auto_estimate: s.wa_auto_estimate !== undefined ? s.wa_auto_estimate : '1',
         auto_paid:     s.wa_auto_paid     !== undefined ? s.wa_auto_paid     : '1',
         auto_partial:  s.wa_auto_partial  !== undefined ? s.wa_auto_partial  : '1',
         auto_remind:   s.wa_auto_remind   !== undefined ? s.wa_auto_remind   : '1',
@@ -8573,8 +8668,8 @@ window.saveInvoiceDefaults = async function() {
   STATE.settings.defaultGST     = parseInt(payload.default_gst ?? '0');
   STATE.settings.dueDays        = parseInt(payload.due_days);
   STATE.settings.activeTemplate = parseInt(payload.active_template);
-  if (payload.invoice_prefix) STATE.settings.prefix = payload.invoice_prefix;
-  if (payload.estimate_prefix) STATE.settings.estPrefix = payload.estimate_prefix;
+  if (payload.invoice_prefix)                       STATE.settings.prefix    = payload.invoice_prefix;
+  if (payload.estimate_prefix !== undefined && payload.estimate_prefix !== null) STATE.settings.estPrefix = payload.estimate_prefix;
   if (payload.default_tnc !== undefined) STATE.settings.defaultTnC = payload.default_tnc;
   try {
     await api('api/settings.php', 'POST', payload);
@@ -8685,7 +8780,6 @@ async function saveItemTypes() {
 function populateSettingsForm() {
   const s = STATE.settings;
   const set = (id, val) => { const e=document.getElementById(id); if(e && val !== undefined && val !== null) e.value=val; };
-  // Company details
   set('sc-name',    s.company);
   set('sc-gst',     s.gst);
   set('sc-phone',   s.phone);
@@ -11781,7 +11875,7 @@ function waQuickReply(type) {
 }
 
 // ── Init counters on WA page open ────────────────────────────
-// FIX #1: WA init logic has been merged into the single unified showPage
+
 // override above (near the recurring page hook). No second override needed.
 window._waActiveTab = 'inv';
 

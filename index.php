@@ -1022,7 +1022,7 @@ const SERVER = {
     tpl_overdue:   <?= json_encode($settings['wa_tpl_overdue']  ?? '') ?>,
     tpl_followup:  <?= json_encode($settings['wa_tpl_followup'] ?? '') ?>,
     tpl_festival:  <?= json_encode($settings['wa_tpl_festival'] ?? '') ?>,
-    auto_inv:      <?= json_encode($settings['wa_auto_inv']     ?? '0') ?>,
+    auto_inv:      <?= json_encode($settings['wa_auto_inv']     ?? '1') ?>,
     auto_estimate: <?= json_encode($settings['wa_auto_estimate']?? '1') ?>,
     auto_paid:     <?= json_encode($settings['wa_auto_paid']    ?? '1') ?>,
     auto_partial:  <?= json_encode($settings['wa_auto_partial'] ?? '1') ?>,
@@ -2041,7 +2041,7 @@ const SERVER = {
             <div class="toggle-list" style="margin-top:0">
               <div class="toggle-item" style="flex-wrap:wrap;gap:6px">
                 <span style="flex:1"><strong>New Invoice</strong> — auto-send when created</span>
-                <div class="tog <?= (($settings['wa_auto_inv']??'0')==='1')?'on':'' ?>" id="twa1" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_inv', this)"></div>
+                <div class="tog <?= (($settings['wa_auto_inv']??'1')==='1')?'on':'' ?>" id="twa1" onclick="this.classList.toggle('on'); saveWAToggle('wa_auto_inv', this)"></div>
               </div>
               <div style="padding:8px 12px;margin:-4px 0 8px;background:var(--teal-bg);border-radius:0 0 8px 8px;font-size:11px;color:var(--teal)" id="twa1-hint">
               When ON: sends invoice details, amount, due date, UPI, and item list to client automatically
@@ -5981,8 +5981,11 @@ async function saveInvoice() {
           const msg = formatWAMsg(tpl, invForWA, c, STATE.settings);
           logWAMessage({ inv: invForWA, client: c, type: 'estimate_created', msg, status: 'sending' });
           sendWA(phone, msg, 'estimate_created', invForWA, c)
-            .then(res => logWAMessage({ inv: invForWA, client: c, type: 'estimate_created', msg, status: res ? 'sent_api' : 'sent_web' }))
-            .catch(e => { logWAMessage({ inv: invForWA, client: c, type: 'estimate_created', msg, status: 'failed', error: e.message }); console.warn('WA estimate send failed:', e.message); });
+            .then(res => {
+              logWAMessage({ inv: invForWA, client: c, type: 'estimate_created', msg, status: res ? 'sent_api' : 'sent_web' });
+              toast(res ? `✅ Estimate sent to ${c.name || 'client'} via WhatsApp!` : `📱 WhatsApp opened for ${c.name || 'client'}`, 'success');
+            })
+            .catch(e => { logWAMessage({ inv: invForWA, client: c, type: 'estimate_created', msg, status: 'failed', error: e.message }); toast('❌ WhatsApp failed: ' + e.message, 'error'); });
         } else {
           console.warn('WA estimate: no phone number found — add WhatsApp number to client profile');
         }
@@ -5998,8 +6001,11 @@ async function saveInvoice() {
           const msg = formatWAMsg(tpl, invForWA, c, STATE.settings);
           logWAMessage({ inv: invForWA, client: c, type: 'invoice_created', msg, status: 'sending' });
           sendWA(phone, msg, 'invoice_created', invForWA, c)
-            .then(res => logWAMessage({ inv: invForWA, client: c, type: 'invoice_created', msg, status: res ? 'sent_api' : 'sent_web' }))
-            .catch(e => { logWAMessage({ inv: invForWA, client: c, type: 'invoice_created', msg, status: 'failed', error: e.message }); console.warn('WA invoice send failed:', e.message); });
+            .then(res => {
+              logWAMessage({ inv: invForWA, client: c, type: 'invoice_created', msg, status: res ? 'sent_api' : 'sent_web' });
+              toast(res ? `✅ Invoice sent to ${c.name || 'client'} via WhatsApp!` : `📱 WhatsApp opened for ${c.name || 'client'}`, 'success');
+            })
+            .catch(e => { logWAMessage({ inv: invForWA, client: c, type: 'invoice_created', msg, status: 'failed', error: e.message }); toast('❌ WhatsApp failed: ' + e.message, 'error'); });
         } else {
           console.warn('WA invoice: no phone number found — add WhatsApp number to client profile');
         }
@@ -6550,8 +6556,12 @@ function confirmPaid() {
             const msgP = formatWAMsg(tplP, invWithPmt, cP, STATE.settings);
             logWAMessage({ inv: invWithPmt, client: cP, type: tplName, msg: msgP, status: 'sending' });
             sendWA(phoneP, msgP, tplName, invWithPmt, cP)
-              .then(r => logWAMessage({ inv: invWithPmt, client: cP, type: tplName, msg: msgP, status: r ? 'sent_api' : 'sent_web' }))
-              .catch(e => { logWAMessage({ inv: invWithPmt, client: cP, type: tplName, msg: msgP, status: 'failed', error: e.message }); console.warn('WA payment msg failed:', e.message); });
+              .then(r => {
+                logWAMessage({ inv: invWithPmt, client: cP, type: tplName, msg: msgP, status: r ? 'sent_api' : 'sent_web' });
+                const lbl = tplName === 'payment_received' ? 'Payment receipt' : 'Partial receipt';
+                toast(r ? `✅ ${lbl} sent to ${cP.name || 'client'} via WhatsApp!` : `📱 WhatsApp opened for ${cP.name || 'client'}`, 'success');
+              })
+              .catch(e => { logWAMessage({ inv: invWithPmt, client: cP, type: tplName, msg: msgP, status: 'failed', error: e.message }); toast('❌ WhatsApp failed: ' + e.message, 'error'); });
           }
         }
       }
@@ -8415,7 +8425,7 @@ async function loadAllData() {
         tpl_overdue:   s.wa_tpl_overdue  || '',
         tpl_followup:  s.wa_tpl_followup || '',
         tpl_festival:  s.wa_tpl_festival || '',
-        auto_inv:      s.wa_auto_inv      !== undefined ? s.wa_auto_inv      : '0',
+        auto_inv:      s.wa_auto_inv      !== undefined ? s.wa_auto_inv      : '1',
         auto_estimate: s.wa_auto_estimate !== undefined ? s.wa_auto_estimate : '1',
         auto_paid:     s.wa_auto_paid     !== undefined ? s.wa_auto_paid     : '1',
         auto_partial:  s.wa_auto_partial  !== undefined ? s.wa_auto_partial  : '1',
@@ -10577,7 +10587,11 @@ function sendReminderNow(invId, channel) {
   if (channel === 'whatsapp') {
     const phone = (c.wa||c.whatsapp||c.phone||'').replace(/\D/g,'');
     const msg   = `Dear ${c.name||'Client'},\n\nThis is a reminder for Invoice *${inv.num||''}* of *${fmt_money(inv.amount||0)}* due on ${inv.due||'—'}.\n\nPlease make payment at your earliest convenience.\n\nThank you,\n${STATE.settings.company||'OPTMS Tech'}`;
-    if (phone) sendWA(phone, msg, 'payment_reminder', inv, c);
+    if (phone) {
+      sendWA(phone, msg, 'payment_reminder', inv, c)
+        .then(r => toast(r ? `✅ Reminder sent to ${c.name || 'client'} via WhatsApp!` : `📱 WhatsApp opened for ${c.name || 'client'}`, 'success'))
+        .catch(e => toast('❌ Reminder failed: ' + e.message, 'error'));
+    }
   }
   const entry = { id:Date.now()+'', ts:new Date().toISOString(), invNum:inv.num||inv.invoice_number||'', clientName:c.name||'', type:inv.status==='Overdue'?'Overdue Alert':'Due Reminder', channel, status: channel==='skip'?'skipped':'sent' };
   STATE.reminders.unshift(entry);
