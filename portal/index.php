@@ -58,9 +58,13 @@ if (!$rawToken) {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($row) {
                 $invoiceId = (int)$row['invoice_id'];
-                // Bump view counter
-                $db->prepare('UPDATE portal_tokens SET views = views + 1, last_viewed = NOW() WHERE token = :t')
-                   ->execute([':t' => $rawToken]);
+                // Bump view counter (uses new first_viewed + view_count columns from ALTER TABLE)
+                $db->prepare(
+                    'UPDATE portal_tokens
+                     SET view_count   = view_count + 1,
+                         first_viewed = COALESCE(first_viewed, NOW())
+                     WHERE token = :t'
+                )->execute([':t' => $rawToken]);
             } else {
                 $error = 'This link is invalid or has expired. Please contact your service provider.';
             }
@@ -710,14 +714,31 @@ tr:last-child td{border:none}
       <div class="countdown-timer" id="countdownTimer"><?= $countdownDays ?> day<?= $countdownDays != 1 ? 's' : '' ?> left</div>
     </div>
     <?php endif; ?>
-    <div class="estimate-actions">
-      <a href="<?= 'https://wa.me/' . (function() use ($companyPhone) { $w=preg_replace('/\D/','',$companyPhone); return strlen($w)===10?'91'.$w:$w; })() ?>?text=<?= urlencode('Hi, I APPROVE the Estimate '.$inv['invoice_number'].' for '.$companyName.'. Please proceed.') ?>" class="btn-approve" target="_blank">
+    <?php
+      $waNumEst = preg_replace('/\D/','',$companyPhone);
+      if (strlen($waNumEst) === 10) $waNumEst = '91' . $waNumEst;
+    ?>
+    <?php if ($countdownExpired): ?>
+    <!-- Expired: show only "Request New Estimate" -->
+    <div class="estimate-actions" id="estimateActions">
+      <a href="https://wa.me/<?= $waNumEst ?>?text=<?= urlencode('Hi '.$companyName.', the Estimate '.$inv['invoice_number'].' has expired. Can you please send a fresh quotation?') ?>"
+         class="btn-approve" target="_blank" style="background:#7B1FA2;border-color:#7B1FA2">
+        <i class="fas fa-redo"></i> Request New Estimate
+      </a>
+    </div>
+    <?php else: ?>
+    <!-- Active: normal approve / request changes -->
+    <div class="estimate-actions" id="estimateActions">
+      <a href="https://wa.me/<?= $waNumEst ?>?text=<?= urlencode('Hi, I APPROVE the Estimate '.$inv['invoice_number'].' for '.$companyName.'. Please proceed.') ?>"
+         class="btn-approve" target="_blank">
         <i class="fas fa-check-circle"></i> Approve via WhatsApp
       </a>
-      <a href="<?= 'https://wa.me/' . (function() use ($companyPhone) { $w=preg_replace('/\D/','',$companyPhone); return strlen($w)===10?'91'.$w:$w; })() ?>?text=<?= urlencode('Hi, I have feedback on Estimate '.$inv['invoice_number'].' from '.$companyName.'. ') ?>" class="btn-reject" target="_blank">
+      <a href="https://wa.me/<?= $waNumEst ?>?text=<?= urlencode('Hi, I have feedback on Estimate '.$inv['invoice_number'].' from '.$companyName.'. ') ?>"
+         class="btn-reject" target="_blank">
         <i class="fas fa-comment-dots"></i> Request Changes
       </a>
     </div>
+    <?php endif; ?>
   </div>
 </div>
 <?php endif; ?>
@@ -1452,15 +1473,48 @@ function openPartialUPI() {
   if (!el || el.textContent === 'Expired') return;
   <?php if (!empty($inv['due_date'])): ?>
   const dueMs = <?= strtotime($inv['due_date']) * 1000 ?>;
+  <?php
+    $waNumJs = preg_replace('/\D/','',$companyPhone);
+    if (strlen($waNumJs) === 10) $waNumJs = '91' . $waNumJs;
+  ?>
+  const waNum      = <?= json_encode($waNumJs) ?>;
+  const invNum     = <?= json_encode($inv['invoice_number'] ?? '') ?>;
+  const companyNm  = <?= json_encode($companyName) ?>;
+
+  function markExpired() {
+    // 1. Update the bar itself
+    const bar = el.closest('.countdown-bar');
+    if (bar) {
+      bar.className = 'countdown-bar expired';
+      const icon = bar.querySelector('.countdown-icon');
+      if (icon) icon.innerHTML = '<i class="fas fa-calendar-times"></i>';
+      const txt = bar.querySelector('.countdown-text');
+      if (txt) txt.textContent = 'This estimate has expired. Contact us to renew.';
+    }
+    el.textContent = 'Expired';
+
+    // 2. Swap action buttons to single "Request New Estimate"
+    const actions = document.getElementById('estimateActions');
+    if (actions) {
+      const msg = encodeURIComponent('Hi ' + companyNm + ', the Estimate ' + invNum + ' has expired. Can you please send a fresh quotation?');
+      actions.innerHTML = `
+        <a href="https://wa.me/${waNum}?text=${msg}"
+           class="btn-approve" target="_blank"
+           style="background:#7B1FA2;border-color:#7B1FA2">
+          <i class="fas fa-redo"></i> Request New Estimate
+        </a>`;
+    }
+  }
+
   function updateTimer() {
     const diff = dueMs - Date.now();
-    if (diff <= 0) { el.textContent = 'Expired'; return; }
+    if (diff <= 0) { markExpired(); return; }
     const d = Math.floor(diff / 86400000);
     const h = Math.floor((diff % 86400000) / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
-    if (d > 1) { el.textContent = d + ' days left'; }
-    else if (d === 1) { el.textContent = '1 day ' + h + 'h left'; }
-    else { el.textContent = h + 'h ' + m + 'm left'; }
+    if (d > 1)      { el.textContent = d + ' days left'; }
+    else if (d === 1){ el.textContent = '1 day ' + h + 'h left'; }
+    else             { el.textContent = h + 'h ' + m + 'm left'; }
   }
   updateTimer();
   setInterval(updateTimer, 60000);
