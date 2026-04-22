@@ -111,6 +111,9 @@ if (!$error && $invoiceId > 0) {
             $cStmt->execute([':id' => $inv['client_id']]);
             $client = $cStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
+            // Track portal view
+            track_portal_view($db, $invoiceId);
+
             // Payment history
             $pStmt = $db->prepare(
                 'SELECT amount, COALESCE(settlement_discount,0) AS settlement_discount,
@@ -129,6 +132,26 @@ if (!$error && $invoiceId > 0) {
     } catch (Exception $e) {
         error_log('portal/index.php error: ' . $e->getMessage());
         $error = 'A server error occurred. Please try again later.';
+    }
+}
+
+
+// ── Portal View Tracking ─────────────────────────────────────
+function track_portal_view(PDO $db, int $invoiceId): void {
+    try {
+        $db->exec("CREATE TABLE IF NOT EXISTS `portal_views` (
+            `invoice_id`   INT UNSIGNED NOT NULL,
+            `first_viewed` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `view_count`   INT UNSIGNED NOT NULL DEFAULT 1,
+            PRIMARY KEY (`invoice_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $db->prepare("INSERT INTO portal_views (invoice_id, view_count)
+            VALUES (:id, 1)
+            ON DUPLICATE KEY UPDATE view_count = view_count + 1")
+           ->execute([':id' => $invoiceId]);
+    } catch (Exception $e) {
+        error_log('portal_views track error: ' . $e->getMessage());
     }
 }
 
@@ -433,6 +456,73 @@ tr:last-child td{border:none}
 .pdf-dl-btn:active{transform:scale(.98)}
 .pdf-dl-btn.loading{opacity:.7;pointer-events:none}
 
+
+
+
+
+
+
+/* ── #8 Overdue dot pulse ── */
+@keyframes pulseDot{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.6}}
+.overdue-dot{display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--red);margin-right:4px;animation:pulseDot 1.2s ease-in-out infinite;vertical-align:middle}
+
+/* ── #7 Animated logo header ── */
+@keyframes logoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes shimmer{0%{opacity:.6}50%{opacity:1}100%{opacity:.6}}
+.brand-logo{animation:logoFloat 3s ease-in-out infinite}
+.portal-header{position:relative;overflow:hidden}
+.portal-header::after{content:'';position:absolute;top:-50%;left:-60%;width:40%;height:200%;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.12) 50%,transparent 60%);
+  animation:headerSheen 4s ease-in-out infinite}
+@keyframes headerSheen{0%,70%,100%{left:-60%}40%{left:110%}}
+
+/* ── #6 Hindi toggle ── */
+.lang-toggle{position:fixed;bottom:20px;right:16px;z-index:100;display:flex;align-items:center;gap:0;
+  background:var(--card);border:1.5px solid var(--border);border-radius:24px;box-shadow:0 2px 10px rgba(0,0,0,.12);overflow:hidden}
+.lang-btn{padding:8px 14px;font-size:12px;font-weight:700;border:none;background:transparent;cursor:pointer;
+  color:var(--muted);font-family:var(--font);transition:.2s}
+.lang-btn.active{background:var(--teal);color:#fff}
+[lang="hi"] .hi-hide{display:none!important}
+[lang="en"] .hi-show{display:none!important}
+
+/* ── #5 Partial payment input ── */
+.partial-pay-wrap{margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)}
+.partial-pay-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px}
+.partial-input-row{display:flex;align-items:center;gap:8px}
+.partial-sym{font-size:16px;font-weight:800;color:var(--teal);flex-shrink:0}
+.partial-input{flex:1;padding:10px 12px;border:2px solid var(--border);border-radius:8px;
+  font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text);background:var(--card);
+  outline:none;-moz-appearance:textfield}
+.partial-input::-webkit-inner-spin-button,.partial-input::-webkit-outer-spin-button{-webkit-appearance:none}
+.partial-input:focus{border-color:var(--teal)}
+.partial-pay-btn{padding:10px 16px;background:var(--teal);color:#fff;border:none;border-radius:8px;
+  font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);white-space:nowrap;flex-shrink:0}
+.partial-pay-btn:active{background:#00695C}
+.partial-hint{font-size:10px;color:var(--muted);margin-top:5px}
+
+/* ── #4 Estimate countdown ── */
+.countdown-bar{background:linear-gradient(135deg,#FFF3E0,#FFE0B2);border:1.5px solid #FFCC80;
+  border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px}
+.countdown-bar.urgent{background:linear-gradient(135deg,#FFEBEE,#FFCDD2);border-color:#EF9A9A}
+.countdown-bar.expired{background:linear-gradient(135deg,#F3E5F5,#EDE7F6);border-color:#CE93D8}
+.countdown-icon{width:36px;height:36px;border-radius:8px;background:#E65100;color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.countdown-bar.urgent .countdown-icon{background:#C62828}
+.countdown-bar.expired .countdown-icon{background:#7B1FA2}
+.countdown-text{flex:1;font-size:12px;font-weight:600;color:#BF360C}
+.countdown-timer{font-family:var(--mono);font-size:15px;font-weight:800;color:#E65100;white-space:nowrap}
+.countdown-bar.urgent .countdown-timer{color:#C62828}
+
+/* ── #3 I've Paid button ── */
+.ive-paid-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+  padding:13px;background:#FFF8E1;color:#E65100;border:2px solid #FFCC02;border-radius:10px;
+  font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);transition:.2s;margin-top:8px;text-decoration:none}
+.ive-paid-btn:active{background:#FFF3CD}
+.ive-paid-toast{display:none;background:#388E3C;color:#fff;text-align:center;padding:10px 14px;
+  border-radius:10px;font-size:13px;font-weight:600;margin-top:8px;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
 /* ── #8 Dark mode ── */
 @media(prefers-color-scheme:dark){
   :root{
@@ -547,7 +637,7 @@ tr:last-child td{border:none}
 <div class="sticky-bar" id="stickyBar">
   <span class="sticky-inv"><?= htmlspecialchars($inv['invoice_number'] ?? '') ?></span>
   <span class="sticky-status" style="background:<?= status_bg($inv['status'] ?? '') ?>;color:<?= status_col($inv['status'] ?? '') ?>">
-    <?= status_label($inv['status'] ?? '') ?>
+    <?php if(($inv['status']??'')=='Overdue'): ?><span class="overdue-dot"></span><?php endif; ?><?= status_label($inv['status'] ?? '') ?>
   </span>
 </div>
 <?php endif; ?>
@@ -593,6 +683,33 @@ tr:last-child td{border:none}
       This is <strong>not a final invoice</strong>. Actual charges may vary based on the final scope of work.<br>
       Valid until: <strong><?= fmt_date($inv['due_date'] ?? '') ?></strong>
     </div>
+    <?php
+    // ── #4 Estimate expiry countdown ──
+    $countdownDays = null;
+    $countdownExpired = false;
+    $countdownUrgent = false;
+    if (!empty($inv['due_date'])) {
+        $dueTs = strtotime($inv['due_date']);
+        $nowTs = time();
+        $diffSecs = $dueTs - $nowTs;
+        $countdownDays = (int)ceil($diffSecs / 86400);
+        $countdownExpired = $diffSecs <= 0;
+        $countdownUrgent = ($diffSecs > 0 && $countdownDays <= 3);
+    }
+    ?>
+    <?php if ($countdownExpired): ?>
+    <div class="countdown-bar expired">
+      <div class="countdown-icon"><i class="fas fa-calendar-times"></i></div>
+      <div class="countdown-text">This estimate has expired. Contact us to renew.</div>
+      <div class="countdown-timer" id="countdownTimer">Expired</div>
+    </div>
+    <?php elseif ($countdownDays !== null): ?>
+    <div class="countdown-bar <?= $countdownUrgent ? 'urgent' : '' ?>">
+      <div class="countdown-icon"><i class="fas fa-hourglass-half"></i></div>
+      <div class="countdown-text">Estimate valid until <?= htmlspecialchars(date('d M Y', strtotime($inv['due_date']))) ?></div>
+      <div class="countdown-timer" id="countdownTimer"><?= $countdownDays ?> day<?= $countdownDays != 1 ? 's' : '' ?> left</div>
+    </div>
+    <?php endif; ?>
     <div class="estimate-actions">
       <a href="<?= 'https://wa.me/' . (function() use ($companyPhone) { $w=preg_replace('/\D/','',$companyPhone); return strlen($w)===10?'91'.$w:$w; })() ?>?text=<?= urlencode('Hi, I APPROVE the Estimate '.$inv['invoice_number'].' for '.$companyName.'. Please proceed.') ?>" class="btn-approve" target="_blank">
         <i class="fas fa-check-circle"></i> Approve via WhatsApp
@@ -634,7 +751,7 @@ $tlOverdue = ($tlStatus === 'Overdue');
 ?>
 <?php if (!$isEstimate): ?>
 <div class="card timeline-card">
-  <div class="card-head"><i class="fas fa-stream"></i> Invoice Timeline</div>
+  <div class="card-head"><i class="fas fa-stream"></i> <span data-en="Invoice Timeline" data-hi="इनवॉइस टाइमलाइन">Invoice Timeline</span></div>
   <div class="card-body" style="padding:14px 18px 18px">
     <div class="timeline">
       <div class="tl-step">
@@ -757,7 +874,7 @@ if (!$isEstimate && !empty($inv['notes'])) {
 
 <!-- Invoice / Estimate details -->
 <div class="card">
-  <div class="card-head"><i class="fas fa-file-invoice"></i> <?= $isEstimate ? 'Estimate Details' : 'Invoice Details' ?></div>
+  <div class="card-head"><i class="fas fa-file-invoice"></i> <span data-en="<?= $isEstimate ? 'Estimate Details' : 'Invoice Details' ?>" data-hi="<?= $isEstimate ? 'अनुमान विवरण' : 'इनवॉइस विवरण' ?>"><?= $isEstimate ? 'Estimate Details' : 'Invoice Details' ?></span></div>
   <div class="card-body">
     <div class="info-grid">
       <div class="info-item"><label><?= $isEstimate ? 'Quote #' : 'Invoice #' ?></label><span class="val" style="font-family:var(--mono)"><?= htmlspecialchars($inv['invoice_number'] ?? '') ?></span></div>
@@ -782,7 +899,7 @@ if (!$isEstimate && !empty($inv['notes'])) {
 <!-- Client info -->
 <?php if ($client && !empty($client['name'])): ?>
 <div class="card">
-  <div class="card-head"><i class="fas fa-user"></i> Billed To</div>
+  <div class="card-head"><i class="fas fa-user"></i> <span data-en="Billed To" data-hi="जिसे बिल किया">Billed To</span></div>
   <div class="card-body">
     <div class="info-grid">
       <div class="info-item"><label>Name</label><span class="val"><?= htmlspecialchars($client['name']) ?></span></div>
@@ -937,7 +1054,7 @@ if ($items):
 <!-- Payment history (not shown for estimates) -->
 <?php if ($payments && !$isEstimate): ?>
 <div class="card">
-  <div class="card-head"><i class="fas fa-receipt"></i> Payment History</div>
+  <div class="card-head"><i class="fas fa-receipt"></i> <span data-en="Payment History" data-hi="भुगतान इतिहास">Payment History</span></div>
   <div class="card-body" style="padding:0 18px">
     <?php foreach ($payments as $p): ?>
     <div class="pmt-row">
@@ -1044,6 +1161,21 @@ if ($items):
         <div class="upi-id" id="upiId"><?= htmlspecialchars($companyUPI) ?></div>
       </div>
       <button class="copy-btn" onclick="copyUPI()" id="copyBtn"><i class="fas fa-copy"></i> Copy</button>
+    </div>
+
+
+    <!-- #5 Custom partial payment amount -->
+    <div class="partial-pay-wrap">
+      <div class="partial-pay-label"><i class="fas fa-sliders-h"></i> Custom Amount</div>
+      <div class="partial-input-row">
+        <span class="partial-sym"><?= $sym ?></span>
+        <input type="number" class="partial-input" id="partialAmt"
+          value="<?= number_format($remaining, 2, '.', '') ?>"
+          min="1" max="<?= number_format($remaining, 2, '.', '') ?>"
+          step="0.01" inputmode="decimal">
+        <button class="partial-pay-btn" onclick="openPartialUPI()">Pay This</button>
+      </div>
+      <div class="partial-hint">Change amount for partial payment, then tap Pay This</div>
     </div>
 
     <!-- UPI App deep links -->
@@ -1162,7 +1294,7 @@ if ($items):
 
 <!-- Company footer -->
 <div class="card">
-  <div class="card-head"><i class="fas fa-building"></i> Issued By</div>
+  <div class="card-head"><i class="fas fa-building"></i> <span data-en="Issued By" data-hi="जारीकर्ता">Issued By</span></div>
   <div class="card-body">
     <div class="info-grid">
       <div class="info-item"><label>Company</label><span class="val"><?= htmlspecialchars($companyName) ?></span></div>
@@ -1174,7 +1306,7 @@ if ($items):
     <?php if ($companyPhone): ?>
     <?php $waPhone = preg_replace('/\D/','',$companyPhone); if(strlen($waPhone)===10) $waPhone='91'.$waPhone; ?>
     <a href="https://wa.me/<?= $waPhone ?>?text=<?= urlencode('Hi, I have a query regarding '.($isEstimate?'Estimate':'Invoice').' '.$inv['invoice_number']) ?>" class="wa-contact-btn" target="_blank">
-      <i class="fab fa-whatsapp" style="font-size:16px"></i> Chat with us on WhatsApp
+      <i class="fab fa-whatsapp" style="font-size:16px"></i> <span data-en="Chat with us on WhatsApp" data-hi="व्हाट्सऐप पर बात करें">Chat with us on WhatsApp</span>
     </a>
     <?php endif; ?>
     <button class="pdf-btn" onclick="window.print()">
@@ -1192,6 +1324,13 @@ if ($items):
 </div>
 
 <?php endif; ?>
+</div>
+
+
+<!-- #6 Hindi language toggle -->
+<div class="lang-toggle" id="langToggle">
+  <button class="lang-btn active" id="langEn">EN</button>
+  <button class="lang-btn" id="langHi">हि</button>
 </div>
 
 <script>
@@ -1236,6 +1375,97 @@ function downloadPDF() {
 }
 
 // QR rendering handled above
+
+// ── #3 I've Paid button feedback ─────────────────────────────
+const ivePaidBtn  = document.getElementById('ivePaidBtn');
+const ivePaidToast = document.getElementById('ivePaidToast');
+if (ivePaidBtn && ivePaidToast) {
+  ivePaidBtn.addEventListener('click', function() {
+    ivePaidToast.style.display = 'block';
+    setTimeout(() => { ivePaidToast.style.display = 'none'; }, 4000);
+  });
+}
+
+// ── #5 Custom partial UPI payment ───────────────────────────
+function openPartialUPI() {
+  const input = document.getElementById('partialAmt');
+  if (!input) return;
+  const amt = parseFloat(input.value) || 0;
+  const max = parseFloat(input.max) || amt;
+  if (amt <= 0 || amt > max + 0.01) {
+    input.focus();
+    input.style.borderColor = '#C62828';
+    setTimeout(() => { input.style.borderColor = ''; }, 1500);
+    return;
+  }
+  const fmtAmt = amt.toFixed(2);
+  <?php
+    $upiEncPart = urlencode($companyUPI);
+    $payeeNamePart = urlencode($companyName);
+  ?>
+  const upiStr = `upi://pay?pa=<?= $upiEncPart ?>&pn=<?= $payeeNamePart ?>&am=${fmtAmt}&cu=INR`;
+  // Show app chooser
+  const sheet = document.createElement('div');
+  sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:var(--card);border-radius:16px 16px 0 0;padding:20px 16px 32px;box-shadow:0 -4px 24px rgba(0,0,0,.18);z-index:200;border-top:1px solid var(--border)';
+  sheet.innerHTML = `
+    <div style="text-align:center;font-size:14px;font-weight:800;margin-bottom:16px">Pay ₹${fmtAmt}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <a href="${upiStr}&mode=00&purpose=00" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;background:#f8f9fa;border:1.5px solid #e0e0e0;border-radius:10px;font-size:13px;font-weight:700;color:#1a1a2e;text-decoration:none"><i class="fas fa-wallet"></i> GPay</a>
+      <a href="phonepe://pay?pa=<?= $upiEncPart ?>&pn=<?= $payeeNamePart ?>&am=${fmtAmt}&cu=INR" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;background:#5f259f;border-radius:10px;font-size:13px;font-weight:700;color:#fff;text-decoration:none"><i class="fas fa-bolt"></i> PhonePe</a>
+      <a href="paytmmp://pay?pa=<?= $upiEncPart ?>&pn=<?= $payeeNamePart ?>&am=${fmtAmt}&cu=INR" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;background:#00BAF2;border-radius:10px;font-size:13px;font-weight:700;color:#fff;text-decoration:none"><i class="fas fa-mobile-alt"></i> Paytm</a>
+      <button onclick="navigator.clipboard&&navigator.clipboard.writeText('<?= $companyUPI ?>');this.textContent='✓ Copied!'" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;background:var(--teal);border:none;border-radius:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:var(--font)"><i class="fas fa-copy"></i> Copy UPI</button>
+    </div>
+    <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;margin-top:12px;padding:11px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--font)">Cancel</button>
+  `;
+  document.body.appendChild(sheet);
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:199';
+  overlay.onclick = () => { sheet.remove(); overlay.remove(); };
+  document.body.appendChild(overlay);
+}
+
+// ── #6 Hindi language toggle ─────────────────────────────────
+(function() {
+  const toggle = document.getElementById('langToggle');
+  if (!toggle) return;
+  const enBtn = document.getElementById('langEn');
+  const hiBtn = document.getElementById('langHi');
+  let lang = localStorage.getItem('portal_lang') || 'en';
+  function applyLang(l) {
+    lang = l;
+    document.documentElement.setAttribute('lang', l);
+    localStorage.setItem('portal_lang', l);
+    enBtn.classList.toggle('active', l === 'en');
+    hiBtn.classList.toggle('active', l === 'hi');
+    document.querySelectorAll('[data-en]').forEach(el => {
+      el.textContent = l === 'hi' ? (el.dataset.hi || el.dataset.en) : el.dataset.en;
+    });
+  }
+  enBtn.addEventListener('click', () => applyLang('en'));
+  hiBtn.addEventListener('click', () => applyLang('hi'));
+  applyLang(lang);
+})();
+
+// ── #4 Live countdown timer update ───────────────────────────
+(function() {
+  const el = document.getElementById('countdownTimer');
+  if (!el || el.textContent === 'Expired') return;
+  <?php if (!empty($inv['due_date'])): ?>
+  const dueMs = <?= strtotime($inv['due_date']) * 1000 ?>;
+  function updateTimer() {
+    const diff = dueMs - Date.now();
+    if (diff <= 0) { el.textContent = 'Expired'; return; }
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    if (d > 1) { el.textContent = d + ' days left'; }
+    else if (d === 1) { el.textContent = '1 day ' + h + 'h left'; }
+    else { el.textContent = h + 'h ' + m + 'm left'; }
+  }
+  updateTimer();
+  setInterval(updateTimer, 60000);
+  <?php endif; ?>
+})();
 
 <?php if ($isEstimate): ?>
 // ── Estimate approve/reject toast ─────────────────────────────
