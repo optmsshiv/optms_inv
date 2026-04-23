@@ -35,15 +35,28 @@ foreach ($autoloadPaths as $path) {
     }
 }
 
-if (!$loaded || !class_exists('\Mpdf\Mpdf')) {
+if (!$loaded) {
+    // TEMP DEBUG — remove after fixing
     ob_end_clean();
-    http_response_code(500);
-    header('Content-Type: application/json');
-    echo json_encode([
-        'error' => 'mPDF not found. Ensure vendor/autoload.php exists at your server root. Checked: ' . implode(', ', $autoloadPaths)
-    ]);
+    header('Content-Type: text/plain');
+    echo "__DIR__: " . __DIR__ . "\n";
+    echo "DOCUMENT_ROOT: " . $_SERVER['DOCUMENT_ROOT'] . "\n";
+    echo "dirname(__DIR__): " . dirname(__DIR__) . "\n";
+    // Find vendor directories
+    $out = shell_exec('find ' . escapeshellarg(dirname($_SERVER['DOCUMENT_ROOT'])) . ' -name "autoload.php" -path "*/vendor/*" 2>/dev/null');
+    echo "Found autoloads:\n" . $out;
     exit;
 }
+
+// if (!$loaded || !class_exists('\Mpdf\Mpdf')) {
+//     ob_end_clean();
+//     http_response_code(500);
+//     header('Content-Type: application/json');
+//     echo json_encode([
+//         'error' => 'mPDF not found. Ensure vendor/autoload.php exists at your server root. Checked: ' . implode(', ', $autoloadPaths)
+//     ]);
+//     exit;
+// }
 
 // ── Helpers ───────────────────────────────────────────────────
 function pdf_fmt_date($d) {
