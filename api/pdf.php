@@ -507,7 +507,7 @@ body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 11px; color: #1
       </tr>
     </table>
     <?php endforeach; ?>
-  </td>
+  </div>
 </div>
 <?php endif; ?>
 
