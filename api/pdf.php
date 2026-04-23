@@ -15,10 +15,10 @@ error_reporting(0);
 require_once __DIR__ . '/../config/db.php';
 
 // ── Locate mPDF ───────────────────────────────────────────────
-$mpdfPath = __DIR__ . '/../mpdf/src/mpdf.php';
+$mpdfPath = __DIR__ . '/../mpdf/src/Mpdf.php';
 if (!file_exists($mpdfPath)) {
     // Try alternate path if vendor is inside public_html
-    $mpdfPath = $_SERVER['DOCUMENT_ROOT'] . '/mpdf/src/mpdf.php';
+    $mpdfPath = $_SERVER['DOCUMENT_ROOT'] . '/mpdf/src/Mpdf.php';
 }
 if (!file_exists($mpdfPath)) {
     ob_end_clean();
