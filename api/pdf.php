@@ -1,4 +1,19 @@
 <?php
+// TEMP DEBUG — remove after fixing
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    header('Content-Type: text/plain', true, 500);
+    echo "PHP Error [$errno]: $errstr\n";
+    echo "File: $errfile Line: $errline\n";
+    exit;
+});
+set_exception_handler(function($e) {
+    header('Content-Type: text/plain', true, 500);
+    echo "Exception: " . $e->getMessage() . "\n";
+    echo "File: " . $e->getFile() . " Line: " . $e->getLine() . "\n";
+    exit;
+});
 // ================================================================
 //  api/pdf.php  — Server-side PDF generation using mPDF
 //
