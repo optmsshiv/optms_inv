@@ -247,6 +247,7 @@ if ($isEstimate && !empty($inv['due_date'])) {
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -1342,12 +1343,27 @@ function fallback(text,cb) {
   document.body.removeChild(ta); cb();
 }
 
-// ── Download PDF ───────────────────────────────────────────────
+// ── Download PDF — server-side via api/pdf.php ───────────────
 function downloadPDF() {
-  const origTitle = document.title;
-  document.title = <?= json_encode(($isEstimate ? 'Estimate' : 'Invoice') . '-' . ($inv['invoice_number'] ?? 'doc')) ?>;
-  window.print();
-  setTimeout(() => { document.title = origTitle; }, 1000);
+  const btn   = document.querySelector('.pdf-dl-btn');
+  const token = <?= json_encode($rawToken) ?>;
+  const url   = '/api/pdf.php?t=' + encodeURIComponent(token);
+
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF…'; btn.disabled = true; }
+
+  // Create hidden iframe to trigger download without leaving page
+  const a = document.createElement('a');
+  a.href  = url;
+  a.download = <?= json_encode(($isEstimate ? 'Estimate' : 'Invoice') . '-' . ($inv['invoice_number'] ?? 'doc') . '.pdf') ?>;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  // Restore button after 3s
+  setTimeout(() => {
+    if (btn) { btn.innerHTML = '<i class="fas fa-file-pdf"></i> Download as PDF'; btn.disabled = false; }
+  }, 3000);
 }
 
 // QR rendering handled above
