@@ -1344,23 +1344,27 @@ function fallback(text,cb) {
 }
 
 // ── Download PDF — server-side via api/pdf.php ───────────────
+<?php
+  $pdfToken    = htmlspecialchars($rawToken ?? '', ENT_QUOTES);
+  $pdfFilename = ($isEstimate ? 'Estimate' : 'Invoice') . '-' . preg_replace('/[^A-Za-z0-9\-_]/', '-', $inv['invoice_number'] ?? 'doc') . '.pdf';
+?>
 function downloadPDF() {
-  const btn   = document.querySelector('.pdf-dl-btn');
-  const token = <?= json_encode($rawToken) ?>;
-  const url   = '/api/pdf.php?t=' + encodeURIComponent(token);
+  const btn      = document.querySelector('.pdf-dl-btn');
+  const token    = '<?= $pdfToken ?>';
+  const filename = '<?= htmlspecialchars($pdfFilename, ENT_QUOTES) ?>';
+  const url      = '/api/pdf.php?t=' + encodeURIComponent(token);
 
+  if (!token) { alert('No token found — please reload the page'); return; }
   if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF…'; btn.disabled = true; }
 
-  // Create hidden iframe to trigger download without leaving page
   const a = document.createElement('a');
-  a.href  = url;
-  a.download = <?= json_encode(($isEstimate ? 'Estimate' : 'Invoice') . '-' . ($inv['invoice_number'] ?? 'doc') . '.pdf') ?>;
+  a.href     = url;
+  a.download = filename;
   a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
 
-  // Restore button after 3s
   setTimeout(() => {
     if (btn) { btn.innerHTML = '<i class="fas fa-file-pdf"></i> Download as PDF'; btn.disabled = false; }
   }, 3000);
