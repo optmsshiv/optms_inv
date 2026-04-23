@@ -15,7 +15,7 @@ error_reporting(0);
 require_once __DIR__ . '/../config/db.php';
 
 // ── Locate mPDF ───────────────────────────────────────────────
-$mpdfPath = __DIR__ . '/../../vendor/mpdf/mpdf.php';
+$mpdfPath = __DIR__ . '/../mpdf/src/mpdf.php';
 if (!file_exists($mpdfPath)) {
     // Try alternate path if vendor is inside public_html
     $mpdfPath = $_SERVER['DOCUMENT_ROOT'] . '/vendor/mpdf/mpdf.php';
