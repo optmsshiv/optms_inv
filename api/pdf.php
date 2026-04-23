@@ -6,55 +6,26 @@
 //  GET /api/pdf.php?t=TOKEN&inline=1  → view in browser instead
 //
 //  No login required — uses same portal token as portal/index.php
-//  mPDF must be uploaded to: /vendor/mpdf/  (root of public_html)
+//  mPDF must be installed via Composer in: /api/vendor/
 // ================================================================
 
-ob_start();
-// error_reporting(0);
+// Never echo errors — any stray output before PDF headers corrupts the binary
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+ini_set('memory_limit', '128M');
 
 require_once __DIR__ . '/../config/db.php';
 
 // ── Locate mPDF via autoloader ────────────────────────────────
-// Try multiple possible locations for vendor/autoload.php
-$autoloadPaths = [
-    __DIR__ . '/vendor/autoload.php',              // /api/vendor/autoload.php
-    dirname(__DIR__) . '/vendor/autoload.php',     // /invoiceoptms/vendor/autoload.php
-    dirname(dirname(__DIR__)) . '/vendor/autoload.php', // /public_html/vendor/autoload.php
-    $_SERVER['DOCUMENT_ROOT'] . '/invoiceoptms/api/vendor/autoload.php',
-    $_SERVER['DOCUMENT_ROOT'] . '/invoiceoptms/vendor/autoload.php',
-];
+require_once __DIR__ . '/vendor/autoload.php';
 
-$loaded = false;
-foreach ($autoloadPaths as $path) {
-    if (file_exists($path)) {
-        require_once $path;
-        $loaded = true;
-        break;
-    }
-}
-
-if (!$loaded) {
-    // TEMP DEBUG — remove after fixing
-    ob_end_clean();
+if (!class_exists('\Mpdf\Mpdf')) {
     http_response_code(500);
-    header('Content-Type: text/plain');
-    // Find vendor directories
-    $out = shell_exec('find ' . escapeshellarg(dirname($_SERVER['DOCUMENT_ROOT'])) . ' -name "autoload.php" -path "*/vendor/*" 2>/dev/null');
-    echo "Found autoloads:\n" . $out;
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'mPDF not found. Run: composer require mpdf/mpdf inside /api/']);
     exit;
 }
-
-// if (!$loaded || !class_exists('\Mpdf\Mpdf')) {
-//     ob_end_clean();
-//     http_response_code(500);
-//     header('Content-Type: application/json');
-//     echo json_encode([
-//         'error' => 'mPDF not found. Ensure vendor/autoload.php exists at your server root. Checked: ' . implode(', ', $autoloadPaths)
-//     ]);
-//     exit;
-// }
 
 // ── Helpers ───────────────────────────────────────────────────
 function pdf_fmt_date($d) {
@@ -105,7 +76,6 @@ if (!$rawToken) {
 }
 
 if ($error || $invoiceId <= 0) {
-    ob_end_clean();
     http_response_code(400);
     header('Content-Type: application/json');
     echo json_encode(['error' => $error ?: 'Invalid invoice ID']);
@@ -130,8 +100,8 @@ try {
     $inv = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$inv) {
-        ob_end_clean();
         http_response_code(404);
+        header('Content-Type: application/json');
         echo json_encode(['error' => 'Invoice not found']);
         exit;
     }
@@ -157,18 +127,18 @@ try {
     foreach ($sRows as $r) $settings[$r['key']] = $r['value'];
 
 } catch (Exception $e) {
-    ob_end_clean();
     http_response_code(500);
+    header('Content-Type: application/json');
     echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
     exit;
 }
 
 // ── Computed values ────────────────────────────────────────────
-$sym         = $inv['currency'] ?: '₹';
-$isEstimate  = ($inv['status'] ?? '') === 'Estimate';
-$totalAmt    = (float)($inv['amount'] ?? 0);
-$totalCash   = array_sum(array_column($payments, 'amount'));
-$totalSettle = array_sum(array_column($payments, 'settlement_discount'));
+$sym          = $inv['currency'] ?: '₹';
+$isEstimate   = ($inv['status'] ?? '') === 'Estimate';
+$totalAmt     = (float)($inv['amount'] ?? 0);
+$totalCash    = array_sum(array_column($payments, 'amount'));
+$totalSettle  = array_sum(array_column($payments, 'settlement_discount'));
 $totalCovered = $totalCash + $totalSettle;
 
 if ($inv['status'] === 'Paid' && $totalCovered < 0.01) $totalCovered = $totalAmt;
@@ -184,7 +154,7 @@ foreach ($items as $item) {
 $discountAmt = (float)($inv['discount_amt'] ?? 0);
 $discountPct = (float)($inv['discount_pct'] ?? 0);
 if ($discountAmt == 0 && $discountPct > 0) $discountAmt = $calcSubtotal * $discountPct / 100;
-$discFactor  = $calcSubtotal > 0 ? (1 - $discountAmt / $calcSubtotal) : 1;
+$discFactor   = $calcSubtotal > 0 ? (1 - $discountAmt / $calcSubtotal) : 1;
 $calcGstFinal = $discountAmt > 0 ? $calcGst * $discFactor : $calcGst;
 $calcGrand    = $calcSubtotal - $discountAmt + $calcGstFinal;
 
@@ -341,8 +311,8 @@ body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 11px; color: #1
         <div class="company-name"><?= htmlspecialchars($companyName) ?></div>
         <div class="company-sub">
           <?php if ($companyAddress): ?><?= nl2br(htmlspecialchars($companyAddress)) ?><br><?php endif; ?>
-          <?php if ($companyPhone): ?> <?= htmlspecialchars($companyPhone) ?><?php endif; ?>
-          <?php if ($companyEmail): ?>  ✉ <?= htmlspecialchars($companyEmail) ?><?php endif; ?>
+          <?php if ($companyPhone): ?><?= htmlspecialchars($companyPhone) ?><?php endif; ?>
+          <?php if ($companyEmail): ?>  <?= htmlspecialchars($companyEmail) ?><?php endif; ?>
           <?php if ($companyGST): ?><br>GSTIN: <?= htmlspecialchars($companyGST) ?><?php endif; ?>
         </div>
       </td>
@@ -358,7 +328,7 @@ body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 11px; color: #1
 
 <?php if ($isEstimate): ?>
 <div class="estimate-banner">
-  📋 <strong>This is an Estimate / Quotation — not a final invoice.</strong>
+  <strong>This is an Estimate / Quotation — not a final invoice.</strong>
   Valid until: <strong><?= pdf_fmt_date($inv['due_date']) ?></strong>
 </div>
 <?php endif; ?>
@@ -392,7 +362,7 @@ body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 11px; color: #1
   </tr>
 </table>
 
-<!-- Billed To / Issued By -->
+<!-- Billed To / Invoice Details -->
 <div class="card">
   <table class="two-col" width="100%">
     <tr>
@@ -467,7 +437,7 @@ body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 11px; color: #1
     <tr class="tfoot-row">
       <td></td>
       <td class="tfoot-lbl">Discount<?= $discountPct > 0 ? ' (' . (int)$discountPct . '%)' : '' ?></td>
-      <td class="tfoot-val r disc-val" style="text-align:right">− <?= pdf_fmt_money($discountAmt, $sym) ?></td>
+      <td class="tfoot-val r disc-val" style="text-align:right">- <?= pdf_fmt_money($discountAmt, $sym) ?></td>
     </tr>
     <?php endif; ?>
     <tr class="tfoot-row">
@@ -564,15 +534,18 @@ body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 11px; color: #1
 </body>
 </html>
 <?php
+// Capture the HTML, then flush ALL output buffers before sending PDF binary
 $html = ob_get_clean();
+while (ob_get_level() > 0) {
+    ob_end_clean();
+}
 
 // ── Generate PDF with mPDF ─────────────────────────────────────
-ob_end_clean();
-
 try {
     $mpdf = new \Mpdf\Mpdf([
         'mode'          => 'utf-8',
         'format'        => 'A4',
+        'tempDir'       => '/tmp',
         'margin_left'   => 12,
         'margin_right'  => 12,
         'margin_top'    => 12,
@@ -585,8 +558,8 @@ try {
     $mpdf->SetTitle(($isEstimate ? 'Estimate' : 'Invoice') . ' ' . $inv['invoice_number']);
     $mpdf->SetAuthor($companyName);
     $mpdf->SetCreator('OPTMS Invoice Manager');
-    $mpdf->autoScriptToLang  = true;
-    $mpdf->autoLangToFont    = true;
+    $mpdf->autoScriptToLang         = true;
+    $mpdf->autoLangToFont           = true;
     $mpdf->allow_charset_conversion = false;
 
     $mpdf->WriteHTML($html);
@@ -596,7 +569,7 @@ try {
 
     $mpdf->Output($filename, $dest);
 
-} catch (Exception $e) {
+} catch (\Throwable $e) {
     error_log('pdf.php mPDF error: ' . $e->getMessage());
     http_response_code(500);
     header('Content-Type: application/json');
