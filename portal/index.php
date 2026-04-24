@@ -664,6 +664,43 @@ tr:last-child td{border:none}
 
 <!-- Estimate notice banner -->
 <?php if ($isEstimate): ?>
+<?php
+$isExpired = ($expiryDays !== null && $expiryDays < 0);
+$waNumComp = preg_replace('/\D/', '', $companyPhone);
+if (strlen($waNumComp) === 10) $waNumComp = '91' . $waNumComp;
+$approveMsg = urlencode('Hi, I APPROVE the Estimate ' . ($inv['invoice_number'] ?? '') . ' for ' . $companyName . '. Please proceed.');
+$feedbackMsg = urlencode('Hi, I have feedback on Estimate ' . ($inv['invoice_number'] ?? '') . ' from ' . $companyName . '. ');
+$contactMsg  = urlencode('Hi ' . $companyName . ', I viewed Estimate ' . ($inv['invoice_number'] ?? '') . ' which has expired. Can you send a revised quote?');
+?>
+
+<?php if ($isExpired): ?>
+<!-- EXPIRED: Red locked banner (Option A) -->
+<div class="estimate-banner" style="background:linear-gradient(135deg,#FFEBEE,#FFCDD2);border-color:#EF9A9A">
+  <div class="estimate-banner-icon" style="background:#C62828"><i class="fas fa-clock"></i></div>
+  <div class="estimate-banner-body">
+    <div class="estimate-banner-title" style="color:#B71C1C">⏰ This Estimate Has Expired</div>
+    <div class="estimate-banner-sub" style="color:#C62828">
+      This estimate expired on <strong><?= fmt_date($inv['due_date'] ?? '') ?></strong>
+      (<?= abs($expiryDays) ?> day<?= abs($expiryDays) != 1 ? 's' : '' ?> ago).<br>
+      Please contact <strong><?= htmlspecialchars($companyName) ?></strong> to request a revised quote.
+    </div>
+    <div class="expiry-pill expired" style="margin-top:10px">
+      ⚠️ Expired <?= abs($expiryDays) ?> day<?= abs($expiryDays) != 1 ? 's' : '' ?> ago
+    </div>
+    <!-- Buttons disabled/locked -->
+    <div class="estimate-actions" style="margin-top:14px">
+      <div class="btn-approve" style="opacity:.4;cursor:not-allowed;pointer-events:none;background:#9E9E9E;border-color:#9E9E9E">
+        <i class="fas fa-lock"></i> Approval Locked
+      </div>
+      <a href="https://wa.me/<?= $waNumComp ?>?text=<?= $contactMsg ?>" class="btn-reject" style="background:#fff;color:#C62828;border-color:#FFCDD2" target="_blank">
+        <i class="fab fa-whatsapp"></i> Request New Quote
+      </a>
+    </div>
+  </div>
+</div>
+
+<?php else: ?>
+<!-- ACTIVE: Normal estimate banner -->
 <div class="estimate-banner">
   <div class="estimate-banner-icon"><i class="fas fa-file-alt"></i></div>
   <div class="estimate-banner-body">
@@ -673,20 +710,42 @@ tr:last-child td{border:none}
       Valid until: <strong><?= fmt_date($inv['due_date'] ?? '') ?></strong>
     </div>
     <?php if ($expiryLabel): ?>
-    <div class="expiry-pill <?= $expiryDays === null ? '' : ($expiryDays < 0 ? 'expired' : ($expiryDays <= 3 ? 'warn' : 'ok')) ?>">
+    <div class="expiry-pill <?= $expiryDays === null ? '' : ($expiryDays <= 3 ? 'warn' : 'ok') ?>">
       <?= htmlspecialchars($expiryLabel) ?>
     </div>
     <?php endif; ?>
     <div class="estimate-actions">
-      <a href="<?= 'https://wa.me/' . (function() use ($companyPhone) { $w=preg_replace('/\D/','',$companyPhone); return strlen($w)===10?'91'.$w:$w; })() ?>?text=<?= urlencode('Hi, I APPROVE the Estimate '.$inv['invoice_number'].' for '.$companyName.'. Please proceed.') ?>" class="btn-approve" target="_blank">
+      <a href="https://wa.me/<?= $waNumComp ?>?text=<?= $approveMsg ?>" class="btn-approve" target="_blank">
         <i class="fas fa-check-circle"></i> Approve via WhatsApp
       </a>
-      <a href="<?= 'https://wa.me/' . (function() use ($companyPhone) { $w=preg_replace('/\D/','',$companyPhone); return strlen($w)===10?'91'.$w:$w; })() ?>?text=<?= urlencode('Hi, I have feedback on Estimate '.$inv['invoice_number'].' from '.$companyName.'. ') ?>" class="btn-reject" target="_blank">
+      <a href="https://wa.me/<?= $waNumComp ?>?text=<?= $feedbackMsg ?>" class="btn-reject" target="_blank">
         <i class="fas fa-comment-dots"></i> Request Changes
       </a>
     </div>
   </div>
 </div>
+<?php endif; ?>
+<?php endif; ?>
+
+<?php if ($isExpired && $waNumComp): ?>
+<script>
+// Option D: notify company when expired estimate viewed (once per session)
+(function() {
+  var flagKey = 'notified_<?= preg_replace("/[^a-z0-9]/i", "", $inv["invoice_number"] ?? "x") ?>';
+  if (sessionStorage.getItem(flagKey)) return;
+  sessionStorage.setItem(flagKey, '1');
+  setTimeout(function() {
+    var msg = encodeURIComponent(
+      '🔔 *Expired Estimate Viewed*\n\n' +
+      'Client opened expired Estimate *<?= addslashes($inv["invoice_number"] ?? "") ?>*\n' +
+      'Client: *<?= addslashes($client["name"] ?? "Unknown") ?>*\n' +
+      'Expired <?= abs((int)$expiryDays) ?> day<?= abs((int)$expiryDays) != 1 ? "s" : "" ?> ago (<?= fmt_date($inv["due_date"] ?? "") ?>)\n\n' +
+      'Send a revised quote!'
+    );
+    window.open('https://wa.me/<?= $waNumComp ?>?text=' + msg, '_blank');
+  }, 2500);
+})();
+</script>
 <?php endif; ?>
 
 <?php
