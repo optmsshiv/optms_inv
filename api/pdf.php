@@ -27,8 +27,7 @@ ini_set('memory_limit', '128M');
 require_once __DIR__ . '/../config/db.php';
 
 // ── Locate mPDF via autoloader ────────────────────────────────
-require_once dirname(__DIR__) . '/vendor/autoload.php';
-
+require_once '/home1/edrppymy/public_html/invoiceoptms/vendor/autoload.php';
 
 // ── Helpers ───────────────────────────────────────────────────
 function pdf_fmt_date($d) {
