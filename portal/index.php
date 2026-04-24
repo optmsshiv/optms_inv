@@ -523,12 +523,8 @@ tr:last-child td{border:none}
 @keyframes fadeSlideDown{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .portal-header{animation:fadeSlideDown .5s ease both}
-.card{animation:fadeIn .4s ease both}
-.card:nth-child(2){animation-delay:.05s}
-.card:nth-child(3){animation-delay:.1s}
-.card:nth-child(4){animation-delay:.15s}
-.card:nth-child(5){animation-delay:.2s}
-.card:nth-child(6){animation-delay:.25s}
+.card{opacity:0}
+.card.anim-done{opacity:1;transition:opacity .3s ease}
 
 @media print{
   /* ── Reset & page setup ── */
@@ -1538,15 +1534,23 @@ function setLang(lang) {
   }
 }
 
-// ── Feature 9: Page load animations ──────────────────────────
+// ── Feature 9: Page load animations (run ONCE, remove after done) ──
 document.addEventListener('DOMContentLoaded', () => {
-  // Stagger card animations
-  document.querySelectorAll('.card').forEach((card, i) => {
-    card.style.animationDelay = (i * 0.06) + 's';
+  const cards = document.querySelectorAll('.card');
+  cards.forEach((card, i) => {
+    setTimeout(() => {
+      card.classList.add('anim-done'); // fade in via CSS transition
+    }, 60 + i * 60);
   });
-  // Animate estimate banner
+  // Animate banners once
   const banner = document.querySelector('.estimate-banner, .overdue-banner');
-  if (banner) { banner.style.animation = 'fadeSlideDown .4s ease .1s both'; }
+  if (banner) {
+    banner.style.opacity = '0';
+    setTimeout(() => {
+      banner.style.transition = 'opacity .4s ease, transform .4s ease';
+      banner.style.opacity = '1';
+    }, 80);
+  }
 });
 </script>
 </body>
