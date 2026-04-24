@@ -718,17 +718,17 @@ $tlOverdue = ($tlStatus === 'Overdue');
 ?>
 <?php if (!$isEstimate): ?>
 <div class="card timeline-card">
-  <div class="card-head"><i class="fas fa-stream"></i> Invoice Timeline</div>
+  <div class="card-head"><i class="fas fa-stream"></i> <span data-t="Invoice Timeline">Invoice Timeline</span></div>
   <div class="card-body" style="padding:14px 18px 18px">
     <div class="timeline">
       <div class="tl-step">
         <div class="tl-dot done"><i class="fas fa-check" style="font-size:8px"></i></div>
-        <div class="tl-label">Issued</div>
+        <div class="tl-label" data-t="Issued">Issued</div>
         <div class="tl-date"><?= fmt_date($inv['issue_date'] ?? '') ?></div>
       </div>
       <div class="tl-step">
         <div class="tl-dot done"><i class="fas fa-eye" style="font-size:8px"></i></div>
-        <div class="tl-label">Viewed</div>
+        <div class="tl-label" data-t="Viewed">Viewed</div>
         <div class="tl-date"><?= $firstViewed ? fmt_date($firstViewed) : 'Now' ?></div>
       </div>
       <?php if ($tlStatus === 'Paid'): ?>
@@ -740,30 +740,30 @@ $tlOverdue = ($tlStatus === 'Overdue');
       ?>
       <div class="tl-step">
         <div class="tl-dot done"><i class="fas fa-check" style="font-size:8px"></i></div>
-        <div class="tl-label">Paid</div>
+        <div class="tl-label" data-t="Paid">Paid</div>
         <div class="tl-date"><?= $paidDateStr ?></div>
       </div>
       <?php elseif ($tlStatus === 'Partial'): ?>
       <div class="tl-step">
         <div class="tl-dot warn"><i class="fas fa-adjust" style="font-size:8px"></i></div>
-        <div class="tl-label">Partial</div>
+        <div class="tl-label" data-t="Partial">Partial</div>
         <div class="tl-date"><?= !empty($payments) ? fmt_date(end($payments)['payment_date']) : '—' ?></div>
       </div>
       <div class="tl-step">
         <div class="tl-dot active"><i class="fas fa-clock" style="font-size:8px"></i></div>
-        <div class="tl-label">Balance</div>
+        <div class="tl-label" data-t="Balance">Balance</div>
         <div class="tl-date">Due <?= fmt_date($inv['due_date'] ?? '') ?></div>
       </div>
       <?php elseif ($tlOverdue): ?>
       <div class="tl-step">
         <div class="tl-dot overdue"><i class="fas fa-times" style="font-size:8px"></i></div>
-        <div class="tl-label">Overdue</div>
+        <div class="tl-label" data-t="Overdue">Overdue</div>
         <div class="tl-date">Since <?= fmt_date($inv['due_date'] ?? '') ?></div>
       </div>
       <?php else: ?>
       <div class="tl-step">
         <div class="tl-dot active"><i class="fas fa-clock" style="font-size:8px"></i></div>
-        <div class="tl-label">Pending</div>
+        <div class="tl-label" data-t="Pending">Pending</div>
         <div class="tl-date">Due <?= fmt_date($inv['due_date'] ?? '') ?></div>
       </div>
       <?php endif; ?>
@@ -776,7 +776,7 @@ $tlOverdue = ($tlStatus === 'Overdue');
 <div class="card">
   <div class="amount-strip" style="border-radius:12px 12px 0 0">
     <div class="amt-cell">
-      <div class="lbl"><?= $isEstimate ? 'Estimated Total' : 'Invoice Total' ?></div>
+      <div class="lbl" data-t="Invoice Total"><?= $isEstimate ? 'Estimated Total' : 'Invoice Total' ?></div>
       <div class="val" style="color:var(--teal)"><?= fmt_inr($totalAmt, $sym) ?></div>
     </div>
     <?php if ($isEstimate): ?>
@@ -790,7 +790,7 @@ $tlOverdue = ($tlStatus === 'Overdue');
     </div>
     <?php else: ?>
     <div class="amt-cell">
-      <div class="lbl">Amount Paid</div>
+      <div class="lbl" data-t="Amount Paid">Amount Paid</div>
       <div class="val" style="color:var(--green)"><?= fmt_inr($totalCovered, $sym) ?></div>
       <?php if ($totalSettle > 0.01): ?>
       <div style="font-size:10px;color:#E65100;margin-top:2px">
@@ -799,7 +799,7 @@ $tlOverdue = ($tlStatus === 'Overdue');
       <?php endif; ?>
     </div>
     <div class="amt-cell">
-      <div class="lbl"><?= $remaining > 0 ? 'Balance Due' : 'Status' ?></div>
+      <div class="lbl" data-t="Balance Due"><?= $remaining > 0 ? 'Balance Due' : 'Status' ?></div>
       <div class="val" style="color:<?= $remaining > 0 ? 'var(--red)' : 'var(--green)' ?>">
         <?= $remaining > 0 ? fmt_inr($remaining, $sym) : '✓ Cleared' ?>
       </div>
@@ -845,7 +845,7 @@ if (!$isEstimate && !empty($inv['notes'])) {
   <div class="card-body">
     <div class="info-grid">
       <div class="info-item"><label><?= $isEstimate ? 'Quote #' : 'Invoice #' ?></label><span class="val" style="font-family:var(--mono)"><?= htmlspecialchars($inv['invoice_number'] ?? '') ?></span></div>
-      <div class="info-item"><label>Service</label><span class="val"><?= htmlspecialchars($inv['service_type'] ?? '—') ?></span></div>
+      <div class="info-item"><label data-t="Service">Service</label><span class="val"><?= htmlspecialchars($inv['service_type'] ?? '—') ?></span></div>
       <div class="info-item"><label><?= $isEstimate ? 'Date Issued' : 'Issue Date' ?></label><span class="val"><?= fmt_date($inv['issue_date'] ?? '') ?></span></div>
       <div class="info-item"><label><?= $isEstimate ? 'Valid Until' : 'Due Date' ?></label>
         <span class="val" style="color:<?= (!$isEstimate && $inv['status']==='Overdue') ? 'var(--red)' : 'inherit' ?>">
@@ -854,10 +854,10 @@ if (!$isEstimate && !empty($inv['notes'])) {
         </span>
       </div>
       <?php if (!empty($inv['gst_rate'])): ?>
-      <div class="info-item"><label>GST Rate</label><span class="val"><?= htmlspecialchars($inv['gst_rate']) ?>%</span></div>
+      <div class="info-item"><label data-t="GST Rate">GST Rate</label><span class="val"><?= htmlspecialchars($inv['gst_rate']) ?>%</span></div>
       <?php endif; ?>
       <?php if (!empty($inv['discount']) && $inv['discount'] != '0' && $inv['discount'] != '0.00'): ?>
-      <div class="info-item"><label>Discount</label><span class="val"><?= htmlspecialchars($inv['discount']) ?></span></div>
+      <div class="info-item"><label data-t="Discount">Discount</label><span class="val"><?= htmlspecialchars($inv['discount']) ?></span></div>
       <?php endif; ?>
     </div>
   </div>
@@ -866,13 +866,13 @@ if (!$isEstimate && !empty($inv['notes'])) {
 <!-- Client info -->
 <?php if ($client && !empty($client['name'])): ?>
 <div class="card">
-  <div class="card-head"><i class="fas fa-user"></i> Billed To</div>
+  <div class="card-head"><i class="fas fa-user"></i> <span data-t="Billed To">Billed To</span></div>
   <div class="card-body">
     <div class="info-grid">
-      <div class="info-item"><label>Name</label><span class="val"><?= htmlspecialchars($client['name']) ?></span></div>
-      <?php if (!empty($client['email'])): ?><div class="info-item"><label>Email</label><span class="val"><?= htmlspecialchars($client['email']) ?></span></div><?php endif; ?>
-      <?php if (!empty($client['phone'])): ?><div class="info-item"><label>Phone</label><span class="val"><?= htmlspecialchars($client['phone']) ?></span></div><?php endif; ?>
-      <?php if (!empty($client['address'])): ?><div class="info-item" style="grid-column:1/-1"><label>Address</label><span class="val" style="font-weight:400"><?= nl2br(htmlspecialchars($client['address'])) ?></span></div><?php endif; ?>
+      <div class="info-item"><label data-t="Name">Name</label><span class="val"><?= htmlspecialchars($client['name']) ?></span></div>
+      <?php if (!empty($client['email'])): ?><div class="info-item"><label data-t="Email">Email</label><span class="val"><?= htmlspecialchars($client['email']) ?></span></div><?php endif; ?>
+      <?php if (!empty($client['phone'])): ?><div class="info-item"><label data-t="Phone">Phone</label><span class="val"><?= htmlspecialchars($client['phone']) ?></span></div><?php endif; ?>
+      <?php if (!empty($client['address'])): ?><div class="info-item" style="grid-column:1/-1"><label data-t="Address">Address</label><span class="val" style="font-weight:400"><?= nl2br(htmlspecialchars($client['address'])) ?></span></div><?php endif; ?>
     </div>
   </div>
 </div>
@@ -1021,7 +1021,7 @@ if ($items):
 <!-- Payment history (not shown for estimates) -->
 <?php if ($payments && !$isEstimate): ?>
 <div class="card">
-  <div class="card-head"><i class="fas fa-receipt"></i> Payment History</div>
+  <div class="card-head"><i class="fas fa-receipt"></i> <span data-t="Payment History">Payment History</span></div>
   <div class="card-body" style="padding:0 18px">
     <?php foreach ($payments as $p): ?>
     <div class="pmt-row">
@@ -1116,7 +1116,7 @@ if ($items):
 <?php endif; ?>
 <?php if ($remaining > 0.01 && $companyUPI && !$isEstimate): ?>
 <div class="card">
-  <div class="card-head"><i class="fas fa-mobile-alt"></i> Pay Now</div>
+  <div class="card-head"><i class="fas fa-mobile-alt"></i> <span data-t="Pay Now">Pay Now</span></div>
   <div class="card-body">
     <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
       Pay the remaining <strong style="color:var(--red)"><?= fmt_inr($remaining, $sym) ?></strong> via UPI:
@@ -1152,7 +1152,7 @@ if ($items):
     <?php $invStatus = $inv['status'] ?? ''; ?>
     <?php if (in_array($invStatus, ['Pending', 'Overdue', 'Partial'])): ?>
     <div class="qr-section">
-      <div class="qr-label"><i class="fas fa-qrcode"></i> Scan to Pay</div>
+      <div class="qr-label" data-t="Scan to Pay"><i class="fas fa-qrcode"></i> <span data-t="Scan to Pay">Scan to Pay</span></div>
       <div class="qr-wrap">
         <div id="upiQrCode"></div>
       </div>
@@ -1171,7 +1171,7 @@ if ($items):
     <!-- Feature 5: Partial amount input -->
     <?php if ($remaining > 0.01): ?>
     <div class="partial-pay-box">
-      <label><i class="fas fa-rupee-sign"></i> Pay a different amount</label>
+      <label data-t="Pay a different amount"><i class="fas fa-rupee-sign"></i> Pay a different amount</label>
       <div class="partial-amt-row">
         <input type="number" id="partialAmt" class="partial-amt-input"
           value="<?= number_format($remaining, 2, '.', '') ?>"
@@ -1246,23 +1246,23 @@ if ($items):
 </div>
 <?php elseif (!empty($inv['notes']) || !empty($inv['terms']) || !empty($inv['bank_details'])): ?>
 <div class="card">
-  <div class="card-head"><i class="fas fa-sticky-note"></i> Notes & Terms</div>
+  <div class="card-head"><i class="fas fa-sticky-note"></i> <span data-t="Notes &amp; Terms">Notes &amp; Terms</span></div>
   <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
     <?php if (!empty($inv['notes'])): ?>
     <div>
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">Notes</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px" data-t="Notes">Notes</div>
       <div style="font-size:13px;line-height:1.6"><?= nl2br(htmlspecialchars($inv['notes'])) ?></div>
     </div>
     <?php endif; ?>
     <?php if (!empty($inv['bank_details'])): ?>
     <div>
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">Bank Details</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px" data-t="Bank Details">Bank Details</div>
       <div style="font-size:13px;line-height:1.6;font-family:var(--mono)"><?= nl2br(htmlspecialchars($inv['bank_details'])) ?></div>
     </div>
     <?php endif; ?>
     <?php if (!empty($inv['terms'])): ?>
     <div>
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">Terms & Conditions</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px" data-t="Terms & Conditions">Terms &amp; Conditions</div>
       <div style="font-size:12px;color:var(--muted);line-height:1.7"><?= nl2br(htmlspecialchars($inv['terms'])) ?></div>
     </div>
     <?php endif; ?>
@@ -1272,11 +1272,11 @@ if ($items):
 
 <!-- Company footer -->
 <div class="card">
-  <div class="card-head"><i class="fas fa-building"></i> Issued By</div>
+  <div class="card-head"><i class="fas fa-building"></i> <span data-t="Issued By">Issued By</span></div>
   <div class="card-body">
     <div class="info-grid">
-      <div class="info-item"><label>Company</label><span class="val"><?= htmlspecialchars($companyName) ?></span></div>
-      <?php if ($companyGST): ?><div class="info-item"><label>GSTIN</label><span class="val" style="font-family:var(--mono)"><?= htmlspecialchars($companyGST) ?></span></div><?php endif; ?>
+      <div class="info-item"><label data-t="Company">Company</label><span class="val"><?= htmlspecialchars($companyName) ?></span></div>
+      <?php if ($companyGST): ?><div class="info-item"><label data-t="GSTIN">GSTIN</label><span class="val" style="font-family:var(--mono)"><?= htmlspecialchars($companyGST) ?></span></div><?php endif; ?>
       <?php if ($companyPhone): ?><div class="info-item"><label>Phone</label><span class="val"><?= htmlspecialchars($companyPhone) ?></span></div><?php endif; ?>
       <?php if ($companyEmail): ?><div class="info-item"><label>Email</label><span class="val"><?= htmlspecialchars($companyEmail) ?></span></div><?php endif; ?>
       <?php if ($companyAddress): ?><div class="info-item" style="grid-column:1/-1"><label>Address</label><span class="val" style="font-weight:400"><?= nl2br(htmlspecialchars($companyAddress)) ?></span></div><?php endif; ?>
@@ -1284,7 +1284,7 @@ if ($items):
     <?php if ($companyPhone): ?>
     <?php $waPhone = preg_replace('/\D/','',$companyPhone); if(strlen($waPhone)===10) $waPhone='91'.$waPhone; ?>
     <a href="https://wa.me/<?= $waPhone ?>?text=<?= urlencode('Hi, I have a query regarding '.($isEstimate?'Estimate':'Invoice').' '.$inv['invoice_number']) ?>" class="wa-contact-btn" target="_blank">
-      <i class="fab fa-whatsapp" style="font-size:16px"></i> Chat with us on WhatsApp
+      <i class="fab fa-whatsapp" style="font-size:16px"></i> <span data-t="Chat with us on WhatsApp">Chat with us on WhatsApp</span>
       <?php if (($inv['status'] ?? '') === 'Overdue'): ?><span class="wa-dot"></span><?php endif; ?>
     </a>
     <?php endif; ?>
@@ -1417,46 +1417,65 @@ const HINDI = {
   'Pay a different amount': 'अलग राशि का भुगतान करें',
 };
 
+// Store original text for EN restore
+const _origText = new Map();
+
 let _currentLang = 'en';
 function setLang(lang) {
+  if (lang === _currentLang) return;
   _currentLang = lang;
   document.getElementById('btn-en').classList.toggle('active', lang === 'en');
   document.getElementById('btn-hi').classList.toggle('active', lang === 'hi');
 
-  if (lang === 'hi') {
-    // Translate all elements with data-en attribute
-    document.querySelectorAll('[data-en]').forEach(el => {
-      el.textContent = HINDI[el.dataset.en] || el.dataset.en;
-    });
-    // Translate card heads (labels)
-    document.querySelectorAll('.card-head').forEach(el => {
-      const txt = el.dataset.en || el.textContent.replace(/^\s*\S+\s*/, '').trim(); // strip icon
-      if (HINDI[txt]) {
-        const icon = el.querySelector('i');
-        el.textContent = HINDI[txt];
-        if (icon) el.insertBefore(icon, el.firstChild);
+  // Translate every element that has data-t attribute
+  document.querySelectorAll('[data-t]').forEach(el => {
+    const key = el.dataset.t;
+    if (!key) return;
+
+    // On first translation, save original text (excluding child elements)
+    if (!_origText.has(el)) {
+      // Save the text node content only (not innerHTML to preserve icons)
+      const textNode = [...el.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+      _origText.set(el, textNode ? textNode.textContent : el.textContent);
+    }
+
+    if (lang === 'hi') {
+      const hi = HINDI[key];
+      if (hi) {
+        // Replace text node only, preserve any child elements (icons etc)
+        const textNode = [...el.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+        if (textNode) {
+          textNode.textContent = ' ' + hi;
+        } else {
+          el.textContent = hi;
+        }
       }
-    });
-    // Translate amount cells
-    document.querySelectorAll('.amt-cell .lbl').forEach(el => {
-      if (HINDI[el.textContent.trim()]) el.textContent = HINDI[el.textContent.trim()];
-    });
-    // Translate table headers
-    document.querySelectorAll('th').forEach(el => {
-      if (HINDI[el.textContent.trim()]) el.textContent = HINDI[el.textContent.trim()];
-    });
-    // Translate info labels
-    document.querySelectorAll('.info-item label').forEach(el => {
-      if (HINDI[el.textContent.trim()]) el.textContent = HINDI[el.textContent.trim()];
-    });
-    // Translate tl-labels
-    document.querySelectorAll('.tl-label').forEach(el => {
-      if (HINDI[el.textContent.trim()]) el.textContent = HINDI[el.textContent.trim()];
-    });
+    } else {
+      // Restore original
+      const orig = _origText.get(el);
+      if (orig) {
+        const textNode = [...el.childNodes].find(n => n.nodeType === 3);
+        if (textNode) {
+          textNode.textContent = ' ' + orig.trim();
+        } else {
+          el.textContent = orig;
+        }
+      }
+    }
+  });
+
+  // Also translate table headers (th) using their text content as key
+  document.querySelectorAll('th').forEach(el => {
+    const key = el.textContent.trim();
+    if (!_origText.has(el)) _origText.set(el, key);
+    if (lang === 'hi' && HINDI[key]) el.textContent = HINDI[key];
+    else if (lang === 'en') el.textContent = _origText.get(el) || key;
+  });
+
+  if (lang === 'hi') {
     document.title = document.title.replace('Invoice', 'चालान').replace('Estimate', 'अनुमान');
   } else {
-    // Reload page to restore English (simplest reliable approach)
-    location.reload();
+    document.title = document.title.replace('चालान', 'Invoice').replace('अनुमान', 'Estimate');
   }
 }
 
