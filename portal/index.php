@@ -247,7 +247,6 @@ if ($isEstimate && !empty($inv['due_date'])) {
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -734,7 +733,7 @@ $tlOverdue = ($tlStatus === 'Overdue');
       </div>
       <?php if ($tlStatus === 'Paid'): ?>
       <?php
-    // Get the date of the most recent payment for the "Paid" step
+        // FIX: if paid directly (no payment rows), fall back to issue_date
         $paidDateStr = !empty($payments)
             ? fmt_date(end($payments)['payment_date'])
             : (!empty($inv['issue_date']) ? fmt_date($inv['issue_date']) : '—');
@@ -1343,31 +1342,12 @@ function fallback(text,cb) {
   document.body.removeChild(ta); cb();
 }
 
-// ── Download PDF — server-side via api/pdf.php ───────────────
-<?php
-  $pdfToken    = htmlspecialchars($rawToken ?? '', ENT_QUOTES);
-  $pdfFilename = ($isEstimate ? 'Estimate' : 'Invoice') . '-' . preg_replace('/[^A-Za-z0-9\-_]/', '-', $inv['invoice_number'] ?? 'doc') . '.pdf';
-?>
+// ── Download PDF ───────────────────────────────────────────────
 function downloadPDF() {
-  const btn      = document.querySelector('.pdf-dl-btn');
-  const token    = '<?= $pdfToken ?>';
-  const filename = '<?= htmlspecialchars($pdfFilename, ENT_QUOTES) ?>';
-  const url      = '/api/pdf.php?t=' + encodeURIComponent(token);
-
-  if (!token) { alert('No token found — please reload the page'); return; }
-  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF…'; btn.disabled = true; }
-
-  const a = document.createElement('a');
-  a.href     = url;
-  a.download = filename;
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-
-  setTimeout(() => {
-    if (btn) { btn.innerHTML = '<i class="fas fa-file-pdf"></i> Download as PDF'; btn.disabled = false; }
-  }, 3000);
+  const origTitle = document.title;
+  document.title = <?= json_encode(($isEstimate ? 'Estimate' : 'Invoice') . '-' . ($inv['invoice_number'] ?? 'doc')) ?>;
+  window.print();
+  setTimeout(() => { document.title = origTitle; }, 1000);
 }
 
 // QR rendering handled above
@@ -1380,9 +1360,8 @@ document.querySelectorAll('.btn-approve,.btn-reject').forEach(btn => {
     // Show confirmation toast
     const toast = document.createElement('div');
     toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:'+(isApprove?'#2E7D32':'#3949AB')+';color:#fff;padding:12px 24px;border-radius:24px;font-size:13px;font-weight:700;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,.25);transition:opacity .4s;text-align:center;max-width:90vw';
-    const cName = '<?= htmlspecialchars(addslashes($companyName), ENT_QUOTES) ?>';
     toast.innerHTML = isApprove
-      ? '<i class="fas fa-check-circle"></i> ✅ Opening WhatsApp to approve…<br><small style="font-weight:400;opacity:.85">Your approval will be sent to ' + cName + '</small>'
+      ? '<i class="fas fa-check-circle"></i> ✅ Opening WhatsApp to approve…<br><small style="font-weight:400;opacity:.85">Your approval will be sent to ' + <?= json_encode($companyName) ?> + '</small>'
       : '<i class="fas fa-comment-dots"></i> 💬 Opening WhatsApp for feedback…';
     document.body.appendChild(toast);
     setTimeout(() => { toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 3000);
@@ -1393,8 +1372,8 @@ document.querySelectorAll('.btn-approve,.btn-reject').forEach(btn => {
 // ── Feature 5: Partial payment UPI link ──────────────────────
 function payPartial() {
   const amt  = parseFloat(document.getElementById('partialAmt')?.value || 0);
-  const upi  = '<?= htmlspecialchars(addslashes($companyUPI ?? ''), ENT_QUOTES) ?>';
-  const name = '<?= htmlspecialchars(addslashes($companyName ?? ''), ENT_QUOTES) ?>';
+  const upi  = <?= json_encode($companyUPI) ?>;
+  const name = <?= json_encode($companyName) ?>;
   if (!amt || amt <= 0) { alert('Please enter a valid amount'); return; }
   if (!upi) { alert('UPI ID not configured'); return; }
   const upiLink = 'upi://pay?pa=' + encodeURIComponent(upi) + '&pn=' + encodeURIComponent(name) + '&am=' + amt.toFixed(2) + '&cu=INR';
@@ -1434,7 +1413,7 @@ const HINDI = {
   'Discount':           'छूट',
   'GST':                'जीएसटी',
   'Grand Total':        'कुल योग',
-  "I've Paid — Notify": 'मैंने भुगतान किया — सूचित करें',
+  'I've Paid — Notify': 'मैंने भुगतान किया — सूचित करें',
   'Pay a different amount': 'अलग राशि का भुगतान करें',
 };
 
