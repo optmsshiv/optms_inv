@@ -26,7 +26,7 @@ try {
     // ── Auto-create table if migration not run ────────────────────
     $db->exec("CREATE TABLE IF NOT EXISTS `activitys_log` (
         `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-        `type`       VARCHAR(60)     NOT NULL,
+        `type`       VARCHAR(80)     NOT NULL,
         `label`      VARCHAR(255)    NOT NULL,
         `detail`     VARCHAR(500)    NULL,
         `invoice_id` INT UNSIGNED    NULL,
@@ -38,6 +38,11 @@ try {
         INDEX `idx_actlog_inv`     (`invoice_id`),
         INDEX `idx_actlog_created` (`created_at`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Expand type column if it was created with old VARCHAR(60) definition
+    try {
+        $db->exec("ALTER TABLE `activitys_log` MODIFY COLUMN `type` VARCHAR(80) NOT NULL");
+    } catch (Exception $alterEx) { /* ignore — already correct size */ }
 
     // ── GET ──────────────────────────────────────────────────────
     if ($method === 'GET') {

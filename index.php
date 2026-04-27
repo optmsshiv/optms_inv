@@ -3232,9 +3232,14 @@ View Invoice: {{6}}</pre></details>
             <option value="invoice_created">📄 Invoice Created</option>
             <option value="invoice_edited">✏️ Invoice Edited</option>
             <option value="invoice_deleted">🗑️ Invoice Deleted</option>
+            <option value="estimate_created">📋 Estimate Created</option>
+            <option value="estimate_edited">📝 Estimate Edited</option>
+            <option value="estimate_converted">🔁 Estimate Converted</option>
             <option value="payment_recorded">💰 Payment Recorded</option>
             <option value="status_changed">🔄 Status Changed</option>
             <option value="client_added">👤 Client Added</option>
+            <option value="client_edited">✏️ Client Edited</option>
+            <option value="client_deleted">🗑️ Client Deleted</option>
             <option value="reminder_sent">🔔 Reminder Sent</option>
             <option value="expense_added">💸 Expense Added</option>
           </select>
@@ -3246,6 +3251,7 @@ View Invoice: {{6}}</pre></details>
           </select>
         </div>
         <div class="toolbar-right">
+          <button class="btn btn-outline" onclick="refreshActivityLog()" id="activity-refresh-btn" title="Refresh log"><i class="fas fa-sync-alt"></i> Refresh</button>
           <button class="btn btn-outline" onclick="exportActivityCSV()"><i class="fas fa-download"></i> Export</button>
           <button class="btn btn-outline" onclick="clearActivityLog()"><i class="fas fa-trash"></i> Clear</button>
         </div>
@@ -6112,9 +6118,21 @@ async function saveInvoice() {
       const dbId = inv?._dbId || parseInt(inv?.id) || 0;
       await api('api/invoices.php?id=' + dbId, 'PUT', payload);
       toast('✅ Invoice updated!', 'success');
+      const _editedInv = inv || {};
+      const _editedNum = _editedInv.num || _editedInv.invoice_number || payload.invoice_number || '';
+      if (payload.status === 'Estimate') {
+        logActivity('estimate_edited', `Estimate edited: ${_editedNum}`, payload.client_name || '', dbId);
+      } else {
+        logActivity('invoice_edited', `Invoice edited: ${_editedNum}`, payload.client_name || '', dbId);
+      }
     } else {
-      await api('api/invoices.php', 'POST', payload);
+      const _res = await api('api/invoices.php', 'POST', payload);
       toast('✅ Invoice ' + d.num + ' saved!', 'success');
+      if (payload.status === 'Estimate') {
+        logActivity('estimate_created', `Estimate created: ${d.num}`, payload.client_name || '');
+      } else {
+        logActivity('invoice_created', `Invoice created: ${d.num}`, payload.client_name || '');
+      }
       // Navigate to invoices list — showPage will trigger resetCreateForm next time 'create' is opened
       showPage('invoices', document.querySelector('.nav-item[data-page="invoices"]'));
     }
@@ -6811,7 +6829,13 @@ function confirmDelete() {
 
       const badge = document.getElementById('badge-invoices');
       if (badge) badge.textContent = STATE.invoices.length;
-      toast('🗑️ Invoice ' + (inv.num || inv.invoice_number || '') + ' deleted', 'info');
+      const _delNum = inv.num || inv.invoice_number || '';
+      if (inv.status === 'Estimate') {
+        logActivity('estimate_deleted', `Estimate deleted: ${_delNum}`, inv.client_name || '', mid);
+      } else {
+        logActivity('invoice_deleted', `Invoice deleted: ${_delNum}`, inv.client_name || '', mid);
+      }
+      toast('🗑️ Invoice ' + _delNum + ' deleted', 'info');
       renderInvoicesTable(); renderDashRecent(); renderDonutChart(); updateDashStats(); renderPayments();
     })
     .catch(e => toast('❌ Delete failed: ' + e.message, 'error'));
@@ -6829,6 +6853,7 @@ async function changeInvoiceStatus(id, newStatus) {
     await api('api/invoices.php?id=' + parseInt(id), 'PATCH', { status: newStatus });
     inv.status = newStatus;
     STATE.filteredInvoices = [...STATE.invoices];
+    logActivity('status_changed', `Status → ${newStatus}: ${inv.num||inv.invoice_number}`, inv.client_name||'', id);
     renderInvoicesTable(); renderDonutChart(); renderDashRecent(); updateDashStats();
     toast(`${label}: ${inv.num||inv.invoice_number}`, 'success');
   } catch(e) { toast('❌ Failed: ' + e.message, 'error'); }
@@ -6893,6 +6918,7 @@ async function convertEstimateToInvoice(id) {
     STATE.invoices = Array.isArray(r.data) ? r.data.map(normalizeInvoice) : [];
     STATE.filteredInvoices = [...STATE.invoices];
     renderInvoicesTable(); renderDonutChart(); renderDashRecent(); updateDashStats();
+    logActivity('estimate_converted', `Estimate converted: ${oldNum} → ${newNum}`, inv.client_name || inv.clientName || '', dbId);
     toast(`✅ Estimate converted to Invoice ${newNum}!`, 'success');
 
     // Auto-send invoice created WhatsApp
@@ -7071,12 +7097,14 @@ async function saveNewClient() {
       const c = STATE.clients.find(x => x.id === STATE._editCid);
       await api('api/clients.php?id=' + (parseInt(c?.id) || 0), 'PUT', payload);
       toast('✅ Client updated!', 'success');
+      logActivity('client_edited', `Client edited: ${name}`, payload.email || '');
       STATE._editCid = null;
       const hdr = document.querySelector('#modal-addclient .modal-header span');
       if (hdr) hdr.textContent = 'Add New Client';
     } else {
       await api('api/clients.php', 'POST', payload);
       toast('✅ "' + name + '" added!', 'success');
+      logActivity('client_added', `Client added: ${name}`, payload.email || '');
     }
     const r = await api('api/clients.php');
     STATE.clients = Array.isArray(r.data) ? r.data : STATE.clients;
@@ -7111,6 +7139,7 @@ async function deleteClient(id) {
   try {
     const dbId = parseInt(c._dbId || c.id) || 0;
     await api('api/clients.php?id=' + dbId, 'DELETE');
+    logActivity('client_deleted', `Client deleted: ${c.name}`, c.email || '');
     toast('🗑 Client "' + c.name + '" deleted', 'info');
     const r = await api('api/clients.php');
     STATE.clients = Array.isArray(r.data) ? r.data : STATE.clients.filter(x => String(x.id) !== String(id));
@@ -11246,6 +11275,8 @@ let _actPage     = 0;
 const _ACT_PER   = 30;
 
 function renderActivityLog() {
+  const el = document.getElementById('activity-timeline');
+  if (el) el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-spinner fa-spin" style="font-size:24px;opacity:.4"></i><div style="margin-top:10px;font-size:13px">Loading activity…</div></div>`;
   api('api/activity.php?limit=200').then(r=>{
     if(r&&r.data) STATE.activity=r.data.map(x=>({
       id:x.id, type:x.type, label:x.label, detail:x.detail, invoiceId:x.invoice_id, ts:x.created_at
@@ -11255,6 +11286,23 @@ function renderActivityLog() {
   }).catch(()=>{
     _actFiltered=[...STATE.activity]; _actPage=0;
     _renderActivityStats(); _renderActivityTimeline(true);
+  });
+}
+
+function refreshActivityLog() {
+  const btn = document.getElementById('activity-refresh-btn');
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing…'; btn.disabled = true; }
+  api('api/activity.php?limit=200').then(r=>{
+    if(r&&r.data) STATE.activity=r.data.map(x=>({
+      id:x.id, type:x.type, label:x.label, detail:x.detail, invoiceId:x.invoice_id, ts:x.created_at
+    }));
+    // Re-apply current filters
+    filterActivity(document.getElementById('activity-search')?.value||'');
+    _renderActivityStats();
+    toast('🔄 Activity log refreshed', 'info');
+  }).catch(e=>toast('❌ Refresh failed: '+e.message,'error'))
+  .finally(()=>{
+    if (btn) { btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh'; btn.disabled = false; }
   });
 }
 
@@ -11298,14 +11346,20 @@ function _renderActivityStats() {
 
 function _actTypeInfo(type) {
   const map = {
-    invoice_created:  {icon:'📄', label:'Created',   col:'#1976D2', bg:'#e3f2fd'},
-    invoice_edited:   {icon:'✏️', label:'Edited',    col:'#7B1FA2', bg:'#f3e5f5'},
-    invoice_deleted:  {icon:'🗑️', label:'Deleted',  col:'#C62828', bg:'#ffebee'},
-    payment_recorded: {icon:'💰', label:'Payment',   col:'#388E3C', bg:'#e8f5e9'},
-    status_changed:   {icon:'🔄', label:'Status',    col:'#E65100', bg:'#fbe9e7'},
-    client_added:     {icon:'👤', label:'Client',    col:'#00897B', bg:'#e0f2f1'},
-    reminder_sent:    {icon:'🔔', label:'Reminder',  col:'#F9A825', bg:'#fff8e1'},
-    expense_added:    {icon:'💸', label:'Expense',   col:'#455A64', bg:'#eceff1'},
+    invoice_created:    {icon:'📄', label:'Created',    col:'#1976D2', bg:'#e3f2fd'},
+    invoice_edited:     {icon:'✏️', label:'Edited',     col:'#7B1FA2', bg:'#f3e5f5'},
+    invoice_deleted:    {icon:'🗑️', label:'Deleted',   col:'#C62828', bg:'#ffebee'},
+    estimate_created:   {icon:'📋', label:'Estimate',   col:'#3949AB', bg:'#e8eaf6'},
+    estimate_edited:    {icon:'📝', label:'Est.Edited', col:'#5E35B1', bg:'#ede7f6'},
+    estimate_converted: {icon:'🔁', label:'Converted',  col:'#00838F', bg:'#e0f7fa'},
+    estimate_deleted:   {icon:'🗑️', label:'Est.Del',   col:'#B71C1C', bg:'#ffebee'},
+    payment_recorded:   {icon:'💰', label:'Payment',    col:'#388E3C', bg:'#e8f5e9'},
+    status_changed:     {icon:'🔄', label:'Status',     col:'#E65100', bg:'#fbe9e7'},
+    client_added:       {icon:'👤', label:'Client',     col:'#00897B', bg:'#e0f2f1'},
+    client_edited:      {icon:'✏️', label:'Cl.Edited',  col:'#0288D1', bg:'#e1f5fe'},
+    client_deleted:     {icon:'🗑️', label:'Cl.Deleted', col:'#B71C1C', bg:'#ffebee'},
+    reminder_sent:      {icon:'🔔', label:'Reminder',   col:'#F9A825', bg:'#fff8e1'},
+    expense_added:      {icon:'💸', label:'Expense',    col:'#455A64', bg:'#eceff1'},
   };
   return map[type] || {icon:'•', label:type, col:'#9E9E9E', bg:'#f5f5f5'};
 }
