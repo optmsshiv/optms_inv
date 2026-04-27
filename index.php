@@ -4167,7 +4167,7 @@ function renderDashRecent() {
   const recent = [...STATE.invoices].reverse().slice(0,8);
   if (!recent.length) { el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted)">No invoices yet</div>'; return; }
   el.innerHTML = recent.map(inv => {
-    const c = STATE.clients.find(x=>x.id===inv.client)||{name:inv.clientName||inv.client||'Unknown',color:'#00897B'};
+    const c = STATE.clients.find(x=>x.id===inv.client)||{name:inv.client_name||inv.clientName||inv.client||'Unknown',color:'#00897B'};
     const initials = getInitials(c.name);
     const pmt = STATE.payments.find(p=>p.inv===inv.num);
     const pmtTag = pmt ? `<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:var(--teal-bg);color:var(--teal);font-weight:700;margin-left:4px">${pmt.method.split(' ')[0]}</span>` : '';
@@ -4261,7 +4261,7 @@ function applyFiltersAndRender() {
   const page  = STATE.filteredInvoices.slice(start, end);
 
   tbody.innerHTML = page.map(inv => {
-    const c = STATE.clients.find(x=>x.id===inv.client) || { name:'Unknown', color:'#607D8B' };
+    const c = STATE.clients.find(x=>x.id===inv.client) || { name: inv.client_name||inv.clientName||'One-Time Client', color:'#607D8B' };
     const initials = getInitials(c.name);
     const avatar = c.image
       ? `<div class="cc-avatar" style="background:${c.color}"><img src="${c.image}" alt="${c.name}"></div>`
@@ -7576,7 +7576,7 @@ function filterRptTable(v){
 }
 function exportRptCSV(){
   const h=['Invoice','Client','Service','Date','Amount','Status'];
-  const r=RPT.list.map(i=>{const c=STATE.clients.find(x=>x.id===i.client)||{name:'Unknown'};return[i.num,c.name,i.service,i.issued,i.amount,i.status].map(v=>`"${v}"`).join(',');});
+  const r=RPT.list.map(i=>{const c=STATE.clients.find(x=>x.id===i.client)||{name:i.client_name||i.clientName||'One-Time'};return[i.num,c.name,i.service,i.issued,i.amount,i.status].map(v=>`"${v}"`).join(',');});
   downloadFile('report.csv',[h.join(','),...r].join('\n'),'text/csv');
   toast('✅ Exported!','success');
 }
@@ -7600,7 +7600,7 @@ function _renderRptTable(){
   const tbody=document.getElementById('rptTbody');if(!tbody)return;
   const s=(RPT.page-1)*RPT.per,e=s+RPT.per,pg=RPT.list.slice(s,e);
   tbody.innerHTML=pg.map(inv=>{
-    const c=STATE.clients.find(x=>x.id===inv.client)||{name:'Unknown'};
+    const c=STATE.clients.find(x=>x.id===inv.client)||{name:inv.client_name||inv.clientName||'One-Time'};
     const df=inv.issued?new Date(inv.issued).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):inv.issued;
     return `<tr><td><code style="font-family:var(--mono);color:var(--teal);font-weight:700">${inv.num}</code></td><td><strong>${c.name}</strong></td><td>${inv.service}</td><td style="font-size:12px">${df}</td><td><strong style="font-family:var(--mono)">${fmt_money(inv.amount)}</strong></td><td><span class="badge badge-${inv.status.toLowerCase()}">${inv.status}</span></td></tr>`;
   }).join('')||'<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted)">No transactions in this period</td></tr>';
@@ -8581,7 +8581,7 @@ function globalSearchFn(val) {
     const c = STATE.clients.find(x=>x.id===inv.client);
     return `<div class="sr-item" onclick="openPreviewModal('${inv.id}');document.getElementById('globalSearch').value='';document.getElementById('searchResults').classList.remove('open')">
       <i class="fas fa-file-invoice" style="color:var(--teal)"></i>
-      <div><strong>${inv.num}</strong> – ${c?.name||'Unknown'}<br><small style="color:var(--muted)">${inv.service} · ${fmt_money(inv.amount)} · ${inv.status}</small></div>
+      <div><strong>${inv.num}</strong> – ${c?.name||inv.client_name||inv.clientName||'One-Time'}<br><small style="color:var(--muted)">${inv.service} · ${fmt_money(inv.amount)} · ${inv.status}</small></div>
     </div>`;
   }).join('');
   el.classList.add('open');
@@ -9005,6 +9005,9 @@ function normalizeInvoice(inv) {
     try { inv.items = JSON.parse(inv.items); } catch(e) { inv.items = []; }
   }
   if (!Array.isArray(inv.items)) inv.items = [];
+  // Unify client name aliases — always expose as both clientName and client_name
+  if (!inv.clientName && inv.client_name) inv.clientName = inv.client_name;
+  if (!inv.client_name && inv.clientName) inv.client_name = inv.clientName;
   // Unify bank field aliases
   if (!inv.bank && inv.bank_details) inv.bank = inv.bank_details;
   // Unify tnc field aliases
