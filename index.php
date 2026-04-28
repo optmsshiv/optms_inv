@@ -1632,6 +1632,11 @@ const SERVER = {
     <div id="page-clients" class="page">
       <div class="page-toolbar">
         <input type="text" class="table-search" placeholder="Search clients…" oninput="filterClients(this.value)">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none;white-space:nowrap">
+          <input type="checkbox" id="show-inactive-toggle" onchange="renderClients()" style="cursor:pointer">
+          Show Inactive
+          <span id="inactive-count-badge" style="display:none;background:#F9A825;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700"></span>
+        </label>
         <div style="flex:1"></div>
         <button class="btn btn-primary" onclick="openAddClientModal()"><i class="fas fa-plus"></i> Add Client</button>
       </div>
@@ -4262,10 +4267,15 @@ function applyFiltersAndRender() {
 
   tbody.innerHTML = page.map(inv => {
     const c = STATE.clients.find(x=>x.id===inv.client) || { name: inv.client_name||inv.clientName||'One-Time Client', color:'#607D8B' };
+    const isClientInactive = c.id && (parseInt(c.active) === 0 || c.status === 'inactive');
+    const avatarColor = isClientInactive ? '#9E9E9E' : c.color;
     const initials = getInitials(c.name);
     const avatar = c.image
-      ? `<div class="cc-avatar" style="background:${c.color}"><img src="${c.image}" alt="${c.name}"></div>`
-      : `<div class="cc-avatar" style="background:${c.color}">${initials}</div>`;
+      ? `<div class="cc-avatar" style="background:${avatarColor};opacity:${isClientInactive?'.6':'1'}"><img src="${c.image}" alt="${c.name}"></div>`
+      : `<div class="cc-avatar" style="background:${avatarColor};opacity:${isClientInactive?'.6':'1'}">${initials}</div>`;
+    const inactivePill = isClientInactive
+      ? `<span style="font-size:9px;font-weight:700;background:#FFF8E1;color:#F9A825;border:1px solid #F9A825;border-radius:8px;padding:1px 5px;margin-left:4px;vertical-align:middle;white-space:nowrap"><i class="fas fa-pause-circle" style="font-size:8px"></i> Inactive</span>`
+      : '';
 
     // Paid amount cell
     const invId = String(inv.id);
@@ -4287,7 +4297,7 @@ function applyFiltersAndRender() {
     return `<tr data-id="${inv.id}">
       <td><input type="checkbox" class="inv-check" value="${inv.id}"></td>
       <td><code style="font-family:var(--mono);color:var(--teal);font-weight:600">${inv.num}</code></td>
-      <td><div class="client-cell">${avatar}<div><div class="cc-name">${c.name}</div><div class="cc-sub">${c.person||''}</div></div></div></td>
+      <td><div class="client-cell">${avatar}<div><div class="cc-name" style="${isClientInactive?'color:var(--muted)':''}">${c.name}${inactivePill}</div><div class="cc-sub">${c.person||''}</div></div></div></td>
       <td>${inv.service}</td>
       <td>${inv.issued}</td>
       <td>${inv.due}</td>
@@ -7068,11 +7078,23 @@ function onStatusChange(newStatus) {
 function renderClients() {
   const grid = document.getElementById('clientsGrid');
   if (!grid) return;
-  grid.innerHTML = STATE.clients.map(c => {
+  const showInactive = document.getElementById('show-inactive-toggle')?.checked || false;
+  const inactiveCount = STATE.clients.filter(c => parseInt(c.active) === 0 || c.status === 'inactive').length;
+  // Update inactive badge
+  const badge = document.getElementById('inactive-count-badge');
+  if (badge) { badge.textContent = inactiveCount; badge.style.display = inactiveCount ? 'inline-block' : 'none'; }
+  const visibleClients = showInactive ? STATE.clients : STATE.clients.filter(c => parseInt(c.active) !== 0 && c.status !== 'inactive');
+  if (!visibleClients.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">${
+      inactiveCount && !showInactive ? `All clients are inactive. <span onclick="document.getElementById('show-inactive-toggle').checked=true;renderClients()" style="color:var(--teal);cursor:pointer;text-decoration:underline">Show inactive</span>` : 'No clients yet'
+    }</div>`;
+    return;
+  }
+  grid.innerHTML = visibleClients.map(c => {
     const initials = getInitials(c.name);
     const rev = STATE.invoices.filter(i=>i.client===c.id && i.status==='Paid').reduce((s,i)=>s+i.amount,0);
     const cnt = STATE.invoices.filter(i=>i.client===c.id).length;
-    const isInactive = c.active === 0 || c.active === '0' || c.status === 'inactive';
+    const isInactive = parseInt(c.active) === 0 || c.status === 'inactive';
 
     const cardStyle = isInactive
       ? `background:#FFF8E1;border:2px solid #F9A825;box-shadow:0 0 0 1px #F9A82555;opacity:.85;`
@@ -7116,8 +7138,12 @@ function renderClients() {
 
 function filterClients(val) {
   const v = val.toLowerCase();
+  const showInactive = document.getElementById('show-inactive-toggle')?.checked || false;
   document.querySelectorAll('.client-card').forEach(card => {
-    card.style.display = card.textContent.toLowerCase().includes(v) ? '' : 'none';
+    const matchesText = card.textContent.toLowerCase().includes(v);
+    const isInactiveCard = card.querySelector('[title="Set Inactive"]') === null && card.querySelector('[title="Re-activate client"]') !== null;
+    const hidden = !matchesText || (!showInactive && isInactiveCard);
+    card.style.display = hidden ? 'none' : '';
   });
 }
 
@@ -7206,25 +7232,25 @@ async function deleteClient(id) {
 async function toggleClientActive(id, makeActive) {
   const c = STATE.clients.find(x => String(x.id) === String(id));
   if (!c) return;
+  const label = makeActive ? 'Activate' : 'Set Inactive';
+  if (!confirm(`${makeActive ? '✅ Activate' : '⏸ Set Inactive'}: "${c.name}"?`)) return;
   try {
     const dbId = parseInt(c._dbId || c.id) || 0;
-    await api('api/clients.php?id=' + dbId, 'PUT', {
+    const res = await api('api/clients.php?id=' + dbId, 'PUT', {
       name: c.name, person: c.person||'', email: c.email||'', wa: c.wa||'',
       gst: c.gst||'', color: c.color||'#00897B', addr: c.addr||'',
       landmark: c.landmark||'', active: makeActive ? 1 : 0
     });
-    // Update local state immediately for instant UI feedback
-    const idx = STATE.clients.findIndex(x => String(x.id) === String(id));
-    if (idx >= 0) STATE.clients[idx].active = makeActive ? 1 : 0;
-    renderClients();
+    if (!res || res.success === false) throw new Error(res?.error || 'API returned failure');
+    // Refresh from server to get accurate active field
+    const r = await api('api/clients.php');
+    STATE.clients = Array.isArray(r.data) ? r.data : STATE.clients;
+    renderClients(); updateClientDropdown(); populateWAClientDropdown();
+    logActivity(makeActive ? 'client_activated' : 'client_deactivated',
+      `Client ${makeActive ? 'activated' : 'deactivated'}: ${c.name}`, c.email || '');
     toast(makeActive ? '✅ Client activated' : '⏸ Client set to inactive', makeActive ? 'success' : 'info');
-    updateClientDropdown();
   } catch(e) {
-    // Fallback: update local state only if API not yet supporting active field
-    const idx = STATE.clients.findIndex(x => String(x.id) === String(id));
-    if (idx >= 0) STATE.clients[idx].active = makeActive ? 1 : 0;
-    renderClients();
-    toast(makeActive ? '✅ Client activated (local)' : '⏸ Client set to inactive (local)', makeActive ? 'success' : 'info');
+    toast('❌ Failed to update client status: ' + e.message, 'error');
   }
 }
 
@@ -8710,9 +8736,17 @@ function syncServiceText(val) {
 
 function updateClientDropdown() {
   const s=document.getElementById('f-client-select'); if(!s) return;
-  s.innerHTML='<option value="">-- Quick Select Client --</option>'
-    +'<option value="__onetime__" style="color:#E65100;font-weight:600">👤 One-Time / Walk-in Client (not saved)</option>'
-    +STATE.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  const active  = STATE.clients.filter(c => parseInt(c.active) !== 0 && c.status !== 'inactive');
+  const inactive = STATE.clients.filter(c => parseInt(c.active) === 0 || c.status === 'inactive');
+  let html = '<option value="">-- Quick Select Client --</option>'
+    + '<option value="__onetime__" style="color:#E65100;font-weight:600">👤 One-Time / Walk-in Client (not saved)</option>'
+    + active.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if (inactive.length) {
+    html += `<optgroup label="─── Inactive Clients ───" style="color:#999">`;
+    html += inactive.map(c=>`<option value="${c.id}" style="color:#aaa">${c.name} (inactive)</option>`).join('');
+    html += '</optgroup>';
+  }
+  s.innerHTML = html;
 }
 
 function editInvoice(id) {
@@ -11419,6 +11453,8 @@ function _actTypeInfo(type) {
     client_added:       {icon:'👤', label:'Client',     col:'#00897B', bg:'#e0f2f1'},
     client_edited:      {icon:'✏️', label:'Cl.Edited',  col:'#0288D1', bg:'#e1f5fe'},
     client_deleted:     {icon:'🗑️', label:'Cl.Deleted', col:'#B71C1C', bg:'#ffebee'},
+    client_activated:   {icon:'✅', label:'Activated',  col:'#2E7D32', bg:'#E8F5E9'},
+    client_deactivated: {icon:'⏸️', label:'Inactive',   col:'#F9A825', bg:'#FFF8E1'},
     reminder_sent:      {icon:'🔔', label:'Reminder',   col:'#F9A825', bg:'#fff8e1'},
     expense_added:      {icon:'💸', label:'Expense',    col:'#455A64', bg:'#eceff1'},
   };
