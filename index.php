@@ -429,7 +429,7 @@ canvas { max-width: 100% !important; }
   width: 32px; height: 32px; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0;
-  overflow: hidden;
+  overflow: hidden; border: 2px solid rgba(0,0,0,0.12);
 }
 .cc-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .cc-name { font-weight: 600; }
@@ -4950,7 +4950,7 @@ function tplLogoHTML(d, sc) {
 
   if (showLogo && logo) {
     return `<div>
-      <img src="${logo}" style="height:52px;max-width:200px;object-fit:contain;display:block" onerror="this.style.display='none'">
+      <img src="${logo}" style="height:52px;max-width:200px;object-fit:contain;display:block;border-radius:12px;border:2px solid rgba(0,0,0,0.12);padding:4px;background:#fff" onerror="this.style.display='none'">
       ${tagDiv}
     </div>`;
   }
