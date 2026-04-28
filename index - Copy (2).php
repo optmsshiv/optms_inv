@@ -56,6 +56,15 @@ $defaultCurrency= $settings['default_currency'] ?? '₹';
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+<style>
+/* ── SweetAlert2 compact theme ── */
+.swal-compact { font-family:'Public Sans',sans-serif !important; border-radius:14px !important; max-width:360px !important; }
+.swal-compact .swal2-title { font-size:16px !important; font-weight:700 !important; padding-top:16px !important; }
+.swal-compact .swal2-html-container { font-size:13px !important; margin:8px 16px !important; }
+.swal-compact .swal2-actions { gap:10px !important; margin-top:16px !important; }
+.swal-compact .swal2-confirm, .swal-compact .swal2-cancel { font-size:13px !important; padding:8px 20px !important; border-radius:8px !important; font-weight:600 !important; }
+</style>
 <style>
 
 /* ══════════════════════════════════════════
@@ -762,11 +771,13 @@ select { cursor: pointer; }
 .client-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
 .cc-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .cc-big-avatar {
-  width: 48px; height: 48px; border-radius: 12px;
+  width: 52px; height: 52px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; font-weight: 800; color: #fff; overflow: hidden; flex-shrink: 0;
+  border: 3px solid transparent; transition: border-color .3s, box-shadow .3s;
 }
 .cc-big-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.cc-big-avatar.has-logo { border-color: #00897B; box-shadow: 0 0 0 3px rgba(0,137,123,.2), 0 2px 8px rgba(0,137,123,.3); }
 .cc-org { font-weight: 700; font-size: 15px; color: var(--text); }
 .cc-contact { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .cc-stats { display: flex; gap: 0; background: var(--bg); border-radius: 8px; overflow: hidden; }
@@ -1308,6 +1319,7 @@ const SERVER = {
           <input type="date" class="table-filter" id="dateTo" onchange="filterByDate()" placeholder="To">
         </div>
         <div class="toolbar-right">
+          <button class="btn btn-outline" id="inv-refresh-btn" onclick="refreshInvoices()" title="Refresh invoices"><i class="fas fa-sync-alt"></i> Refresh</button>
           <button class="btn btn-outline" onclick="exportCSV()"><i class="fas fa-download"></i> Export CSV</button>
           <button class="btn btn-primary" onclick="showPage('create',null)"><i class="fas fa-plus"></i> New Invoice</button>
         </div>
@@ -1392,11 +1404,21 @@ const SERVER = {
           <div class="form-section">
             <div class="fs-title"><i class="fas fa-user"></i> Client Information</div>
             <div class="form-grid g1" style="margin-bottom:12px">
-              <div class="field"><label>Quick Select Client</label>
-                <select id="f-client-select" onchange="fillClientForm(this.value)">
-                  <option value="">-- Quick Select Client --</option>
-                </select>
+              <div class="field" style="position:relative">
+                <label>Quick Select Client</label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <select id="f-client-select" onchange="fillClientForm(this.value)" style="flex:1">
+                    <option value="">-- Quick Select Client --</option>
+                    <option value="__onetime__" style="color:#E65100;font-weight:600">👤 One-Time / Walk-in Client (not saved)</option>
+                  </select>
+                  <span id="onetime-badge" style="display:none;background:#FBE9E7;border:1.5px solid #E65100;color:#E65100;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0"><i class="fas fa-user-clock"></i> One-Time</span>
+                </div>
               </div>
+            </div>
+            <div id="onetime-notice" style="display:none;background:#FFF3E0;border:1.5px solid #FFB300;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:#795548;display:none">
+              <i class="fas fa-info-circle" style="color:#F9A825;margin-right:6px"></i>
+              <strong>One-Time Client</strong> — details below are for this invoice only and will <strong>not</strong> be saved to your client list.
+              <span onclick="switchToSaveClient()" style="margin-left:8px;color:#1976D2;cursor:pointer;font-weight:600;text-decoration:underline">Save this client instead →</span>
             </div>
             <div class="form-grid g2">
               <div class="field g-full"><label>Organization / Client Name *</label><input id="f-cname" placeholder="Organization / Client Name" oninput="livePreview()"></div>
@@ -1622,6 +1644,11 @@ const SERVER = {
     <div id="page-clients" class="page">
       <div class="page-toolbar">
         <input type="text" class="table-search" placeholder="Search clients…" oninput="filterClients(this.value)">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none;white-space:nowrap">
+          <input type="checkbox" id="show-inactive-toggle" onchange="renderClients()" style="cursor:pointer">
+          Show Inactive
+          <span id="inactive-count-badge" style="display:none;background:#F9A825;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700"></span>
+        </label>
         <div style="flex:1"></div>
         <button class="btn btn-primary" onclick="openAddClientModal()"><i class="fas fa-plus"></i> Add Client</button>
       </div>
@@ -2489,42 +2516,234 @@ View Invoice: {{6}}</pre></details>
     <!-- ─────────── EMAIL SETUP ─────────── -->
     <div id="page-email-setup" class="page">
       <div class="settings-wrap">
-        <div class="settings-block">
-          <div class="sb-title"><i class="fas fa-envelope" style="color:#1976D2"></i> SMTP Configuration</div>
-          <div class="form-grid g2">
-            <div class="field"><label>From Email</label><input id="em-from" value="invoices@optmstech.in"></div>
-            <div class="field"><label>From Name</label><input id="em-name" value="OPTMS Tech Invoices"></div>
-            <div class="field"><label>SMTP Host</label><input id="em-host" placeholder="smtp.gmail.com"></div>
-            <div class="field"><label>Port</label><input id="em-port" value="587"></div>
-            <div class="field"><label>Username</label><input id="em-user" placeholder="your@gmail.com"></div>
-            <div class="field"><label>App Password</label><input type="password" id="em-pass" placeholder="Gmail App Password"></div>
-          </div>
-          <div class="form-grid g1" style="margin-top:12px">
-            <div class="field"><label>Subject Template</label><input id="em-subj" value="Invoice #{invoice_no} from OPTMS Tech – ₹{amount}"></div>
-            <div class="field"><label>Email Body Template</label>
-              <textarea id="em-body" style="min-height:120px">Dear {client_name},
 
-Please find attached your invoice #{invoice_no} for ₹{amount} due on {due_date}.
+        <!-- ── Tab Bar ── -->
+        <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px;overflow-x:auto">
+          <button class="em-tab-btn active" onclick="emTab('smtp',this)" style="padding:10px 20px;background:none;border:none;font-weight:700;font-size:13px;cursor:pointer;border-bottom:2px solid var(--teal);color:var(--teal);margin-bottom:-2px;white-space:nowrap"><i class="fas fa-server"></i> SMTP</button>
+          <button class="em-tab-btn" onclick="emTab('tpl',this)" style="padding:10px 20px;background:none;border:none;font-weight:600;font-size:13px;cursor:pointer;color:var(--muted);margin-bottom:-2px;white-space:nowrap"><i class="fas fa-file-alt"></i> Templates</button>
+          <button class="em-tab-btn" onclick="emTab('auto',this)" style="padding:10px 20px;background:none;border:none;font-weight:600;font-size:13px;cursor:pointer;color:var(--muted);margin-bottom:-2px;white-space:nowrap"><i class="fas fa-robot"></i> Automation</button>
+          <button class="em-tab-btn" onclick="emTab('logs',this)" style="padding:10px 20px;background:none;border:none;font-weight:600;font-size:13px;cursor:pointer;color:var(--muted);margin-bottom:-2px;white-space:nowrap"><i class="fas fa-history"></i> Logs</button>
+          <button class="em-tab-btn" onclick="emTab('profiles',this)" style="padding:10px 20px;background:none;border:none;font-weight:600;font-size:13px;cursor:pointer;color:var(--muted);margin-bottom:-2px;white-space:nowrap"><i class="fas fa-layer-group"></i> Profiles</button>
+        </div>
 
-Service: {service}
-
-Bank Transfer: {bank_details}
-
-Thank you for your business!
-
-Best regards,
-OPTMS Tech
-optmstech.in | +91 XXXXX XXXXX</textarea>
+        <!-- ══ TAB: SMTP ══ -->
+        <div id="em-tab-smtp" class="em-tab-pane">
+          <div class="settings-block">
+            <div class="sb-title"><i class="fas fa-server" style="color:#1976D2"></i> SMTP Configuration
+              <span id="em-smtp-status" style="margin-left:auto;font-size:11px;font-weight:600"></span>
+            </div>
+            <!-- Provider quick-select -->
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+              <button onclick="emFillProvider('gmail')" style="padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px"><img src="https://www.google.com/favicon.ico" width="14" height="14"> Gmail</button>
+              <button onclick="emFillProvider('outlook')" style="padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer">🪟 Outlook</button>
+              <button onclick="emFillProvider('yahoo')" style="padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer">🟣 Yahoo</button>
+              <button onclick="emFillProvider('sendgrid')" style="padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer">📨 SendGrid</button>
+              <button onclick="emFillProvider('mailgun')" style="padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer">🔫 Mailgun</button>
+              <button onclick="emFillProvider('custom')" style="padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer">⚙️ Custom</button>
+            </div>
+            <div class="form-grid g2">
+              <div class="field"><label>From Email</label><input id="em-from" placeholder="invoices@yourcompany.in"></div>
+              <div class="field"><label>From Name</label><input id="em-name" placeholder="OPTMS Tech Invoices"></div>
+              <div class="field"><label>SMTP Host</label><input id="em-host" placeholder="smtp.gmail.com"></div>
+              <div class="field"><label>Port</label>
+                <select id="em-port" style="width:100%;padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:13px">
+                  <option value="587">587 — TLS (recommended)</option>
+                  <option value="465">465 — SSL</option>
+                  <option value="25">25 — Plain (not recommended)</option>
+                </select>
+              </div>
+              <div class="field"><label>Username</label><input id="em-user" placeholder="your@gmail.com"></div>
+              <div class="field"><label>App Password <span style="font-size:10px;color:var(--muted);font-weight:400">(not your main password)</span></label>
+                <div style="position:relative">
+                  <input type="password" id="em-pass" placeholder="Gmail App Password" style="width:100%;padding-right:36px">
+                  <i class="fas fa-eye" onclick="emTogglePass()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--muted)"></i>
+                </div>
+              </div>
+            </div>
+            <!-- Gmail helper -->
+            <div id="em-gmail-hint" style="display:none;background:#E8F5E9;border-radius:8px;padding:12px 16px;font-size:12px;color:#2E7D32;margin-bottom:12px;line-height:1.7">
+              <strong>📌 Gmail Setup:</strong><br>
+              1. Go to <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:#2E7D32">myaccount.google.com/apppasswords</a><br>
+              2. Create an App Password for "Mail"<br>
+              3. Paste that 16-character password above — NOT your Gmail login password<br>
+              4. Make sure 2-Step Verification is ON in your Google account
+            </div>
+            <div class="toggle-list" style="margin-top:12px">
+              <div class="toggle-item"><span><strong>CC yourself</strong> on every email sent</span><div class="tog" id="em-tog-cc" onclick="this.classList.toggle('on')"></div></div>
+              <div class="toggle-item"><span><strong>Open Tracking</strong> — know when client opens email</span><div class="tog on" id="em-tog-track" onclick="this.classList.toggle('on')"></div></div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+              <button class="btn btn-outline" onclick="testEmail()"><i class="fas fa-paper-plane"></i> Send Test Email</button>
+              <button class="btn btn-primary" onclick="saveEmailSettings()"><i class="fas fa-save"></i> Save Settings</button>
             </div>
           </div>
-          <div class="toggle-list">
-            <div class="toggle-item"><span>Attach PDF to email</span><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
-            <div class="toggle-item"><span>CC yourself</span><div class="tog" onclick="this.classList.toggle('on')"></div></div>
+        </div>
+
+        <!-- ══ TAB: TEMPLATES ══ -->
+        <div id="em-tab-tpl" class="em-tab-pane" style="display:none">
+          <div class="settings-block">
+            <div class="sb-title"><i class="fas fa-file-alt" style="color:#6A1B9A"></i> Email Templates
+              <button class="btn btn-primary" style="margin-left:auto;padding:6px 14px;font-size:12px" onclick="saveEmailTemplate()"><i class="fas fa-save"></i> Save Template</button>
+            </div>
+            <!-- Template type tabs -->
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+              <button class="em-tpl-btn active" onclick="emTplTab('invoice',this)" style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;font-size:12px;font-weight:700;cursor:pointer">📄 Invoice</button>
+              <button class="em-tpl-btn" onclick="emTplTab('estimate',this)" style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer">📋 Estimate</button>
+              <button class="em-tpl-btn" onclick="emTplTab('receipt',this)" style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer">✅ Receipt</button>
+              <button class="em-tpl-btn" onclick="emTplTab('reminder',this)" style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer">🔔 Reminder</button>
+              <button class="em-tpl-btn" onclick="emTplTab('overdue',this)" style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer">⚠️ Overdue</button>
+              <button class="em-tpl-btn" onclick="emTplTab('followup',this)" style="padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer">📞 Follow-up</button>
+            </div>
+            <input type="hidden" id="em-tpl-type" value="invoice">
+            <!-- Variable chips -->
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Click to insert variable</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px" id="em-var-chips">
+              <?php foreach(['{client_name}','{invoice_no}','{amount}','{currency}','{due_date}','{issue_date}','{service}','{company_name}','{company_phone}','{company_email}','{upi}','{bank_details}','{days_overdue}','{item_list}','{paid_amount}','{remaining_amount}','{invoice_link}'] as $v): ?>
+              <span onclick="emInsertVar('<?= $v ?>')" style="padding:3px 10px;border-radius:20px;background:var(--teal-bg);color:var(--teal);font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--teal)"><?= $v ?></span>
+              <?php endforeach; ?>
+            </div>
+            <div class="field"><label>Subject</label><input id="em-tpl-subj" placeholder="Email subject line..."></div>
+            <div class="field"><label>Email Body</label>
+              <textarea id="em-tpl-body" style="min-height:220px;font-family:var(--mono);font-size:12.5px;line-height:1.7" placeholder="Email body..."></textarea>
+            </div>
+            <button class="btn btn-outline" style="margin-top:8px" onclick="emPreviewTemplate()"><i class="fas fa-eye"></i> Preview Email</button>
           </div>
-          <div style="display:flex;gap:10px;margin-top:16px">
-            <button class="btn btn-email" onclick="testEmail()"><i class="fas fa-envelope"></i> Send Test Email</button>
-            <button class="btn btn-primary" onclick="saveEmailSettings()"><i class="fas fa-save"></i> Save</button>
+        </div>
+
+        <!-- ══ TAB: AUTOMATION ══ -->
+        <div id="em-tab-auto" class="em-tab-pane" style="display:none">
+          <div class="settings-block">
+            <div class="sb-title"><i class="fas fa-robot" style="color:#E65100"></i> Email Automation</div>
+            <div class="toggle-list">
+              <div class="toggle-item">
+                <span><strong>📄 New Invoice</strong> — auto-send email when invoice is created</span>
+                <div class="tog" id="em-auto-inv" onclick="this.classList.toggle('on');saveEmailAuto()"></div>
+              </div>
+              <div class="toggle-item">
+                <span><strong>📋 New Estimate</strong> — auto-send email when estimate is saved</span>
+                <div class="tog" id="em-auto-est" onclick="this.classList.toggle('on');saveEmailAuto()"></div>
+              </div>
+              <div class="toggle-item">
+                <span><strong>✅ Payment Received</strong> — send receipt when invoice marked Paid</span>
+                <div class="tog on" id="em-auto-paid" onclick="this.classList.toggle('on');saveEmailAuto()"></div>
+              </div>
+              <div class="toggle-item">
+                <span><strong>💚 Partial Payment</strong> — send receipt on partial payment</span>
+                <div class="tog on" id="em-auto-partial" onclick="this.classList.toggle('on');saveEmailAuto()"></div>
+              </div>
+              <div class="toggle-item">
+                <span><strong>🔔 Due Date Reminder</strong> — email N days before due date</span>
+                <div class="tog on" id="em-auto-remind" onclick="this.classList.toggle('on');saveEmailAuto()"></div>
+              </div>
+              <div class="toggle-item">
+                <span><strong>⚠️ Overdue Alert</strong> — email on due date if unpaid</span>
+                <div class="tog on" id="em-auto-overdue" onclick="this.classList.toggle('on');saveEmailAuto()"></div>
+              </div>
+              <div class="toggle-item">
+                <span><strong>📞 Overdue Follow-up</strong> — repeat overdue emails every N days</span>
+                <div class="tog" id="em-auto-followup" onclick="this.classList.toggle('on');saveEmailAuto()"></div>
+              </div>
+            </div>
+            <div class="form-grid g2" style="margin-top:16px">
+              <div class="field"><label>Reminder — Days Before Due</label><input type="number" id="em-remind-days" value="3" min="1" max="30" onchange="saveEmailAuto()"></div>
+              <div class="field"><label>Follow-up — Every N Days</label><input type="number" id="em-followup-days" value="7" min="1" max="30" onchange="saveEmailAuto()"></div>
+              <div class="field"><label>Max Follow-up Emails</label><input type="number" id="em-max-followup" value="3" min="1" max="10" onchange="saveEmailAuto()"></div>
+            </div>
+            <div style="background:var(--teal-bg);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--teal);margin-top:8px;line-height:1.7">
+              <strong>⚙️ How automation works:</strong> A cron job at <code>api/email_cron.php</code> runs daily and checks all invoices. Set it up in cPanel → Cron Jobs → <code>php /path/to/api/email_cron.php</code> → Every day at 9 AM.
+            </div>
           </div>
+        </div>
+
+        <!-- ══ TAB: LOGS ══ -->
+        <div id="em-tab-logs" class="em-tab-pane" style="display:none">
+          <div class="settings-block">
+            <div class="sb-title"><i class="fas fa-history" style="color:#37474F"></i> Email Logs
+              <button class="btn btn-outline" style="margin-left:auto;padding:6px 12px;font-size:12px" onclick="loadEmailLogs()"><i class="fas fa-sync"></i> Refresh</button>
+            </div>
+            <!-- Filters -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+              <select id="em-log-filter-type" onchange="loadEmailLogs()" style="padding:7px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;color:var(--text)">
+                <option value="">All Types</option>
+                <option value="invoice">Invoice</option>
+                <option value="estimate">Estimate</option>
+                <option value="receipt">Receipt</option>
+                <option value="reminder">Reminder</option>
+                <option value="overdue">Overdue</option>
+                <option value="followup">Follow-up</option>
+                <option value="test">Test</option>
+              </select>
+              <select id="em-log-filter-status" onchange="loadEmailLogs()" style="padding:7px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;color:var(--text)">
+                <option value="">All Status</option>
+                <option value="sent">Sent</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+            <div id="em-logs-table" style="font-size:13px">
+              <div style="color:var(--muted);text-align:center;padding:32px">Click Refresh to load logs</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══ TAB: SMTP PROFILES ══ -->
+        <div id="em-tab-profiles" class="em-tab-pane" style="display:none">
+          <div class="settings-block">
+            <div class="sb-title"><i class="fas fa-layer-group" style="color:#1565C0"></i> SMTP Profiles
+              <button class="btn btn-primary" style="margin-left:auto;padding:6px 14px;font-size:12px" onclick="emNewProfile()"><i class="fas fa-plus"></i> Add Profile</button>
+            </div>
+            <div id="em-profiles-list" style="font-size:13px">
+              <div style="color:var(--muted);text-align:center;padding:32px">Loading...</div>
+            </div>
+          </div>
+          <!-- Profile form -->
+          <div id="em-profile-form" class="settings-block" style="display:none;margin-top:16px">
+            <div class="sb-title"><i class="fas fa-edit"></i> <span id="em-profile-form-title">New SMTP Profile</span></div>
+            <input type="hidden" id="ep-id">
+            <div class="form-grid g2">
+              <div class="field"><label>Profile Name</label><input id="ep-name" placeholder="e.g. Gmail Main"></div>
+              <div class="field"><label>Provider</label>
+                <select id="ep-provider" onchange="emProfileProviderChange()" style="width:100%;padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:13px">
+                  <option value="smtp">Custom SMTP</option>
+                  <option value="gmail">Gmail</option>
+                  <option value="outlook">Outlook</option>
+                  <option value="sendgrid">SendGrid</option>
+                  <option value="mailgun">Mailgun</option>
+                </select>
+              </div>
+              <div class="field"><label>SMTP Host</label><input id="ep-host" placeholder="smtp.gmail.com"></div>
+              <div class="field"><label>Port</label><input id="ep-port" value="587" type="number"></div>
+              <div class="field"><label>Username</label><input id="ep-user" placeholder="your@gmail.com"></div>
+              <div class="field"><label>Password / App Password</label><input type="password" id="ep-pass"></div>
+              <div class="field"><label>From Email</label><input id="ep-from" placeholder="noreply@optmstech.in"></div>
+              <div class="field"><label>From Name</label><input id="ep-fname" placeholder="OPTMS Tech"></div>
+              <div class="field"><label>API Key <span style="font-size:10px;color:var(--muted)">(SendGrid/Mailgun only)</span></label><input id="ep-apikey" placeholder="SG.xxxx or key-xxxx"></div>
+              <div class="field" style="display:flex;align-items:center;gap:10px;padding-top:20px">
+                <input type="checkbox" id="ep-default" style="width:16px;height:16px">
+                <label for="ep-default" style="font-size:13px;font-weight:600;cursor:pointer">Set as Default</label>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:16px">
+              <button class="btn btn-primary" onclick="saveSmtpProfile()"><i class="fas fa-save"></i> Save Profile</button>
+              <button class="btn btn-outline" onclick="document.getElementById('em-profile-form').style.display='none'">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Email Preview Modal ── -->
+    <div id="em-preview-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px">
+      <div style="background:#fff;border-radius:16px;width:100%;max-width:680px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column">
+        <div style="padding:16px 24px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:12px">
+          <div>
+            <div style="font-weight:700;font-size:15px">Email Preview</div>
+            <div id="em-preview-subject" style="font-size:12px;color:#666;margin-top:2px"></div>
+          </div>
+          <button onclick="document.getElementById('em-preview-modal').style.display='none'" style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;color:#999">✕</button>
+        </div>
+        <div style="overflow-y:auto;flex:1">
+          <iframe id="em-preview-frame" style="width:100%;height:600px;border:none"></iframe>
         </div>
       </div>
     </div>
@@ -3040,9 +3259,14 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
             <option value="invoice_created">📄 Invoice Created</option>
             <option value="invoice_edited">✏️ Invoice Edited</option>
             <option value="invoice_deleted">🗑️ Invoice Deleted</option>
+            <option value="estimate_created">📋 Estimate Created</option>
+            <option value="estimate_edited">📝 Estimate Edited</option>
+            <option value="estimate_converted">🔁 Estimate Converted</option>
             <option value="payment_recorded">💰 Payment Recorded</option>
             <option value="status_changed">🔄 Status Changed</option>
             <option value="client_added">👤 Client Added</option>
+            <option value="client_edited">✏️ Client Edited</option>
+            <option value="client_deleted">🗑️ Client Deleted</option>
             <option value="reminder_sent">🔔 Reminder Sent</option>
             <option value="expense_added">💸 Expense Added</option>
           </select>
@@ -3054,6 +3278,7 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
           </select>
         </div>
         <div class="toolbar-right">
+          <button class="btn btn-outline" onclick="refreshActivityLog()" id="activity-refresh-btn" title="Refresh log"><i class="fas fa-sync-alt"></i> Refresh</button>
           <button class="btn btn-outline" onclick="exportActivityCSV()"><i class="fas fa-download"></i> Export</button>
           <button class="btn btn-outline" onclick="clearActivityLog()"><i class="fas fa-trash"></i> Clear</button>
         </div>
@@ -3323,13 +3548,36 @@ optmstech.in | +91 XXXXX XXXXX</textarea>
   <div class="modal modal-md">
     <div class="modal-header"><span>Add New Client</span><button class="modal-close" onclick="closeModal('modal-addclient')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body" style="padding:24px">
+      <!-- Logo Upload -->
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;padding:14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+        <div id="nc-logo-preview" style="width:64px;height:64px;border-radius:50%;background:#00897B;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0;border:3px solid var(--border);transition:border-color .3s,box-shadow .3s">
+          <span id="nc-logo-initials">?</span>
+          <img id="nc-logo-img" src="" style="width:100%;height:100%;object-fit:cover;display:none">
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px;margin-bottom:6px;color:var(--text)">Client Logo <span style="font-size:10px;color:var(--muted);font-weight:400">(optional)</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <label id="nc-logo-upload-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:var(--teal);color:#fff;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;position:relative;overflow:hidden;transition:background .2s">
+              <i class="fas fa-upload" id="nc-logo-upload-icon"></i>
+              <span id="nc-logo-upload-text">Upload</span>
+              <div id="nc-logo-progress-bar" style="position:absolute;left:0;bottom:0;height:3px;width:0%;background:rgba(255,255,255,.7);transition:width .05s linear;border-radius:0 0 6px 6px"></div>
+              <input type="file" id="nc-logo-file" accept="image/*" style="display:none" onchange="handleClientLogoUpload(this)">
+            </label>
+            <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="document.getElementById('nc-logo-url-wrap').style.display=document.getElementById('nc-logo-url-wrap').style.display==='none'?'flex':'none'"><i class="fas fa-link"></i> URL</button>
+            <button class="btn btn-outline" style="font-size:12px;padding:5px 10px;color:var(--red)" onclick="clearClientLogo()" title="Remove logo"><i class="fas fa-times"></i></button>
+          </div>
+          <div id="nc-logo-url-wrap" style="display:none;margin-top:8px;gap:6px;align-items:center">
+            <input id="nc-logo-url" placeholder="https://…logo.png" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px" oninput="previewClientLogoUrl(this.value)">
+          </div>
+        </div>
+      </div>
       <div class="form-grid g2">
-        <div class="field g-full"><label>Organization Name *</label><input id="nc-name" placeholder="Company or school name"></div>
+        <div class="field g-full"><label>Organization Name *</label><input id="nc-name" placeholder="Company or school name" oninput="updateClientLogoInitials()"></div>
         <div class="field"><label>Contact Person</label><input id="nc-person"></div>
         <div class="field"><label>WhatsApp</label><input id="nc-wa" placeholder="+91 XXXXX XXXXX"></div>
         <div class="field"><label>Email</label><input id="nc-email" type="email"></div>
         <div class="field"><label>GST Number</label><input id="nc-gst"></div>
-        <div class="field"><label>Avatar Color</label><input type="color" id="nc-color" value="#00897B"></div>
+        <div class="field"><label>Avatar Color</label><input type="color" id="nc-color" value="#00897B" oninput="updateClientLogoInitials()"></div>
         <div class="field g-full"><label>Address</label><textarea id="nc-addr"></textarea></div>
         <div class="field g-full"><label>Landmark <span style="font-size:10px;color:var(--muted)">(optional — nearby area or landmark)</span></label><input id="nc-landmark" placeholder="e.g. Near City Mall, Sector 12"></div>
       </div>
@@ -3647,7 +3895,7 @@ function showPage(name, el) {
   if (name === 'templates') { renderTemplatesGrid(); setTimeout(populateTemplateForm,100); }
   if (name === 'whatsapp')  { setTimeout(populateWAPage, 100); setTimeout(renderFestivalCampaigns, 200); }
   if (name === 'settings')    populateSettingsForm();
-  if (name === 'email-setup') populateSettingsForm();
+  if (name === 'email-setup') { populateSettingsForm(); loadEmailAutoSettings(); }
   if (name === 'msglog')    renderMsgLog();
   if (name === 'aging')     renderAgingReport();
   if (name === 'expenses')  renderExpenses();
@@ -3959,13 +4207,13 @@ function renderDashRecent() {
   const recent = [...STATE.invoices].reverse().slice(0,8);
   if (!recent.length) { el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted)">No invoices yet</div>'; return; }
   el.innerHTML = recent.map(inv => {
-    const c = STATE.clients.find(x=>x.id===inv.client)||{name:inv.clientName||inv.client||'Unknown',color:'#00897B'};
+    const c = STATE.clients.find(x=>x.id===inv.client)||{name:inv.client_name||inv.clientName||inv.client||'Unknown',color:'#00897B'};
     const initials = getInitials(c.name);
     const pmt = STATE.payments.find(p=>p.inv===inv.num);
     const pmtTag = pmt ? `<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:var(--teal-bg);color:var(--teal);font-weight:700;margin-left:4px">${pmt.method.split(' ')[0]}</span>` : '';
     const df = d => d ? new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '';
     return `<div class="dash-recent-item">
-      <div class="dri-avatar" style="background:${c.color}">${c.image?`<img src="${c.image}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`:initials}</div>
+      <div class="dri-avatar" style="background:${c.color}">${isValidImg(c.image)?`<img src="${c.image}" style="width:100%;height:100%;object-fit:cover;border-radius:8px" onerror="this.style.display='none'">`:initials}</div>
       <div class="dri-info">
         <div class="dri-name">${inv.num}${pmtTag}</div>
         <div class="dri-meta">${c.name} · ${inv.service}</div>
@@ -4037,6 +4285,28 @@ function calNext() { calMonth++; if (calMonth > 11) { calMonth=0; calYear++; } r
 // ══════════════════════════════════════════
 // INVOICES TABLE
 // ══════════════════════════════════════════
+async function refreshInvoices() {
+  const btn = document.getElementById('inv-refresh-btn');
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing…'; btn.disabled = true; }
+  try {
+    const [invRes, payRes] = await Promise.all([
+      api('api/invoices.php'),
+      api('api/payments.php')
+    ]);
+    if (invRes?.data) {
+      STATE.invoices = invRes.data.map(normalizeInvoice);
+      STATE.filteredInvoices = [...STATE.invoices];
+    }
+    if (payRes?.data) STATE.payments = payRes.data;
+    renderInvoicesTable(); renderDonutChart(); renderDashRecent(); updateDashStats();
+    toast('🔄 Invoices refreshed', 'info');
+  } catch(e) {
+    toast('❌ Refresh failed: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh'; btn.disabled = false; }
+  }
+}
+
 function renderInvoicesTable() {
   STATE.filteredInvoices = [...STATE.invoices];
   // Always keep the sidebar invoice badge in sync
@@ -4053,11 +4323,16 @@ function applyFiltersAndRender() {
   const page  = STATE.filteredInvoices.slice(start, end);
 
   tbody.innerHTML = page.map(inv => {
-    const c = STATE.clients.find(x=>x.id===inv.client) || { name:'Unknown', color:'#607D8B' };
+    const c = STATE.clients.find(x=>x.id===inv.client) || { name: inv.client_name||inv.clientName||'One-Time Client', color:'#607D8B' };
+    const isClientInactive = c.id && (parseInt(c.active) === 0 || c.status === 'inactive');
+    const avatarColor = isClientInactive ? '#9E9E9E' : c.color;
     const initials = getInitials(c.name);
-    const avatar = c.image
-      ? `<div class="cc-avatar" style="background:${c.color}"><img src="${c.image}" alt="${c.name}"></div>`
-      : `<div class="cc-avatar" style="background:${c.color}">${initials}</div>`;
+    const avatar = isValidImg(c.image)
+      ? `<div class="cc-avatar" style="background:${avatarColor};opacity:${isClientInactive?'.6':'1'}"><img src="${c.image}" alt="${c.name}" onerror="this.style.display='none'"></div>`
+      : `<div class="cc-avatar" style="background:${avatarColor};opacity:${isClientInactive?'.6':'1'}">${initials}</div>`;
+    const inactivePill = isClientInactive
+      ? `<span style="font-size:9px;font-weight:700;background:#FFF8E1;color:#F9A825;border:1px solid #F9A825;border-radius:8px;padding:1px 5px;margin-left:4px;vertical-align:middle;white-space:nowrap"><i class="fas fa-pause-circle" style="font-size:8px"></i> Inactive</span>`
+      : '';
 
     // Paid amount cell
     const invId = String(inv.id);
@@ -4079,7 +4354,7 @@ function applyFiltersAndRender() {
     return `<tr data-id="${inv.id}">
       <td><input type="checkbox" class="inv-check" value="${inv.id}"></td>
       <td><code style="font-family:var(--mono);color:var(--teal);font-weight:600">${inv.num}</code></td>
-      <td><div class="client-cell">${avatar}<div><div class="cc-name">${c.name}</div><div class="cc-sub">${c.person||''}</div></div></div></td>
+      <td><div class="client-cell">${avatar}<div><div class="cc-name" style="${isClientInactive?'color:var(--muted)':''}">${c.name}${inactivePill}</div><div class="cc-sub">${c.person||''}</div></div></div></td>
       <td>${inv.service}</td>
       <td>${inv.issued}</td>
       <td>${inv.due}</td>
@@ -4343,6 +4618,9 @@ function resetCreateForm() {
   const currEl = document.getElementById('f-currency'); if (currEl) currEl.value = '₹';
   const tplEl = document.getElementById('f-template'); if (tplEl) tplEl.value = String(STATE.settings.activeTemplate || 1);
   const clientSelEl = document.getElementById('f-client-select'); if (clientSelEl) clientSelEl.value = '';
+  // Hide one-time client indicators
+  const _otNotice = document.getElementById('onetime-notice'); if (_otNotice) _otNotice.style.display = 'none';
+  const _otBadge  = document.getElementById('onetime-badge');  if (_otBadge)  _otBadge.style.display  = 'none';
   // Reset company logo, qr to defaults
   const qrEl = document.getElementById('f-qr'); if (qrEl) qrEl.value = '';
   const _radios = document.querySelectorAll('input[name="inv-status"]');
@@ -4460,6 +4738,22 @@ function calcTotals() {
 }
 
 function fillClientForm(val) {
+  const notice  = document.getElementById('onetime-notice');
+  const badge   = document.getElementById('onetime-badge');
+  if (val === '__onetime__') {
+    // Clear all client fields for manual entry
+    ['f-cname','f-cperson','f-cwa','f-cemail','f-cgst','f-caddr'].forEach(id => {
+      const e = document.getElementById(id); if (e) e.value = '';
+    });
+    if (notice) notice.style.display = 'block';
+    if (badge)  badge.style.display  = 'inline-flex';
+    document.getElementById('f-cname')?.focus();
+    livePreview();
+    return;
+  }
+  // Hide one-time indicators when a saved client is selected or cleared
+  if (notice) notice.style.display = 'none';
+  if (badge)  badge.style.display  = 'none';
   const c = STATE.clients.find(x => x.id === val);
   if (!c) return;
   document.getElementById('f-cname').value   = c.name;
@@ -4469,6 +4763,30 @@ function fillClientForm(val) {
   document.getElementById('f-cgst').value    = c.gst;
   document.getElementById('f-caddr').value   = c.addr;
   livePreview();
+}
+
+function switchToSaveClient() {
+  // Pre-fill the Add Client modal with values already typed in the invoice form
+  const get = id => document.getElementById(id)?.value || '';
+  const nc = {
+    'nc-name':     get('f-cname'),
+    'nc-person':   get('f-cperson'),
+    'nc-wa':       get('f-cwa'),
+    'nc-email':    get('f-cemail'),
+    'nc-gst':      get('f-cgst'),
+    'nc-addr':     get('f-caddr'),
+  };
+  Object.entries(nc).forEach(([id, val]) => {
+    const e = document.getElementById(id); if (e) e.value = val;
+  });
+  // Reset one-time mode
+  const s = document.getElementById('f-client-select');
+  if (s) s.value = '';
+  const notice = document.getElementById('onetime-notice');
+  const badge  = document.getElementById('onetime-badge');
+  if (notice) notice.style.display = 'none';
+  if (badge)  badge.style.display  = 'none';
+  openModal('modal-addclient');
 }
 
 // ══════════════════════════════════════════
@@ -5896,6 +6214,7 @@ async function saveInvoice() {
   if (!d.cname || d.cname === 'Client Name') { toast('⚠️ Please enter client name', 'warning'); return; }
   if (formItems.length === 0) { toast('⚠️ Add at least one line item', 'warning'); return; }
   const selVal = document.getElementById('f-client-select')?.value;
+  const _clientId = (selVal && selVal !== '__onetime__') ? parseInt(selVal) : null;
 
   // FIX: capture BEFORE any reset — tells WA block if this is new vs edit
   const isNewSave = !STATE.editingInvoiceId;
@@ -5903,7 +6222,7 @@ async function saveInvoice() {
   const formPhone = (document.getElementById('f-cwa')?.value || '').replace(/\D/g, '');
 
   const payload = {
-    invoice_number: d.num, client_id: selVal ? parseInt(selVal) : null,
+    invoice_number: d.num, client_id: _clientId,
     client_name: d.cname, service_type: d.svc, issued_date: d.date, due_date: d.due,
     status: d.status, currency: d.sym, subtotal: d.sub,
     discount_pct: d.disc, discount_amt: d.discAmt, discount_type: (d.discType==='fixed'?'flat':'percent'), gst_amount: d.gstAmt, grand_total: d.grand,
@@ -5920,9 +6239,23 @@ async function saveInvoice() {
       const dbId = inv?._dbId || parseInt(inv?.id) || 0;
       await api('api/invoices.php?id=' + dbId, 'PUT', payload);
       toast('✅ Invoice updated!', 'success');
+      const _editedInv = inv || {};
+      const _editedNum = _editedInv.num || _editedInv.invoice_number || payload.invoice_number || '';
+      if (payload.status === 'Estimate') {
+        logActivity('estimate_edited', `Estimate edited: ${_editedNum}`, payload.client_name || '', dbId);
+      } else {
+        logActivity('invoice_edited', `Invoice edited: ${_editedNum}`, payload.client_name || '', dbId);
+      }
+      // Navigate back to invoices list after editing
+      showPage('invoices', document.querySelector('.nav-item[data-page="invoices"]'));
     } else {
-      await api('api/invoices.php', 'POST', payload);
+      const _res = await api('api/invoices.php', 'POST', payload);
       toast('✅ Invoice ' + d.num + ' saved!', 'success');
+      if (payload.status === 'Estimate') {
+        logActivity('estimate_created', `Estimate created: ${d.num}`, payload.client_name || '');
+      } else {
+        logActivity('invoice_created', `Invoice created: ${d.num}`, payload.client_name || '');
+      }
       // Navigate to invoices list — showPage will trigger resetCreateForm next time 'create' is opened
       showPage('invoices', document.querySelector('.nav-item[data-page="invoices"]'));
     }
@@ -6619,7 +6952,13 @@ function confirmDelete() {
 
       const badge = document.getElementById('badge-invoices');
       if (badge) badge.textContent = STATE.invoices.length;
-      toast('🗑️ Invoice ' + (inv.num || inv.invoice_number || '') + ' deleted', 'info');
+      const _delNum = inv.num || inv.invoice_number || '';
+      if (inv.status === 'Estimate') {
+        logActivity('estimate_deleted', `Estimate deleted: ${_delNum}`, inv.client_name || '', mid);
+      } else {
+        logActivity('invoice_deleted', `Invoice deleted: ${_delNum}`, inv.client_name || '', mid);
+      }
+      toast('🗑️ Invoice ' + _delNum + ' deleted', 'info');
       renderInvoicesTable(); renderDashRecent(); renderDonutChart(); updateDashStats(); renderPayments();
     })
     .catch(e => toast('❌ Delete failed: ' + e.message, 'error'));
@@ -6637,6 +6976,7 @@ async function changeInvoiceStatus(id, newStatus) {
     await api('api/invoices.php?id=' + parseInt(id), 'PATCH', { status: newStatus });
     inv.status = newStatus;
     STATE.filteredInvoices = [...STATE.invoices];
+    logActivity('status_changed', `Status → ${newStatus}: ${inv.num||inv.invoice_number}`, inv.client_name||'', id);
     renderInvoicesTable(); renderDonutChart(); renderDashRecent(); updateDashStats();
     toast(`${label}: ${inv.num||inv.invoice_number}`, 'success');
   } catch(e) { toast('❌ Failed: ' + e.message, 'error'); }
@@ -6701,6 +7041,7 @@ async function convertEstimateToInvoice(id) {
     STATE.invoices = Array.isArray(r.data) ? r.data.map(normalizeInvoice) : [];
     STATE.filteredInvoices = [...STATE.invoices];
     renderInvoicesTable(); renderDonutChart(); renderDashRecent(); updateDashStats();
+    logActivity('estimate_converted', `Estimate converted: ${oldNum} → ${newNum}`, inv.client_name || inv.clientName || '', dbId);
     toast(`✅ Estimate converted to Invoice ${newNum}!`, 'success');
 
     // Auto-send invoice created WhatsApp
@@ -6794,11 +7135,23 @@ function onStatusChange(newStatus) {
 function renderClients() {
   const grid = document.getElementById('clientsGrid');
   if (!grid) return;
-  grid.innerHTML = STATE.clients.map(c => {
+  const showInactive = document.getElementById('show-inactive-toggle')?.checked || false;
+  const inactiveCount = STATE.clients.filter(c => parseInt(c.active) === 0 || c.status === 'inactive').length;
+  // Update inactive badge
+  const badge = document.getElementById('inactive-count-badge');
+  if (badge) { badge.textContent = inactiveCount; badge.style.display = inactiveCount ? 'inline-block' : 'none'; }
+  const visibleClients = showInactive ? STATE.clients : STATE.clients.filter(c => parseInt(c.active) !== 0 && c.status !== 'inactive');
+  if (!visibleClients.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">${
+      inactiveCount && !showInactive ? `All clients are inactive. <span onclick="document.getElementById('show-inactive-toggle').checked=true;renderClients()" style="color:var(--teal);cursor:pointer;text-decoration:underline">Show inactive</span>` : 'No clients yet'
+    }</div>`;
+    return;
+  }
+  grid.innerHTML = visibleClients.map(c => {
     const initials = getInitials(c.name);
     const rev = STATE.invoices.filter(i=>i.client===c.id && i.status==='Paid').reduce((s,i)=>s+i.amount,0);
     const cnt = STATE.invoices.filter(i=>i.client===c.id).length;
-    const isInactive = c.active === 0 || c.active === '0' || c.status === 'inactive';
+    const isInactive = parseInt(c.active) === 0 || c.status === 'inactive';
 
     const cardStyle = isInactive
       ? `background:#FFF8E1;border:2px solid #F9A825;box-shadow:0 0 0 1px #F9A82555;opacity:.85;`
@@ -6811,8 +7164,8 @@ function renderClients() {
       <div style="position:absolute;top:0;left:0;right:0;height:4px;background:${isInactive?'#F9A825':c.color}"></div>
       ${isInactive ? `<div style="position:absolute;top:8px;right:8px;background:#FFF3CD;border:1.5px solid #F9A825;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700;color:#856404;z-index:2"><i class="fas fa-pause-circle"></i> Inactive</div>` : ''}
       <div class="cc-head">
-        <div class="cc-big-avatar" style="background:${isInactive?'#F9A825':c.color};${isInactive?'opacity:.7':''}">
-          ${c.image ? `<img src="${c.image}" alt="${c.name}">` : initials}
+        <div class="cc-big-avatar ${isValidImg(c.image)?'has-logo':''}" style="background:${isInactive?'#9E9E9E':c.color};${isInactive?'opacity:.7':''}">
+          ${isValidImg(c.image) ? `<img src="${c.image}" alt="${c.name}" onerror="this.style.display='none'">` : initials}
         </div>
         <div style="flex:1;min-width:0">
           <div class="cc-org">${c.name}${inactiveBadge}</div>
@@ -6842,8 +7195,12 @@ function renderClients() {
 
 function filterClients(val) {
   const v = val.toLowerCase();
+  const showInactive = document.getElementById('show-inactive-toggle')?.checked || false;
   document.querySelectorAll('.client-card').forEach(card => {
-    card.style.display = card.textContent.toLowerCase().includes(v) ? '' : 'none';
+    const matchesText = card.textContent.toLowerCase().includes(v);
+    const isInactiveCard = card.querySelector('[title="Set Inactive"]') === null && card.querySelector('[title="Re-activate client"]') !== null;
+    const hidden = !matchesText || (!showInactive && isInactiveCard);
+    card.style.display = hidden ? 'none' : '';
   });
 }
 
@@ -6861,6 +7218,121 @@ function openAddClientModal() {
   openModal('modal-addclient');
 }
 
+// ── Client Logo Helpers ──────────────────────────────────────────
+let _ncLogoBase64 = ''; // stores base64 or URL of logo
+
+function handleClientLogoUpload(input) {
+  const file = input.files[0]; if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('⚠️ Image must be under 5MB', 'warning'); return; }
+
+  // --- Button loading state ---
+  const btn  = document.getElementById('nc-logo-upload-btn');
+  const icon = document.getElementById('nc-logo-upload-icon');
+  const text = document.getElementById('nc-logo-upload-text');
+  const bar  = document.getElementById('nc-logo-progress-bar');
+  if (btn)  btn.style.background  = '#00695C';
+  if (icon) icon.className = 'fas fa-spinner fa-spin';
+  if (text) text.textContent = 'Processing…';
+  if (bar)  { bar.style.width = '0%'; bar.style.transition = 'none'; }
+
+  // Animate progress bar: fake progress to 85% while processing
+  let pct = 0;
+  const tick = setInterval(() => {
+    pct = pct < 85 ? pct + (85 - pct) * 0.08 : pct;
+    if (bar) bar.style.width = pct + '%';
+  }, 50);
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 200;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } }
+      else        { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      let quality = 0.85, dataUrl;
+      do {
+        dataUrl = canvas.toDataURL('image/jpeg', quality);
+        quality -= 0.1;
+      } while (dataUrl.length > 50 * 1024 * 1.37 && quality > 0.1);
+
+      // Complete progress bar to 100%
+      clearInterval(tick);
+      if (bar) { bar.style.transition = 'width .2s ease'; bar.style.width = '100%'; }
+
+      setTimeout(() => {
+        _ncLogoBase64 = dataUrl;
+        _applyClientLogoPreview(_ncLogoBase64);
+        // Reset button
+        if (btn)  btn.style.background  = 'var(--teal)';
+        if (icon) icon.className = 'fas fa-check';
+        if (text) text.textContent = 'Uploaded!';
+        if (bar)  { bar.style.transition = 'width .4s ease'; bar.style.width = '0%'; }
+        setTimeout(() => {
+          if (icon) icon.className = 'fas fa-upload';
+          if (text) text.textContent = 'Upload';
+        }, 2000);
+        toast('✅ Logo ready (' + Math.round(dataUrl.length / 1024) + ' KB)', 'success');
+      }, 250);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function previewClientLogoUrl(url) {
+  if (!url) { _ncLogoBase64 = ''; _applyClientLogoPreview(''); return; }
+  _ncLogoBase64 = url;
+  _applyClientLogoPreview(url);
+}
+
+function _applyClientLogoPreview(src) {
+  const img      = document.getElementById('nc-logo-img');
+  const initials = document.getElementById('nc-logo-initials');
+  const preview  = document.getElementById('nc-logo-preview');
+  if (src) {
+    img.src = src; img.style.display = 'block';
+    if (initials) initials.style.display = 'none';
+    if (preview) {
+      preview.style.border      = '3px solid #00897B';
+      preview.style.boxShadow   = '0 0 0 3px rgba(0,137,123,.25), 0 2px 8px rgba(0,137,123,.35)';
+    }
+  } else {
+    img.src = ''; img.style.display = 'none';
+    if (initials) initials.style.display = '';
+    if (preview) {
+      preview.style.border    = '3px solid var(--border)';
+      preview.style.boxShadow = 'none';
+    }
+  }
+}
+
+// ── Image validity guard — prevents ERR_INVALID_URL from partial/empty base64 ──
+function isValidImg(src) {
+  if (!src || typeof src !== 'string') return false;
+  const s = src.trim();
+  return s.startsWith('data:image') || s.startsWith('http://') || s.startsWith('https://');
+}
+
+function updateClientLogoInitials() {
+  const name  = document.getElementById('nc-name')?.value || '';
+  const color = document.getElementById('nc-color')?.value || '#00897B';
+  const preview = document.getElementById('nc-logo-preview');
+  const initEl  = document.getElementById('nc-logo-initials');
+  if (preview) preview.style.background = color;
+  if (initEl)  initEl.textContent = getInitials(name) || '?';
+}
+
+function clearClientLogo() {
+  _ncLogoBase64 = '';
+  _applyClientLogoPreview('');
+  const fi = document.getElementById('nc-logo-file'); if (fi) fi.value = '';
+  const ui = document.getElementById('nc-logo-url');  if (ui) ui.value = '';
+}
+
 async function saveNewClient() {
   const name = (document.getElementById('nc-name')?.value || '').trim();
   if (!name) { toast('⚠️ Enter name', 'warning'); return; }
@@ -6872,19 +7344,22 @@ async function saveNewClient() {
     gst:    document.getElementById('nc-gst')?.value    || '',
     color:  document.getElementById('nc-color')?.value  || '#00897B',
     addr:   document.getElementById('nc-addr')?.value   || '',
-    landmark: document.getElementById('nc-landmark')?.value || ''
+    landmark: document.getElementById('nc-landmark')?.value || '',
+    logo:   _ncLogoBase64 || ''
   };
   try {
     if (STATE._editCid) {
       const c = STATE.clients.find(x => x.id === STATE._editCid);
       await api('api/clients.php?id=' + (parseInt(c?.id) || 0), 'PUT', payload);
       toast('✅ Client updated!', 'success');
+      logActivity('client_edited', `Client edited: ${name}`, payload.email || '');
       STATE._editCid = null;
       const hdr = document.querySelector('#modal-addclient .modal-header span');
       if (hdr) hdr.textContent = 'Add New Client';
     } else {
       await api('api/clients.php', 'POST', payload);
       toast('✅ "' + name + '" added!', 'success');
+      logActivity('client_added', `Client added: ${name}`, payload.email || '');
     }
     const r = await api('api/clients.php');
     STATE.clients = Array.isArray(r.data) ? r.data : STATE.clients;
@@ -6893,6 +7368,9 @@ async function saveNewClient() {
     ['nc-name','nc-person','nc-wa','nc-email','nc-gst','nc-addr','nc-landmark'].forEach(id => {
       const e = document.getElementById(id); if (e) e.value = '';
     });
+    clearClientLogo();
+    const col = document.getElementById('nc-color'); if (col) col.value = '#00897B';
+    updateClientLogoInitials();
   } catch(e) { toast('❌ ' + e.message, 'error'); }
 }
 
@@ -6903,6 +7381,15 @@ function editClient(id) {
     const f=document.getElementById(fid); if(f) f.value=c[{'nc-name':'name','nc-person':'person','nc-wa':'wa','nc-email':'email','nc-gst':'gst','nc-addr':'addr','nc-landmark':'landmark'}[fid]]||'';
   });
   const col=document.getElementById('nc-color'); if(col) col.value=c.color||'#00897B';
+  // Load existing logo if any
+  clearClientLogo();
+  if (c.image || c.logo) {
+    _ncLogoBase64 = c.image || c.logo;
+    _applyClientLogoPreview(_ncLogoBase64);
+    const ui = document.getElementById('nc-logo-url');
+    if (ui && (_ncLogoBase64.startsWith('http'))) ui.value = _ncLogoBase64;
+  }
+  updateClientLogoInitials();
   const hdr=document.querySelector('#modal-addclient .modal-header span'); if(hdr) hdr.textContent='Edit Client';
   const btn=document.querySelector('#modal-addclient .modal-footer .btn-primary'); if(btn) btn.textContent='Update Client';
   openModal('modal-addclient');
@@ -6919,6 +7406,7 @@ async function deleteClient(id) {
   try {
     const dbId = parseInt(c._dbId || c.id) || 0;
     await api('api/clients.php?id=' + dbId, 'DELETE');
+    logActivity('client_deleted', `Client deleted: ${c.name}`, c.email || '');
     toast('🗑 Client "' + c.name + '" deleted', 'info');
     const r = await api('api/clients.php');
     STATE.clients = Array.isArray(r.data) ? r.data : STATE.clients.filter(x => String(x.id) !== String(id));
@@ -6929,25 +7417,48 @@ async function deleteClient(id) {
 async function toggleClientActive(id, makeActive) {
   const c = STATE.clients.find(x => String(x.id) === String(id));
   if (!c) return;
+
+  const result = await Swal.fire({
+    title: makeActive ? 'Activate Client?' : 'Set Client Inactive?',
+    html: `<div style="font-size:14px;color:#555">
+             ${makeActive
+               ? `<i class="fas fa-user-check" style="color:#00897B;font-size:28px;display:block;margin-bottom:10px"></i>
+                  <strong>${c.name}</strong> will be marked as <span style="color:#00897B;font-weight:700">Active</span> and visible in invoices.`
+               : `<i class="fas fa-user-slash" style="color:#F9A825;font-size:28px;display:block;margin-bottom:10px"></i>
+                  <strong>${c.name}</strong> will be marked as <span style="color:#F9A825;font-weight:700">Inactive</span> and hidden from invoice selection.`
+             }
+           </div>`,
+    icon: makeActive ? 'question' : 'warning',
+    showCancelButton: true,
+    confirmButtonText: makeActive ? '✅ Yes, Activate' : '⏸ Yes, Set Inactive',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: makeActive ? '#00897B' : '#F9A825',
+    cancelButtonColor: '#aaa',
+    reverseButtons: true,
+    customClass: { popup: 'swal-compact' }
+  });
+  if (!result.isConfirmed) return;
+
   try {
     const dbId = parseInt(c._dbId || c.id) || 0;
-    await api('api/clients.php?id=' + dbId, 'PUT', {
+    const res = await api('api/clients.php?id=' + dbId, 'PUT', {
       name: c.name, person: c.person||'', email: c.email||'', wa: c.wa||'',
       gst: c.gst||'', color: c.color||'#00897B', addr: c.addr||'',
       landmark: c.landmark||'', active: makeActive ? 1 : 0
     });
-    // Update local state immediately for instant UI feedback
-    const idx = STATE.clients.findIndex(x => String(x.id) === String(id));
-    if (idx >= 0) STATE.clients[idx].active = makeActive ? 1 : 0;
-    renderClients();
-    toast(makeActive ? '✅ Client activated' : '⏸ Client set to inactive', makeActive ? 'success' : 'info');
-    updateClientDropdown();
+    if (!res || res.success === false) throw new Error(res?.error || 'API returned failure');
+    const r = await api('api/clients.php');
+    STATE.clients = Array.isArray(r.data) ? r.data : STATE.clients;
+    renderClients(); updateClientDropdown(); populateWAClientDropdown();
+    logActivity(makeActive ? 'client_activated' : 'client_deactivated',
+      `Client ${makeActive ? 'activated' : 'deactivated'}: ${c.name}`, c.email || '');
+    Swal.fire({
+      toast: true, position: 'top-end', timer: 2500, timerProgressBar: true,
+      showConfirmButton: false, icon: makeActive ? 'success' : 'info',
+      title: makeActive ? `✅ ${c.name} activated` : `⏸ ${c.name} set to inactive`
+    });
   } catch(e) {
-    // Fallback: update local state only if API not yet supporting active field
-    const idx = STATE.clients.findIndex(x => String(x.id) === String(id));
-    if (idx >= 0) STATE.clients[idx].active = makeActive ? 1 : 0;
-    renderClients();
-    toast(makeActive ? '✅ Client activated (local)' : '⏸ Client set to inactive (local)', makeActive ? 'success' : 'info');
+    Swal.fire({ icon: 'error', title: 'Failed', text: e.message, confirmButtonColor: '#e53935' });
   }
 }
 
@@ -7299,7 +7810,7 @@ function filterRptTable(v){
 }
 function exportRptCSV(){
   const h=['Invoice','Client','Service','Date','Amount','Status'];
-  const r=RPT.list.map(i=>{const c=STATE.clients.find(x=>x.id===i.client)||{name:'Unknown'};return[i.num,c.name,i.service,i.issued,i.amount,i.status].map(v=>`"${v}"`).join(',');});
+  const r=RPT.list.map(i=>{const c=STATE.clients.find(x=>x.id===i.client)||{name:i.client_name||i.clientName||'One-Time'};return[i.num,c.name,i.service,i.issued,i.amount,i.status].map(v=>`"${v}"`).join(',');});
   downloadFile('report.csv',[h.join(','),...r].join('\n'),'text/csv');
   toast('✅ Exported!','success');
 }
@@ -7323,7 +7834,7 @@ function _renderRptTable(){
   const tbody=document.getElementById('rptTbody');if(!tbody)return;
   const s=(RPT.page-1)*RPT.per,e=s+RPT.per,pg=RPT.list.slice(s,e);
   tbody.innerHTML=pg.map(inv=>{
-    const c=STATE.clients.find(x=>x.id===inv.client)||{name:'Unknown'};
+    const c=STATE.clients.find(x=>x.id===inv.client)||{name:inv.client_name||inv.clientName||'One-Time'};
     const df=inv.issued?new Date(inv.issued).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):inv.issued;
     return `<tr><td><code style="font-family:var(--mono);color:var(--teal);font-weight:700">${inv.num}</code></td><td><strong>${c.name}</strong></td><td>${inv.service}</td><td style="font-size:12px">${df}</td><td><strong style="font-family:var(--mono)">${fmt_money(inv.amount)}</strong></td><td><span class="badge badge-${inv.status.toLowerCase()}">${inv.status}</span></td></tr>`;
   }).join('')||'<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted)">No transactions in this period</td></tr>';
@@ -7574,6 +8085,317 @@ window.saveWASettings = async function() {
     toast('✅ WhatsApp settings saved!', 'success');
   } catch(e) { toast('❌ ' + e.message, 'error'); }
 };
+
+// ══════════════════════════════════════════════════════════════
+// EMAIL SYSTEM — Full feature JS
+// ══════════════════════════════════════════════════════════════
+
+// ── Tab switching ────────────────────────────────────────────────
+function emTab(name, btn) {
+  document.querySelectorAll('.em-tab-pane').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.em-tab-btn').forEach(b => {
+    b.style.borderBottom = 'none'; b.style.color = 'var(--muted)'; b.style.fontWeight = '600';
+  });
+  const pane = document.getElementById('em-tab-' + name);
+  if (pane) pane.style.display = '';
+  if (btn) { btn.style.borderBottom = '2px solid var(--teal)'; btn.style.color = 'var(--teal)'; btn.style.fontWeight = '700'; }
+  if (name === 'logs')     loadEmailLogs();
+  if (name === 'profiles') loadSmtpProfiles();
+  if (name === 'tpl')      loadEmailTemplates();
+  if (name === 'auto')     loadEmailAutoSettings();
+}
+
+// ── Provider quick-fill ──────────────────────────────────────────
+function emFillProvider(p) {
+  const providers = {
+    gmail:    { host:'smtp.gmail.com',    port:'587', hint:true  },
+    outlook:  { host:'smtp.office365.com',port:'587', hint:false },
+    yahoo:    { host:'smtp.mail.yahoo.com',port:'587',hint:false },
+    sendgrid: { host:'smtp.sendgrid.net', port:'587', hint:false },
+    mailgun:  { host:'smtp.mailgun.org',  port:'587', hint:false },
+    custom:   { host:'',                  port:'587', hint:false },
+  };
+  const cfg = providers[p] || providers.custom;
+  const h = document.getElementById('em-host');
+  const pt = document.getElementById('em-port');
+  if (h && !h.value) h.value = cfg.host;
+  if (pt) pt.value = cfg.port;
+  const hint = document.getElementById('em-gmail-hint');
+  if (hint) hint.style.display = cfg.hint ? '' : 'none';
+}
+
+// ── Toggle password visibility ───────────────────────────────────
+function emTogglePass() {
+  const f = document.getElementById('em-pass');
+  if (!f) return;
+  f.type = f.type === 'password' ? 'text' : 'password';
+}
+
+// ── Template tab switching ───────────────────────────────────────
+let STATE_emTemplates = {};
+function emTplTab(type, btn) {
+  document.getElementById('em-tpl-type').value = type;
+  document.querySelectorAll('.em-tpl-btn').forEach(b => {
+    b.style.background = 'var(--bg)'; b.style.color = 'var(--text)'; b.style.border = '1.5px solid var(--border)';
+  });
+  if (btn) { btn.style.background = 'var(--teal)'; btn.style.color = '#fff'; btn.style.border = '1.5px solid var(--teal)'; }
+  const tpl = STATE_emTemplates[type] || {};
+  document.getElementById('em-tpl-subj').value = tpl.subject || '';
+  document.getElementById('em-tpl-body').value = tpl.body    || '';
+}
+
+// ── Insert variable at cursor ────────────────────────────────────
+function emInsertVar(v) {
+  const ta = document.getElementById('em-tpl-body');
+  if (!ta) return;
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  ta.value = ta.value.slice(0, s) + v + ta.value.slice(e);
+  ta.selectionStart = ta.selectionEnd = s + v.length;
+  ta.focus();
+}
+
+// ── Load templates from API ──────────────────────────────────────
+async function loadEmailTemplates() {
+  try {
+    const r = await api('api/email.php?action=templates');
+    if (r.success) {
+      STATE_emTemplates = {};
+      (r.data || []).forEach(t => { STATE_emTemplates[t.type] = t; });
+      // Populate current active tab
+      const type = document.getElementById('em-tpl-type')?.value || 'invoice';
+      const tpl  = STATE_emTemplates[type] || {};
+      document.getElementById('em-tpl-subj').value = tpl.subject || '';
+      document.getElementById('em-tpl-body').value = tpl.body    || '';
+    }
+  } catch(e) { console.error('loadEmailTemplates:', e); }
+}
+
+// ── Save template ────────────────────────────────────────────────
+async function saveEmailTemplate() {
+  const type    = document.getElementById('em-tpl-type')?.value;
+  const subject = document.getElementById('em-tpl-subj')?.value.trim();
+  const body    = document.getElementById('em-tpl-body')?.value.trim();
+  if (!subject || !body) { toast('⚠️ Subject and body are required', 'warning'); return; }
+  try {
+    const r = await api('api/email.php', 'POST', { action:'save_template', type, subject, body });
+    if (r.success) {
+      STATE_emTemplates[type] = { type, subject, body };
+      toast('✅ ' + type.charAt(0).toUpperCase() + type.slice(1) + ' template saved!', 'success');
+    } else { toast('❌ ' + (r.error || 'Save failed'), 'error'); }
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+}
+
+// ── Preview template ─────────────────────────────────────────────
+async function emPreviewTemplate(invId) {
+  const type = document.getElementById('em-tpl-type')?.value || 'invoice';
+  toast('⏳ Building preview…', 'info');
+  try {
+    const r = await api('api/email.php', 'POST', { action:'preview', type, invoice_id: invId || 0 });
+    if (r.success) {
+      const modal = document.getElementById('em-preview-modal');
+      const frame = document.getElementById('em-preview-frame');
+      const subj  = document.getElementById('em-preview-subject');
+      if (subj)  subj.textContent = r.subject || '';
+      if (frame) { frame.srcdoc = r.html; }
+      if (modal) { modal.style.display = 'flex'; }
+    } else { toast('❌ ' + (r.error || 'Preview failed'), 'error'); }
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+}
+
+// ── Load automation settings ─────────────────────────────────────
+function loadEmailAutoSettings() {
+  const ec = STATE.settings.email_cfg || {};
+  const set = (id, val) => { const el = document.getElementById(id); if (el) { if (el.type === 'checkbox' || el.classList.contains('tog')) { if (val === '1' || val === true) el.classList.add('on'); else el.classList.remove('on'); } else { el.value = val || el.value; } } };
+  set('em-auto-inv',      ec.email_auto_inv     || '0');
+  set('em-auto-est',      ec.email_auto_est     || '0');
+  set('em-auto-paid',     ec.email_auto_paid    || '1');
+  set('em-auto-partial',  ec.email_auto_partial || '1');
+  set('em-auto-remind',   ec.email_auto_remind  || '1');
+  set('em-auto-overdue',  ec.email_auto_overdue || '1');
+  set('em-auto-followup', ec.email_auto_followup|| '0');
+  const rd = document.getElementById('em-remind-days');   if (rd) rd.value = ec.email_remind_days   || '3';
+  const fd = document.getElementById('em-followup-days'); if (fd) fd.value = ec.email_followup_days || '7';
+  const mf = document.getElementById('em-max-followup');  if (mf) mf.value = ec.email_max_followup  || '3';
+}
+
+// ── Save automation settings ─────────────────────────────────────
+async function saveEmailAuto() {
+  const togVal = id => document.getElementById(id)?.classList.contains('on') ? '1' : '0';
+  const val    = id => document.getElementById(id)?.value || '';
+  const payload = {
+    email_auto_inv:     togVal('em-auto-inv'),
+    email_auto_est:     togVal('em-auto-est'),
+    email_auto_paid:    togVal('em-auto-paid'),
+    email_auto_partial: togVal('em-auto-partial'),
+    email_auto_remind:  togVal('em-auto-remind'),
+    email_auto_overdue: togVal('em-auto-overdue'),
+    email_auto_followup:togVal('em-auto-followup'),
+    email_remind_days:  val('em-remind-days'),
+    email_followup_days:val('em-followup-days'),
+    email_max_followup: val('em-max-followup'),
+  };
+  if (!STATE.settings.email_cfg) STATE.settings.email_cfg = {};
+  Object.assign(STATE.settings.email_cfg, payload);
+  try { await api('api/settings.php', 'POST', payload); } catch(e) {}
+}
+
+// ── Load email logs ──────────────────────────────────────────────
+async function loadEmailLogs(invId) {
+  const container = document.getElementById('em-logs-table');
+  if (!container) return;
+  container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+  let url = 'api/email.php?action=logs';
+  const type   = document.getElementById('em-log-filter-type')?.value;
+  const status = document.getElementById('em-log-filter-status')?.value;
+  if (invId) url += '&invoice_id=' + invId;
+  if (type)   url += '&type='   + type;
+  if (status) url += '&status=' + status;
+  try {
+    const r = await api(url);
+    if (!r.success || !r.data?.length) {
+      container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:32px;font-size:13px">No email logs found</div>';
+      return;
+    }
+    const typeEmoji = { invoice:'📄', estimate:'📋', receipt:'✅', reminder:'🔔', overdue:'⚠️', followup:'📞', test:'🧪' };
+    const rows = r.data.map(log => {
+      const statusBadge = log.status === 'sent'
+        ? `<span style="background:#E8F5E9;color:#2E7D32;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">✅ Sent</span>`
+        : `<span style="background:#FFEBEE;color:#C62828;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">❌ Failed</span>`;
+      const openBadge = log.opened_at
+        ? `<span style="background:#E3F2FD;color:#1565C0;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600" title="Opened: ${log.opened_at}">👁 ${log.open_count}×</span>`
+        : `<span style="font-size:11px;color:var(--muted)">Not opened</span>`;
+      const errTip = log.error_msg ? ` title="${log.error_msg.replace(/"/g,'')}"` : '';
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:10px 8px">${typeEmoji[log.type]||'📧'} <strong>${log.type}</strong></td>
+        <td style="padding:10px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${log.to_email}">${log.to_email}</td>
+        <td style="padding:10px 8px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${log.subject||''}</td>
+        <td style="padding:10px 8px"${errTip}>${statusBadge}</td>
+        <td style="padding:10px 8px">${openBadge}</td>
+        <td style="padding:10px 8px;font-size:11px;color:var(--muted);white-space:nowrap">${(log.sent_at||log.created_at||'').substring(0,16)}</td>
+      </tr>`;
+    }).join('');
+    container.innerHTML = `<table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:var(--bg);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">
+        <th style="padding:8px;text-align:left;font-weight:700">Type</th>
+        <th style="padding:8px;text-align:left;font-weight:700">To</th>
+        <th style="padding:8px;text-align:left;font-weight:700">Subject</th>
+        <th style="padding:8px;text-align:left;font-weight:700">Status</th>
+        <th style="padding:8px;text-align:left;font-weight:700">Opened</th>
+        <th style="padding:8px;text-align:left;font-weight:700">Sent At</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+  } catch(e) {
+    container.innerHTML = '<div style="color:#C62828;padding:24px;text-align:center">Error loading logs: ' + e.message + '</div>';
+  }
+}
+
+// ── Load SMTP profiles ───────────────────────────────────────────
+async function loadSmtpProfiles() {
+  const container = document.getElementById('em-profiles-list');
+  if (!container) return;
+  try {
+    const r = await api('api/email.php?action=smtp_profiles');
+    if (!r.success || !r.data?.length) {
+      container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:32px">No profiles yet. Click Add Profile.</div>';
+      return;
+    }
+    const rows = r.data.map(p => `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:14px">${p.name} ${p.is_default ? '<span style="background:var(--teal);color:#fff;padding:1px 8px;border-radius:20px;font-size:10px;font-weight:700">DEFAULT</span>' : ''}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">${p.host}:${p.port} · ${p.from_email}</div>
+        </div>
+        <button onclick="emEditProfile(${JSON.stringify(p).replace(/'/g,'&apos;')})" style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer"><i class="fas fa-edit"></i></button>
+        <button onclick="delSmtpProfile(${p.id})" style="padding:5px 12px;border-radius:8px;border:1.5px solid #FFCDD2;background:#FFEBEE;color:#C62828;font-size:12px;cursor:pointer"><i class="fas fa-trash"></i></button>
+      </div>`).join('');
+    container.innerHTML = rows;
+  } catch(e) { container.innerHTML = '<div style="color:#C62828;padding:24px">Error: ' + e.message + '</div>'; }
+}
+
+function emNewProfile() {
+  const f = document.getElementById('em-profile-form');
+  if (!f) return;
+  ['ep-id','ep-name','ep-host','ep-user','ep-pass','ep-from','ep-fname','ep-apikey'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('ep-port').value    = '587';
+  document.getElementById('ep-default').checked = false;
+  document.getElementById('em-profile-form-title').textContent = 'New SMTP Profile';
+  f.style.display = '';
+  f.scrollIntoView({ behavior:'smooth' });
+}
+
+function emEditProfile(p) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  set('ep-id',    p.id);
+  set('ep-name',  p.name);
+  set('ep-host',  p.host);
+  set('ep-port',  p.port);
+  set('ep-user',  p.username);
+  set('ep-pass',  '');
+  set('ep-from',  p.from_email);
+  set('ep-fname', p.from_name);
+  set('ep-apikey',p.api_key || '');
+  const prov = document.getElementById('ep-provider'); if (prov) prov.value = p.provider || 'smtp';
+  const def  = document.getElementById('ep-default');  if (def)  def.checked = !!p.is_default;
+  document.getElementById('em-profile-form-title').textContent = 'Edit Profile: ' + p.name;
+  const f = document.getElementById('em-profile-form');
+  if (f) { f.style.display = ''; f.scrollIntoView({ behavior:'smooth' }); }
+}
+
+async function saveSmtpProfile() {
+  const val = id => document.getElementById(id)?.value.trim() || '';
+  const payload = {
+    id:         val('ep-id') || null,
+    name:       val('ep-name'),
+    host:       val('ep-host'),
+    port:       val('ep-port') || '587',
+    username:   val('ep-user'),
+    password:   val('ep-pass'),
+    from_email: val('ep-from'),
+    from_name:  val('ep-fname'),
+    api_key:    val('ep-apikey'),
+    provider:   document.getElementById('ep-provider')?.value || 'smtp',
+    is_default: document.getElementById('ep-default')?.checked ? 1 : 0,
+  };
+  if (!payload.name || !payload.host || !payload.username) { toast('⚠️ Name, Host and Username are required', 'warning'); return; }
+  try {
+    const r = await api('api/email.php', 'POST', { action:'save_profile', ...payload });
+    if (r.success) {
+      toast('✅ Profile saved!', 'success');
+      document.getElementById('em-profile-form').style.display = 'none';
+      loadSmtpProfiles();
+    } else { toast('❌ ' + (r.error || 'Save failed'), 'error'); }
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+}
+
+async function delSmtpProfile(id) {
+  if (!confirm('Delete this SMTP profile?')) return;
+  try {
+    await fetch('api/email.php?action=del_profile&id=' + id, { method:'DELETE', headers:{ 'X-Requested-With':'XMLHttpRequest' } });
+    loadSmtpProfiles();
+    toast('🗑️ Profile deleted', 'success');
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+}
+
+function emProfileProviderChange() {
+  const p = document.getElementById('ep-provider')?.value;
+  const presets = { gmail:{ host:'smtp.gmail.com', port:'587' }, outlook:{ host:'smtp.office365.com', port:'587' }, sendgrid:{ host:'smtp.sendgrid.net', port:'587' }, mailgun:{ host:'smtp.mailgun.org', port:'587' } };
+  if (presets[p]) { document.getElementById('ep-host').value = presets[p].host; document.getElementById('ep-port').value = presets[p].port; }
+}
+
+// ── Send email with preview from invoice ────────────────────────
+async function sendEmailFromInvoice(invId, type, to, toName) {
+  if (!to) { toast('⚠️ No email address on file for this client', 'warning'); return; }
+  const ec = STATE.settings.email_cfg || {};
+  if (!ec.smtp_host) { toast('⚠️ Configure SMTP settings in Email Setup first', 'warning'); showPage('email-setup'); return; }
+  toast('📧 Sending ' + type + ' email to ' + toName + '…', 'info');
+  try {
+    const r = await api('api/email.php', 'POST', { action:'send', type, invoice_id: invId, to, to_name: toName });
+    if (r.success) {
+      toast('✅ Email sent to ' + to + '!', 'success');
+    } else {
+      toast('❌ Send failed: ' + (r.error || 'Unknown error'), 'error');
+    }
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+}
 
 async function saveEmailSettings() {
   const payload = {
@@ -7993,7 +8815,7 @@ function globalSearchFn(val) {
     const c = STATE.clients.find(x=>x.id===inv.client);
     return `<div class="sr-item" onclick="openPreviewModal('${inv.id}');document.getElementById('globalSearch').value='';document.getElementById('searchResults').classList.remove('open')">
       <i class="fas fa-file-invoice" style="color:var(--teal)"></i>
-      <div><strong>${inv.num}</strong> – ${c?.name||'Unknown'}<br><small style="color:var(--muted)">${inv.service} · ${fmt_money(inv.amount)} · ${inv.status}</small></div>
+      <div><strong>${inv.num}</strong> – ${c?.name||inv.client_name||inv.clientName||'One-Time'}<br><small style="color:var(--muted)">${inv.service} · ${fmt_money(inv.amount)} · ${inv.status}</small></div>
     </div>`;
   }).join('');
   el.classList.add('open');
@@ -8122,7 +8944,17 @@ function syncServiceText(val) {
 
 function updateClientDropdown() {
   const s=document.getElementById('f-client-select'); if(!s) return;
-  s.innerHTML='<option value="">-- Quick Select Client --</option>'+STATE.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  const active  = STATE.clients.filter(c => parseInt(c.active) !== 0 && c.status !== 'inactive');
+  const inactive = STATE.clients.filter(c => parseInt(c.active) === 0 || c.status === 'inactive');
+  let html = '<option value="">-- Quick Select Client --</option>'
+    + '<option value="__onetime__" style="color:#E65100;font-weight:600">👤 One-Time / Walk-in Client (not saved)</option>'
+    + active.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if (inactive.length) {
+    html += `<optgroup label="─── Inactive Clients ───" style="color:#999">`;
+    html += inactive.map(c=>`<option value="${c.id}" style="color:#aaa">${c.name} (inactive)</option>`).join('');
+    html += '</optgroup>';
+  }
+  s.innerHTML = html;
 }
 
 function editInvoice(id) {
@@ -8415,6 +9247,9 @@ function normalizeInvoice(inv) {
     try { inv.items = JSON.parse(inv.items); } catch(e) { inv.items = []; }
   }
   if (!Array.isArray(inv.items)) inv.items = [];
+  // Unify client name aliases — always expose as both clientName and client_name
+  if (!inv.clientName && inv.client_name) inv.clientName = inv.client_name;
+  if (!inv.client_name && inv.clientName) inv.client_name = inv.clientName;
   // Unify bank field aliases
   if (!inv.bank && inv.bank_details) inv.bank = inv.bank_details;
   // Unify tnc field aliases
@@ -10743,6 +11578,8 @@ let _actPage     = 0;
 const _ACT_PER   = 30;
 
 function renderActivityLog() {
+  const el = document.getElementById('activity-timeline');
+  if (el) el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-spinner fa-spin" style="font-size:24px;opacity:.4"></i><div style="margin-top:10px;font-size:13px">Loading activity…</div></div>`;
   api('api/activity.php?limit=200').then(r=>{
     if(r&&r.data) STATE.activity=r.data.map(x=>({
       id:x.id, type:x.type, label:x.label, detail:x.detail, invoiceId:x.invoice_id, ts:x.created_at
@@ -10752,6 +11589,23 @@ function renderActivityLog() {
   }).catch(()=>{
     _actFiltered=[...STATE.activity]; _actPage=0;
     _renderActivityStats(); _renderActivityTimeline(true);
+  });
+}
+
+function refreshActivityLog() {
+  const btn = document.getElementById('activity-refresh-btn');
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing…'; btn.disabled = true; }
+  api('api/activity.php?limit=200').then(r=>{
+    if(r&&r.data) STATE.activity=r.data.map(x=>({
+      id:x.id, type:x.type, label:x.label, detail:x.detail, invoiceId:x.invoice_id, ts:x.created_at
+    }));
+    // Re-apply current filters
+    filterActivity(document.getElementById('activity-search')?.value||'');
+    _renderActivityStats();
+    toast('🔄 Activity log refreshed', 'info');
+  }).catch(e=>toast('❌ Refresh failed: '+e.message,'error'))
+  .finally(()=>{
+    if (btn) { btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh'; btn.disabled = false; }
   });
 }
 
@@ -10795,14 +11649,22 @@ function _renderActivityStats() {
 
 function _actTypeInfo(type) {
   const map = {
-    invoice_created:  {icon:'📄', label:'Created',   col:'#1976D2', bg:'#e3f2fd'},
-    invoice_edited:   {icon:'✏️', label:'Edited',    col:'#7B1FA2', bg:'#f3e5f5'},
-    invoice_deleted:  {icon:'🗑️', label:'Deleted',  col:'#C62828', bg:'#ffebee'},
-    payment_recorded: {icon:'💰', label:'Payment',   col:'#388E3C', bg:'#e8f5e9'},
-    status_changed:   {icon:'🔄', label:'Status',    col:'#E65100', bg:'#fbe9e7'},
-    client_added:     {icon:'👤', label:'Client',    col:'#00897B', bg:'#e0f2f1'},
-    reminder_sent:    {icon:'🔔', label:'Reminder',  col:'#F9A825', bg:'#fff8e1'},
-    expense_added:    {icon:'💸', label:'Expense',   col:'#455A64', bg:'#eceff1'},
+    invoice_created:    {icon:'📄', label:'Created',    col:'#1976D2', bg:'#e3f2fd'},
+    invoice_edited:     {icon:'✏️', label:'Edited',     col:'#7B1FA2', bg:'#f3e5f5'},
+    invoice_deleted:    {icon:'🗑️', label:'Deleted',   col:'#C62828', bg:'#ffebee'},
+    estimate_created:   {icon:'📋', label:'Estimate',   col:'#3949AB', bg:'#e8eaf6'},
+    estimate_edited:    {icon:'📝', label:'Est.Edited', col:'#5E35B1', bg:'#ede7f6'},
+    estimate_converted: {icon:'🔁', label:'Converted',  col:'#00838F', bg:'#e0f7fa'},
+    estimate_deleted:   {icon:'🗑️', label:'Est.Del',   col:'#B71C1C', bg:'#ffebee'},
+    payment_recorded:   {icon:'💰', label:'Payment',    col:'#388E3C', bg:'#e8f5e9'},
+    status_changed:     {icon:'🔄', label:'Status',     col:'#E65100', bg:'#fbe9e7'},
+    client_added:       {icon:'👤', label:'Client',     col:'#00897B', bg:'#e0f2f1'},
+    client_edited:      {icon:'✏️', label:'Cl.Edited',  col:'#0288D1', bg:'#e1f5fe'},
+    client_deleted:     {icon:'🗑️', label:'Cl.Deleted', col:'#B71C1C', bg:'#ffebee'},
+    client_activated:   {icon:'✅', label:'Activated',  col:'#2E7D32', bg:'#E8F5E9'},
+    client_deactivated: {icon:'⏸️', label:'Inactive',   col:'#F9A825', bg:'#FFF8E1'},
+    reminder_sent:      {icon:'🔔', label:'Reminder',   col:'#F9A825', bg:'#fff8e1'},
+    expense_added:      {icon:'💸', label:'Expense',    col:'#455A64', bg:'#eceff1'},
   };
   return map[type] || {icon:'•', label:type, col:'#9E9E9E', bg:'#f5f5f5'};
 }

@@ -6579,56 +6579,106 @@ ${sc.phone||''}`);
 }
 
 function sendEmailForInvoice(inv) {
-  const c = STATE.clients.find(x=>String(x.id)===String(inv.client)) || {};
-  const num = inv.num || inv.invoice_number || '';
-  const amt = fmt_money(inv.amount || inv.grand_total || 0, inv.currency||'₹');
-  const due = inv.due || inv.due_date || '';
-  const svc = inv.service || inv.service_type || '';
-  const d   = {
-    bank: inv.bank || inv.bank_details || STATE.settings.defaultBank || '',
-    notes: inv.notes || '', tnc: inv.tnc || inv.terms || '',
-    sym: inv.currency||'₹', grand: inv.amount||0,
-    companyLogo: STATE.settings.logo||''
-  };
-  sendEmailForClient(c.email||'', c.name||'Client', num, amt, due, svc, d);
+  const status = inv.status || '';
+
+  // ── Block sending reminder/overdue/followup-style emails to closed invoices ──
+  if (status === 'Cancelled') {
+    toast('⚠️ Cannot email a Cancelled invoice.', 'warning');
+    return;
+  }
+  if (status === 'Draft') {
+    toast('⚠️ Cannot email a Draft — please finalise the invoice first.', 'warning');
+    return;
+  }
+
+  // ── Pick the correct email type based on invoice status ──────────
+  // Paid   → receipt (payment confirmation)
+  // Overdue → overdue notice
+  // Partial → receipt (partial payment received)
+  // Pending / Estimate → invoice / estimate
+  let emailType = 'invoice';
+  if (status === 'Paid')     emailType = 'receipt';
+  else if (status === 'Partial')  emailType = 'receipt';
+  else if (status === 'Overdue')  emailType = 'overdue';
+  else if (status === 'Estimate') emailType = 'estimate';
+  else                            emailType = 'invoice';  // Pending
+
+  const c     = STATE.clients.find(x => String(x.id) === String(inv.client)) || {};
+  const email = c.email || '';
+  if (!email) { toast('⚠️ No email address on file for this client', 'warning'); return; }
+
+  const ec    = STATE.settings.email_cfg || {};
+  if (!ec.smtp_host || !ec.smtp_user) {
+    // No SMTP — fall back to mailto with a sensible body
+    const num  = inv.num || inv.invoice_number || '';
+    const amt  = fmt_money(inv.amount || inv.grand_total || 0, inv.currency || '₹');
+    const due  = inv.due || inv.due_date || '';
+    const subj = encodeURIComponent(`Invoice #${num} from ${STATE.settings.company || 'OPTMS Tech'}`);
+    const body = encodeURIComponent(`Dear ${c.name || 'Client'},\n\nInvoice #${num} — ${amt}\nDue: ${due}\n\nThank you,\n${STATE.settings.company || ''}`);
+    window.open(`mailto:${email}?subject=${subj}&body=${body}`, '_blank');
+    toast('📧 Email client opened. Configure SMTP in Email Setup for direct sending.', 'info');
+    return;
+  }
+
+  // ── Send via server (let email.php resolve template + portal link) ──
+  const invId = inv.id || inv._dbId || '';
+  toast(`📧 Sending ${emailType} email to ${c.name || email}…`, 'info');
+  api('api/email.php', 'POST', {
+    action:     'send',
+    type:       emailType,
+    invoice_id: invId,
+    to:         email,
+    to_name:    c.name || 'Client',
+  }).then(r => {
+    if (r && r.success) {
+      toast(`✅ ${emailType.charAt(0).toUpperCase() + emailType.slice(1)} email sent to ${c.name || email}!`, 'success');
+    } else {
+      toast('❌ Send failed: ' + (r?.error || 'Unknown error'), 'error');
+    }
+  }).catch(e => toast('❌ Email error: ' + e.message, 'error'));
 }
 
+// sendEmailForClient — kept for legacy callers (new invoice form, modal)
+// Also now passes invoice_id + type so the backend uses the correct template
 async function sendEmailForClient(email, name, num, amount, due, service, d) {
   if (!email) { toast('⚠️ No email address for this client', 'warning'); return; }
-  const sc      = STATE.settings;
-  const ec      = sc.email_cfg || {};
-  const company = sc.company || '';
-  const phone   = sc.phone   || '';
-  const upi     = sc.upi     || '';
-  const bank    = (d && d.bank) || sc.defaultBank || '';
-  const invId   = d?.invId || d?.id || '';
-  const subjTpl = ec.email_subject || document.getElementById('em-subj')?.value || 'Invoice #{invoice_no} from {company_name}';
-  const bodyTpl = ec.email_body    || document.getElementById('em-body')?.value ||
-    'Dear {client_name},\n\nPlease find Invoice #{invoice_no} for {amount} due on {due_date}.\n\nService: {service}\n\nPay via UPI: {upi}\n{bank_details}\n\nThank you!\n{company_name}\n{company_phone}';
-  const subj = subjTpl
-    .replace(/{invoice_no}/g, num).replace(/{amount}/g, amount)
-    .replace(/{client_name}/g, name).replace(/{company_name}/g, company)
-    .replace(/{due_date}/g, due).replace(/{service}/g, service);
-  const body = bodyTpl
-    .replace(/{invoice_no}/g, num).replace(/{amount}/g, amount)
-    .replace(/{client_name}/g, name).replace(/{company_name}/g, company)
-    .replace(/{due_date}/g, due).replace(/{service}/g, service)
-    .replace(/{upi}/g, upi).replace(/{bank_details}/g, bank)
-    .replace(/{company_phone}/g, phone);
-  // If SMTP is configured — send directly via server
+  const sc    = STATE.settings;
+  const ec    = sc.email_cfg || {};
+  const invId = d?.invId || d?.id || d?.invoice_id || '';
+
+  // Derive type from status if available, default to invoice
+  const status   = d?.status || '';
+  let emailType  = 'invoice';
+  if      (status === 'Paid')     emailType = 'receipt';
+  else if (status === 'Partial')  emailType = 'receipt';
+  else if (status === 'Overdue')  emailType = 'overdue';
+  else if (status === 'Estimate') emailType = 'estimate';
+
+  // If SMTP configured — let the server resolve template + portal link
   if (ec.smtp_host && ec.smtp_user) {
     toast('📧 Sending email to ' + name + '…', 'info');
     try {
-      const r = await api('api/email.php', 'POST', { action:'send', to:email, to_name:name, subject:subj, body, invoice_id:invId });
-      if (r.success) { toast('✅ Email sent to ' + name + '!', 'success'); }
-      else {
+      const r = await api('api/email.php', 'POST', {
+        action:     'send',
+        type:       emailType,
+        invoice_id: invId,
+        to:         email,
+        to_name:    name,
+      });
+      if (r.success) {
+        toast('✅ Email sent to ' + name + '!', 'success');
+      } else {
         toast('⚠️ SMTP failed — opening email client instead', 'warning');
-        window.open(`mailto:${email}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`, '_blank');
+        const subj = encodeURIComponent(`Invoice #${num} from ${sc.company || 'OPTMS Tech'}`);
+        const body = encodeURIComponent(`Dear ${name},\n\nInvoice #${num} — ${amount}\nDue: ${due}\n\nThank you,\n${sc.company || ''}`);
+        window.open(`mailto:${email}?subject=${subj}&body=${body}`, '_blank');
       }
     } catch(e) { toast('❌ Email error: ' + e.message, 'error'); }
   } else {
-    // No SMTP — fallback to mailto
-    window.open(`mailto:${email}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`, '_blank');
+    // No SMTP — mailto fallback
+    const subj = encodeURIComponent(`Invoice #${num} from ${sc.company || 'OPTMS Tech'} – ${amount}`);
+    const body = encodeURIComponent(`Dear ${name},\n\nInvoice #${num} — ${amount}\nDue: ${due}\nService: ${service}\n\nPay via UPI: ${sc.upi||''}\n\nThank you,\n${sc.company||''}\n${sc.phone||''}`);
+    window.open(`mailto:${email}?subject=${subj}&body=${body}`, '_blank');
     toast('📧 Email client opened. Configure SMTP in Email Setup for direct sending.', 'info');
   }
 }
