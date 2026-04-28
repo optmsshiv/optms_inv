@@ -434,14 +434,20 @@ function buildTemplateVars($db, int $invId, string $type): array {
     } catch(\Exception $e){}
     $remaining = max(0, $grand - $totalPaid);
 
-    // Portal link — Format B: base64(invoiceId:invoiceNumber) with src=email
-    // This uses the same token format as the frontend _portalURL() function,
-    // so no DB token table is needed and portal/index.php decodes it directly.
+    // Portal link
     $portalLink = '';
     try {
-        $invNum   = $inv['invoice_number'] ?? '';
-        $b64token = rtrim(strtr(base64_encode($invId . ':' . $invNum), '+/', '-_'), '=');
-        $portalLink = $portalBase . '?t=' . $b64token . '&src=email';
+        $pt = $db->prepare("SELECT token FROM invoice_portal_tokens WHERE invoice_id=? ORDER BY id DESC LIMIT 1");
+        $pt->execute([$invId]);
+        $tok = $pt->fetchColumn();
+        if ($tok) $portalLink = $portalBase . '?t=' . $tok;
+        else {
+            // Auto-generate token if missing
+            $newToken = bin2hex(random_bytes(24));
+            $db->prepare("INSERT INTO invoice_portal_tokens (invoice_id,token,created_at) VALUES (?,?,NOW()) ON DUPLICATE KEY UPDATE token=VALUES(token)")
+               ->execute([$invId, $newToken]);
+            $portalLink = $portalBase . '?t=' . $newToken;
+        }
     } catch(\Exception $e){}
 
     $vars['{client_name}']          = $client['name'] ?? $client['client_name'] ?? 'Valued Client';

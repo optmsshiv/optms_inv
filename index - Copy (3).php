@@ -56,6 +56,15 @@ $defaultCurrency= $settings['default_currency'] ?? '₹';
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+<style>
+/* ── SweetAlert2 compact theme ── */
+.swal-compact { font-family:'Public Sans',sans-serif !important; border-radius:14px !important; max-width:360px !important; }
+.swal-compact .swal2-title { font-size:16px !important; font-weight:700 !important; padding-top:16px !important; }
+.swal-compact .swal2-html-container { font-size:13px !important; margin:8px 16px !important; }
+.swal-compact .swal2-actions { gap:10px !important; margin-top:16px !important; }
+.swal-compact .swal2-confirm, .swal-compact .swal2-cancel { font-size:13px !important; padding:8px 20px !important; border-radius:8px !important; font-weight:600 !important; }
+</style>
 <style>
 
 /* ══════════════════════════════════════════
@@ -762,11 +771,13 @@ select { cursor: pointer; }
 .client-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
 .cc-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .cc-big-avatar {
-  width: 48px; height: 48px; border-radius: 12px;
+  width: 52px; height: 52px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; font-weight: 800; color: #fff; overflow: hidden; flex-shrink: 0;
+  border: 3px solid transparent; transition: border-color .3s, box-shadow .3s;
 }
 .cc-big-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.cc-big-avatar.has-logo { border-color: #00897B; box-shadow: 0 0 0 3px rgba(0,137,123,.2), 0 2px 8px rgba(0,137,123,.3); }
 .cc-org { font-weight: 700; font-size: 15px; color: var(--text); }
 .cc-contact { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .cc-stats { display: flex; gap: 0; background: var(--bg); border-radius: 8px; overflow: hidden; }
@@ -1308,6 +1319,7 @@ const SERVER = {
           <input type="date" class="table-filter" id="dateTo" onchange="filterByDate()" placeholder="To">
         </div>
         <div class="toolbar-right">
+          <button class="btn btn-outline" id="inv-refresh-btn" onclick="refreshInvoices()" title="Refresh invoices"><i class="fas fa-sync-alt"></i> Refresh</button>
           <button class="btn btn-outline" onclick="exportCSV()"><i class="fas fa-download"></i> Export CSV</button>
           <button class="btn btn-primary" onclick="showPage('create',null)"><i class="fas fa-plus"></i> New Invoice</button>
         </div>
@@ -1392,11 +1404,21 @@ const SERVER = {
           <div class="form-section">
             <div class="fs-title"><i class="fas fa-user"></i> Client Information</div>
             <div class="form-grid g1" style="margin-bottom:12px">
-              <div class="field"><label>Quick Select Client</label>
-                <select id="f-client-select" onchange="fillClientForm(this.value)">
-                  <option value="">-- Quick Select Client --</option>
-                </select>
+              <div class="field" style="position:relative">
+                <label>Quick Select Client</label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <select id="f-client-select" onchange="fillClientForm(this.value)" style="flex:1">
+                    <option value="">-- Quick Select Client --</option>
+                    <option value="__onetime__" style="color:#E65100;font-weight:600">👤 One-Time / Walk-in Client (not saved)</option>
+                  </select>
+                  <span id="onetime-badge" style="display:none;background:#FBE9E7;border:1.5px solid #E65100;color:#E65100;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0"><i class="fas fa-user-clock"></i> One-Time</span>
+                </div>
               </div>
+            </div>
+            <div id="onetime-notice" style="display:none;background:#FFF3E0;border:1.5px solid #FFB300;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:#795548;display:none">
+              <i class="fas fa-info-circle" style="color:#F9A825;margin-right:6px"></i>
+              <strong>One-Time Client</strong> — details below are for this invoice only and will <strong>not</strong> be saved to your client list.
+              <span onclick="switchToSaveClient()" style="margin-left:8px;color:#1976D2;cursor:pointer;font-weight:600;text-decoration:underline">Save this client instead →</span>
             </div>
             <div class="form-grid g2">
               <div class="field g-full"><label>Organization / Client Name *</label><input id="f-cname" placeholder="Organization / Client Name" oninput="livePreview()"></div>
@@ -1622,6 +1644,11 @@ const SERVER = {
     <div id="page-clients" class="page">
       <div class="page-toolbar">
         <input type="text" class="table-search" placeholder="Search clients…" oninput="filterClients(this.value)">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none;white-space:nowrap">
+          <input type="checkbox" id="show-inactive-toggle" onchange="renderClients()" style="cursor:pointer">
+          Show Inactive
+          <span id="inactive-count-badge" style="display:none;background:#F9A825;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700"></span>
+        </label>
         <div style="flex:1"></div>
         <button class="btn btn-primary" onclick="openAddClientModal()"><i class="fas fa-plus"></i> Add Client</button>
       </div>
@@ -3232,9 +3259,14 @@ View Invoice: {{6}}</pre></details>
             <option value="invoice_created">📄 Invoice Created</option>
             <option value="invoice_edited">✏️ Invoice Edited</option>
             <option value="invoice_deleted">🗑️ Invoice Deleted</option>
+            <option value="estimate_created">📋 Estimate Created</option>
+            <option value="estimate_edited">📝 Estimate Edited</option>
+            <option value="estimate_converted">🔁 Estimate Converted</option>
             <option value="payment_recorded">💰 Payment Recorded</option>
             <option value="status_changed">🔄 Status Changed</option>
             <option value="client_added">👤 Client Added</option>
+            <option value="client_edited">✏️ Client Edited</option>
+            <option value="client_deleted">🗑️ Client Deleted</option>
             <option value="reminder_sent">🔔 Reminder Sent</option>
             <option value="expense_added">💸 Expense Added</option>
           </select>
@@ -3246,6 +3278,7 @@ View Invoice: {{6}}</pre></details>
           </select>
         </div>
         <div class="toolbar-right">
+          <button class="btn btn-outline" onclick="refreshActivityLog()" id="activity-refresh-btn" title="Refresh log"><i class="fas fa-sync-alt"></i> Refresh</button>
           <button class="btn btn-outline" onclick="exportActivityCSV()"><i class="fas fa-download"></i> Export</button>
           <button class="btn btn-outline" onclick="clearActivityLog()"><i class="fas fa-trash"></i> Clear</button>
         </div>
@@ -3515,13 +3548,36 @@ View Invoice: {{6}}</pre></details>
   <div class="modal modal-md">
     <div class="modal-header"><span>Add New Client</span><button class="modal-close" onclick="closeModal('modal-addclient')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body" style="padding:24px">
+      <!-- Logo Upload -->
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;padding:14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+        <div id="nc-logo-preview" style="width:64px;height:64px;border-radius:50%;background:#00897B;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0;border:3px solid var(--border);transition:border-color .3s,box-shadow .3s">
+          <span id="nc-logo-initials">?</span>
+          <img id="nc-logo-img" src="" style="width:100%;height:100%;object-fit:cover;display:none">
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px;margin-bottom:6px;color:var(--text)">Client Logo <span style="font-size:10px;color:var(--muted);font-weight:400">(optional)</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <label id="nc-logo-upload-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:var(--teal);color:#fff;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;position:relative;overflow:hidden;transition:background .2s">
+              <i class="fas fa-upload" id="nc-logo-upload-icon"></i>
+              <span id="nc-logo-upload-text">Upload</span>
+              <div id="nc-logo-progress-bar" style="position:absolute;left:0;bottom:0;height:3px;width:0%;background:rgba(255,255,255,.7);transition:width .05s linear;border-radius:0 0 6px 6px"></div>
+              <input type="file" id="nc-logo-file" accept="image/*" style="display:none" onchange="handleClientLogoUpload(this)">
+            </label>
+            <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="document.getElementById('nc-logo-url-wrap').style.display=document.getElementById('nc-logo-url-wrap').style.display==='none'?'flex':'none'"><i class="fas fa-link"></i> URL</button>
+            <button class="btn btn-outline" style="font-size:12px;padding:5px 10px;color:var(--red)" onclick="clearClientLogo()" title="Remove logo"><i class="fas fa-times"></i></button>
+          </div>
+          <div id="nc-logo-url-wrap" style="display:none;margin-top:8px;gap:6px;align-items:center">
+            <input id="nc-logo-url" placeholder="https://…logo.png" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px" oninput="previewClientLogoUrl(this.value)">
+          </div>
+        </div>
+      </div>
       <div class="form-grid g2">
-        <div class="field g-full"><label>Organization Name *</label><input id="nc-name" placeholder="Company or school name"></div>
+        <div class="field g-full"><label>Organization Name *</label><input id="nc-name" placeholder="Company or school name" oninput="updateClientLogoInitials()"></div>
         <div class="field"><label>Contact Person</label><input id="nc-person"></div>
         <div class="field"><label>WhatsApp</label><input id="nc-wa" placeholder="+91 XXXXX XXXXX"></div>
         <div class="field"><label>Email</label><input id="nc-email" type="email"></div>
         <div class="field"><label>GST Number</label><input id="nc-gst"></div>
-        <div class="field"><label>Avatar Color</label><input type="color" id="nc-color" value="#00897B"></div>
+        <div class="field"><label>Avatar Color</label><input type="color" id="nc-color" value="#00897B" oninput="updateClientLogoInitials()"></div>
         <div class="field g-full"><label>Address</label><textarea id="nc-addr"></textarea></div>
         <div class="field g-full"><label>Landmark <span style="font-size:10px;color:var(--muted)">(optional — nearby area or landmark)</span></label><input id="nc-landmark" placeholder="e.g. Near City Mall, Sector 12"></div>
       </div>
@@ -4151,13 +4207,13 @@ function renderDashRecent() {
   const recent = [...STATE.invoices].reverse().slice(0,8);
   if (!recent.length) { el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted)">No invoices yet</div>'; return; }
   el.innerHTML = recent.map(inv => {
-    const c = STATE.clients.find(x=>x.id===inv.client)||{name:inv.clientName||inv.client||'Unknown',color:'#00897B'};
+    const c = STATE.clients.find(x=>x.id===inv.client)||{name:inv.client_name||inv.clientName||inv.client||'Unknown',color:'#00897B'};
     const initials = getInitials(c.name);
     const pmt = STATE.payments.find(p=>p.inv===inv.num);
     const pmtTag = pmt ? `<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:var(--teal-bg);color:var(--teal);font-weight:700;margin-left:4px">${pmt.method.split(' ')[0]}</span>` : '';
     const df = d => d ? new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '';
     return `<div class="dash-recent-item">
-      <div class="dri-avatar" style="background:${c.color}">${c.image?`<img src="${c.image}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`:initials}</div>
+      <div class="dri-avatar" style="background:${c.color}">${isValidImg(c.image)?`<img src="${c.image}" style="width:100%;height:100%;object-fit:cover;border-radius:8px" onerror="this.style.display='none'">`:initials}</div>
       <div class="dri-info">
         <div class="dri-name">${inv.num}${pmtTag}</div>
         <div class="dri-meta">${c.name} · ${inv.service}</div>
@@ -4229,6 +4285,28 @@ function calNext() { calMonth++; if (calMonth > 11) { calMonth=0; calYear++; } r
 // ══════════════════════════════════════════
 // INVOICES TABLE
 // ══════════════════════════════════════════
+async function refreshInvoices() {
+  const btn = document.getElementById('inv-refresh-btn');
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing…'; btn.disabled = true; }
+  try {
+    const [invRes, payRes] = await Promise.all([
+      api('api/invoices.php'),
+      api('api/payments.php')
+    ]);
+    if (invRes?.data) {
+      STATE.invoices = invRes.data.map(normalizeInvoice);
+      STATE.filteredInvoices = [...STATE.invoices];
+    }
+    if (payRes?.data) STATE.payments = payRes.data;
+    renderInvoicesTable(); renderDonutChart(); renderDashRecent(); updateDashStats();
+    toast('🔄 Invoices refreshed', 'info');
+  } catch(e) {
+    toast('❌ Refresh failed: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh'; btn.disabled = false; }
+  }
+}
+
 function renderInvoicesTable() {
   STATE.filteredInvoices = [...STATE.invoices];
   // Always keep the sidebar invoice badge in sync
@@ -4245,11 +4323,16 @@ function applyFiltersAndRender() {
   const page  = STATE.filteredInvoices.slice(start, end);
 
   tbody.innerHTML = page.map(inv => {
-    const c = STATE.clients.find(x=>x.id===inv.client) || { name:'Unknown', color:'#607D8B' };
+    const c = STATE.clients.find(x=>x.id===inv.client) || { name: inv.client_name||inv.clientName||'One-Time Client', color:'#607D8B' };
+    const isClientInactive = c.id && (parseInt(c.active) === 0 || c.status === 'inactive');
+    const avatarColor = isClientInactive ? '#9E9E9E' : c.color;
     const initials = getInitials(c.name);
-    const avatar = c.image
-      ? `<div class="cc-avatar" style="background:${c.color}"><img src="${c.image}" alt="${c.name}"></div>`
-      : `<div class="cc-avatar" style="background:${c.color}">${initials}</div>`;
+    const avatar = isValidImg(c.image)
+      ? `<div class="cc-avatar" style="background:${avatarColor};opacity:${isClientInactive?'.6':'1'}"><img src="${c.image}" alt="${c.name}" onerror="this.style.display='none'"></div>`
+      : `<div class="cc-avatar" style="background:${avatarColor};opacity:${isClientInactive?'.6':'1'}">${initials}</div>`;
+    const inactivePill = isClientInactive
+      ? `<span style="font-size:9px;font-weight:700;background:#FFF8E1;color:#F9A825;border:1px solid #F9A825;border-radius:8px;padding:1px 5px;margin-left:4px;vertical-align:middle;white-space:nowrap"><i class="fas fa-pause-circle" style="font-size:8px"></i> Inactive</span>`
+      : '';
 
     // Paid amount cell
     const invId = String(inv.id);
@@ -4271,7 +4354,7 @@ function applyFiltersAndRender() {
     return `<tr data-id="${inv.id}">
       <td><input type="checkbox" class="inv-check" value="${inv.id}"></td>
       <td><code style="font-family:var(--mono);color:var(--teal);font-weight:600">${inv.num}</code></td>
-      <td><div class="client-cell">${avatar}<div><div class="cc-name">${c.name}</div><div class="cc-sub">${c.person||''}</div></div></div></td>
+      <td><div class="client-cell">${avatar}<div><div class="cc-name" style="${isClientInactive?'color:var(--muted)':''}">${c.name}${inactivePill}</div><div class="cc-sub">${c.person||''}</div></div></div></td>
       <td>${inv.service}</td>
       <td>${inv.issued}</td>
       <td>${inv.due}</td>
@@ -4535,6 +4618,9 @@ function resetCreateForm() {
   const currEl = document.getElementById('f-currency'); if (currEl) currEl.value = '₹';
   const tplEl = document.getElementById('f-template'); if (tplEl) tplEl.value = String(STATE.settings.activeTemplate || 1);
   const clientSelEl = document.getElementById('f-client-select'); if (clientSelEl) clientSelEl.value = '';
+  // Hide one-time client indicators
+  const _otNotice = document.getElementById('onetime-notice'); if (_otNotice) _otNotice.style.display = 'none';
+  const _otBadge  = document.getElementById('onetime-badge');  if (_otBadge)  _otBadge.style.display  = 'none';
   // Reset company logo, qr to defaults
   const qrEl = document.getElementById('f-qr'); if (qrEl) qrEl.value = '';
   const _radios = document.querySelectorAll('input[name="inv-status"]');
@@ -4652,6 +4738,22 @@ function calcTotals() {
 }
 
 function fillClientForm(val) {
+  const notice  = document.getElementById('onetime-notice');
+  const badge   = document.getElementById('onetime-badge');
+  if (val === '__onetime__') {
+    // Clear all client fields for manual entry
+    ['f-cname','f-cperson','f-cwa','f-cemail','f-cgst','f-caddr'].forEach(id => {
+      const e = document.getElementById(id); if (e) e.value = '';
+    });
+    if (notice) notice.style.display = 'block';
+    if (badge)  badge.style.display  = 'inline-flex';
+    document.getElementById('f-cname')?.focus();
+    livePreview();
+    return;
+  }
+  // Hide one-time indicators when a saved client is selected or cleared
+  if (notice) notice.style.display = 'none';
+  if (badge)  badge.style.display  = 'none';
   const c = STATE.clients.find(x => x.id === val);
   if (!c) return;
   document.getElementById('f-cname').value   = c.name;
@@ -4661,6 +4763,30 @@ function fillClientForm(val) {
   document.getElementById('f-cgst').value    = c.gst;
   document.getElementById('f-caddr').value   = c.addr;
   livePreview();
+}
+
+function switchToSaveClient() {
+  // Pre-fill the Add Client modal with values already typed in the invoice form
+  const get = id => document.getElementById(id)?.value || '';
+  const nc = {
+    'nc-name':     get('f-cname'),
+    'nc-person':   get('f-cperson'),
+    'nc-wa':       get('f-cwa'),
+    'nc-email':    get('f-cemail'),
+    'nc-gst':      get('f-cgst'),
+    'nc-addr':     get('f-caddr'),
+  };
+  Object.entries(nc).forEach(([id, val]) => {
+    const e = document.getElementById(id); if (e) e.value = val;
+  });
+  // Reset one-time mode
+  const s = document.getElementById('f-client-select');
+  if (s) s.value = '';
+  const notice = document.getElementById('onetime-notice');
+  const badge  = document.getElementById('onetime-badge');
+  if (notice) notice.style.display = 'none';
+  if (badge)  badge.style.display  = 'none';
+  openModal('modal-addclient');
 }
 
 // ══════════════════════════════════════════
@@ -6088,6 +6214,7 @@ async function saveInvoice() {
   if (!d.cname || d.cname === 'Client Name') { toast('⚠️ Please enter client name', 'warning'); return; }
   if (formItems.length === 0) { toast('⚠️ Add at least one line item', 'warning'); return; }
   const selVal = document.getElementById('f-client-select')?.value;
+  const _clientId = (selVal && selVal !== '__onetime__') ? parseInt(selVal) : null;
 
   // FIX: capture BEFORE any reset — tells WA block if this is new vs edit
   const isNewSave = !STATE.editingInvoiceId;
@@ -6095,7 +6222,7 @@ async function saveInvoice() {
   const formPhone = (document.getElementById('f-cwa')?.value || '').replace(/\D/g, '');
 
   const payload = {
-    invoice_number: d.num, client_id: selVal ? parseInt(selVal) : null,
+    invoice_number: d.num, client_id: _clientId,
     client_name: d.cname, service_type: d.svc, issued_date: d.date, due_date: d.due,
     status: d.status, currency: d.sym, subtotal: d.sub,
     discount_pct: d.disc, discount_amt: d.discAmt, discount_type: (d.discType==='fixed'?'flat':'percent'), gst_amount: d.gstAmt, grand_total: d.grand,
@@ -6112,9 +6239,23 @@ async function saveInvoice() {
       const dbId = inv?._dbId || parseInt(inv?.id) || 0;
       await api('api/invoices.php?id=' + dbId, 'PUT', payload);
       toast('✅ Invoice updated!', 'success');
+      const _editedInv = inv || {};
+      const _editedNum = _editedInv.num || _editedInv.invoice_number || payload.invoice_number || '';
+      if (payload.status === 'Estimate') {
+        logActivity('estimate_edited', `Estimate edited: ${_editedNum}`, payload.client_name || '', dbId);
+      } else {
+        logActivity('invoice_edited', `Invoice edited: ${_editedNum}`, payload.client_name || '', dbId);
+      }
+      // Navigate back to invoices list after editing
+      showPage('invoices', document.querySelector('.nav-item[data-page="invoices"]'));
     } else {
-      await api('api/invoices.php', 'POST', payload);
+      const _res = await api('api/invoices.php', 'POST', payload);
       toast('✅ Invoice ' + d.num + ' saved!', 'success');
+      if (payload.status === 'Estimate') {
+        logActivity('estimate_created', `Estimate created: ${d.num}`, payload.client_name || '');
+      } else {
+        logActivity('invoice_created', `Invoice created: ${d.num}`, payload.client_name || '');
+      }
       // Navigate to invoices list — showPage will trigger resetCreateForm next time 'create' is opened
       showPage('invoices', document.querySelector('.nav-item[data-page="invoices"]'));
     }
@@ -6438,56 +6579,106 @@ ${sc.phone||''}`);
 }
 
 function sendEmailForInvoice(inv) {
-  const c = STATE.clients.find(x=>String(x.id)===String(inv.client)) || {};
-  const num = inv.num || inv.invoice_number || '';
-  const amt = fmt_money(inv.amount || inv.grand_total || 0, inv.currency||'₹');
-  const due = inv.due || inv.due_date || '';
-  const svc = inv.service || inv.service_type || '';
-  const d   = {
-    bank: inv.bank || inv.bank_details || STATE.settings.defaultBank || '',
-    notes: inv.notes || '', tnc: inv.tnc || inv.terms || '',
-    sym: inv.currency||'₹', grand: inv.amount||0,
-    companyLogo: STATE.settings.logo||''
-  };
-  sendEmailForClient(c.email||'', c.name||'Client', num, amt, due, svc, d);
+  const status = inv.status || '';
+
+  // ── Block sending reminder/overdue/followup-style emails to closed invoices ──
+  if (status === 'Cancelled') {
+    toast('⚠️ Cannot email a Cancelled invoice.', 'warning');
+    return;
+  }
+  if (status === 'Draft') {
+    toast('⚠️ Cannot email a Draft — please finalise the invoice first.', 'warning');
+    return;
+  }
+
+  // ── Pick the correct email type based on invoice status ──────────
+  // Paid   → receipt (payment confirmation)
+  // Overdue → overdue notice
+  // Partial → receipt (partial payment received)
+  // Pending / Estimate → invoice / estimate
+  let emailType = 'invoice';
+  if (status === 'Paid')     emailType = 'receipt';
+  else if (status === 'Partial')  emailType = 'receipt';
+  else if (status === 'Overdue')  emailType = 'overdue';
+  else if (status === 'Estimate') emailType = 'estimate';
+  else                            emailType = 'invoice';  // Pending
+
+  const c     = STATE.clients.find(x => String(x.id) === String(inv.client)) || {};
+  const email = c.email || '';
+  if (!email) { toast('⚠️ No email address on file for this client', 'warning'); return; }
+
+  const ec    = STATE.settings.email_cfg || {};
+  if (!ec.smtp_host || !ec.smtp_user) {
+    // No SMTP — fall back to mailto with a sensible body
+    const num  = inv.num || inv.invoice_number || '';
+    const amt  = fmt_money(inv.amount || inv.grand_total || 0, inv.currency || '₹');
+    const due  = inv.due || inv.due_date || '';
+    const subj = encodeURIComponent(`Invoice #${num} from ${STATE.settings.company || 'OPTMS Tech'}`);
+    const body = encodeURIComponent(`Dear ${c.name || 'Client'},\n\nInvoice #${num} — ${amt}\nDue: ${due}\n\nThank you,\n${STATE.settings.company || ''}`);
+    window.open(`mailto:${email}?subject=${subj}&body=${body}`, '_blank');
+    toast('📧 Email client opened. Configure SMTP in Email Setup for direct sending.', 'info');
+    return;
+  }
+
+  // ── Send via server (let email.php resolve template + portal link) ──
+  const invId = inv.id || inv._dbId || '';
+  toast(`📧 Sending ${emailType} email to ${c.name || email}…`, 'info');
+  api('api/email.php', 'POST', {
+    action:     'send',
+    type:       emailType,
+    invoice_id: invId,
+    to:         email,
+    to_name:    c.name || 'Client',
+  }).then(r => {
+    if (r && r.success) {
+      toast(`✅ ${emailType.charAt(0).toUpperCase() + emailType.slice(1)} email sent to ${c.name || email}!`, 'success');
+    } else {
+      toast('❌ Send failed: ' + (r?.error || 'Unknown error'), 'error');
+    }
+  }).catch(e => toast('❌ Email error: ' + e.message, 'error'));
 }
 
+// sendEmailForClient — kept for legacy callers (new invoice form, modal)
+// Also now passes invoice_id + type so the backend uses the correct template
 async function sendEmailForClient(email, name, num, amount, due, service, d) {
   if (!email) { toast('⚠️ No email address for this client', 'warning'); return; }
-  const sc      = STATE.settings;
-  const ec      = sc.email_cfg || {};
-  const company = sc.company || '';
-  const phone   = sc.phone   || '';
-  const upi     = sc.upi     || '';
-  const bank    = (d && d.bank) || sc.defaultBank || '';
-  const invId   = d?.invId || d?.id || '';
-  const subjTpl = ec.email_subject || document.getElementById('em-subj')?.value || 'Invoice #{invoice_no} from {company_name}';
-  const bodyTpl = ec.email_body    || document.getElementById('em-body')?.value ||
-    'Dear {client_name},\n\nPlease find Invoice #{invoice_no} for {amount} due on {due_date}.\n\nService: {service}\n\nPay via UPI: {upi}\n{bank_details}\n\nThank you!\n{company_name}\n{company_phone}';
-  const subj = subjTpl
-    .replace(/{invoice_no}/g, num).replace(/{amount}/g, amount)
-    .replace(/{client_name}/g, name).replace(/{company_name}/g, company)
-    .replace(/{due_date}/g, due).replace(/{service}/g, service);
-  const body = bodyTpl
-    .replace(/{invoice_no}/g, num).replace(/{amount}/g, amount)
-    .replace(/{client_name}/g, name).replace(/{company_name}/g, company)
-    .replace(/{due_date}/g, due).replace(/{service}/g, service)
-    .replace(/{upi}/g, upi).replace(/{bank_details}/g, bank)
-    .replace(/{company_phone}/g, phone);
-  // If SMTP is configured — send directly via server
+  const sc    = STATE.settings;
+  const ec    = sc.email_cfg || {};
+  const invId = d?.invId || d?.id || d?.invoice_id || '';
+
+  // Derive type from status if available, default to invoice
+  const status   = d?.status || '';
+  let emailType  = 'invoice';
+  if      (status === 'Paid')     emailType = 'receipt';
+  else if (status === 'Partial')  emailType = 'receipt';
+  else if (status === 'Overdue')  emailType = 'overdue';
+  else if (status === 'Estimate') emailType = 'estimate';
+
+  // If SMTP configured — let the server resolve template + portal link
   if (ec.smtp_host && ec.smtp_user) {
     toast('📧 Sending email to ' + name + '…', 'info');
     try {
-      const r = await api('api/email.php', 'POST', { action:'send', to:email, to_name:name, subject:subj, body, invoice_id:invId });
-      if (r.success) { toast('✅ Email sent to ' + name + '!', 'success'); }
-      else {
+      const r = await api('api/email.php', 'POST', {
+        action:     'send',
+        type:       emailType,
+        invoice_id: invId,
+        to:         email,
+        to_name:    name,
+      });
+      if (r.success) {
+        toast('✅ Email sent to ' + name + '!', 'success');
+      } else {
         toast('⚠️ SMTP failed — opening email client instead', 'warning');
-        window.open(`mailto:${email}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`, '_blank');
+        const subj = encodeURIComponent(`Invoice #${num} from ${sc.company || 'OPTMS Tech'}`);
+        const body = encodeURIComponent(`Dear ${name},\n\nInvoice #${num} — ${amount}\nDue: ${due}\n\nThank you,\n${sc.company || ''}`);
+        window.open(`mailto:${email}?subject=${subj}&body=${body}`, '_blank');
       }
     } catch(e) { toast('❌ Email error: ' + e.message, 'error'); }
   } else {
-    // No SMTP — fallback to mailto
-    window.open(`mailto:${email}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`, '_blank');
+    // No SMTP — mailto fallback
+    const subj = encodeURIComponent(`Invoice #${num} from ${sc.company || 'OPTMS Tech'} – ${amount}`);
+    const body = encodeURIComponent(`Dear ${name},\n\nInvoice #${num} — ${amount}\nDue: ${due}\nService: ${service}\n\nPay via UPI: ${sc.upi||''}\n\nThank you,\n${sc.company||''}\n${sc.phone||''}`);
+    window.open(`mailto:${email}?subject=${subj}&body=${body}`, '_blank');
     toast('📧 Email client opened. Configure SMTP in Email Setup for direct sending.', 'info');
   }
 }
@@ -6811,7 +7002,13 @@ function confirmDelete() {
 
       const badge = document.getElementById('badge-invoices');
       if (badge) badge.textContent = STATE.invoices.length;
-      toast('🗑️ Invoice ' + (inv.num || inv.invoice_number || '') + ' deleted', 'info');
+      const _delNum = inv.num || inv.invoice_number || '';
+      if (inv.status === 'Estimate') {
+        logActivity('estimate_deleted', `Estimate deleted: ${_delNum}`, inv.client_name || '', mid);
+      } else {
+        logActivity('invoice_deleted', `Invoice deleted: ${_delNum}`, inv.client_name || '', mid);
+      }
+      toast('🗑️ Invoice ' + _delNum + ' deleted', 'info');
       renderInvoicesTable(); renderDashRecent(); renderDonutChart(); updateDashStats(); renderPayments();
     })
     .catch(e => toast('❌ Delete failed: ' + e.message, 'error'));
@@ -6829,6 +7026,7 @@ async function changeInvoiceStatus(id, newStatus) {
     await api('api/invoices.php?id=' + parseInt(id), 'PATCH', { status: newStatus });
     inv.status = newStatus;
     STATE.filteredInvoices = [...STATE.invoices];
+    logActivity('status_changed', `Status → ${newStatus}: ${inv.num||inv.invoice_number}`, inv.client_name||'', id);
     renderInvoicesTable(); renderDonutChart(); renderDashRecent(); updateDashStats();
     toast(`${label}: ${inv.num||inv.invoice_number}`, 'success');
   } catch(e) { toast('❌ Failed: ' + e.message, 'error'); }
@@ -6893,6 +7091,7 @@ async function convertEstimateToInvoice(id) {
     STATE.invoices = Array.isArray(r.data) ? r.data.map(normalizeInvoice) : [];
     STATE.filteredInvoices = [...STATE.invoices];
     renderInvoicesTable(); renderDonutChart(); renderDashRecent(); updateDashStats();
+    logActivity('estimate_converted', `Estimate converted: ${oldNum} → ${newNum}`, inv.client_name || inv.clientName || '', dbId);
     toast(`✅ Estimate converted to Invoice ${newNum}!`, 'success');
 
     // Auto-send invoice created WhatsApp
@@ -6986,11 +7185,23 @@ function onStatusChange(newStatus) {
 function renderClients() {
   const grid = document.getElementById('clientsGrid');
   if (!grid) return;
-  grid.innerHTML = STATE.clients.map(c => {
+  const showInactive = document.getElementById('show-inactive-toggle')?.checked || false;
+  const inactiveCount = STATE.clients.filter(c => parseInt(c.active) === 0 || c.status === 'inactive').length;
+  // Update inactive badge
+  const badge = document.getElementById('inactive-count-badge');
+  if (badge) { badge.textContent = inactiveCount; badge.style.display = inactiveCount ? 'inline-block' : 'none'; }
+  const visibleClients = showInactive ? STATE.clients : STATE.clients.filter(c => parseInt(c.active) !== 0 && c.status !== 'inactive');
+  if (!visibleClients.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">${
+      inactiveCount && !showInactive ? `All clients are inactive. <span onclick="document.getElementById('show-inactive-toggle').checked=true;renderClients()" style="color:var(--teal);cursor:pointer;text-decoration:underline">Show inactive</span>` : 'No clients yet'
+    }</div>`;
+    return;
+  }
+  grid.innerHTML = visibleClients.map(c => {
     const initials = getInitials(c.name);
     const rev = STATE.invoices.filter(i=>i.client===c.id && i.status==='Paid').reduce((s,i)=>s+i.amount,0);
     const cnt = STATE.invoices.filter(i=>i.client===c.id).length;
-    const isInactive = c.active === 0 || c.active === '0' || c.status === 'inactive';
+    const isInactive = parseInt(c.active) === 0 || c.status === 'inactive';
 
     const cardStyle = isInactive
       ? `background:#FFF8E1;border:2px solid #F9A825;box-shadow:0 0 0 1px #F9A82555;opacity:.85;`
@@ -7003,8 +7214,8 @@ function renderClients() {
       <div style="position:absolute;top:0;left:0;right:0;height:4px;background:${isInactive?'#F9A825':c.color}"></div>
       ${isInactive ? `<div style="position:absolute;top:8px;right:8px;background:#FFF3CD;border:1.5px solid #F9A825;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700;color:#856404;z-index:2"><i class="fas fa-pause-circle"></i> Inactive</div>` : ''}
       <div class="cc-head">
-        <div class="cc-big-avatar" style="background:${isInactive?'#F9A825':c.color};${isInactive?'opacity:.7':''}">
-          ${c.image ? `<img src="${c.image}" alt="${c.name}">` : initials}
+        <div class="cc-big-avatar ${isValidImg(c.image)?'has-logo':''}" style="background:${isInactive?'#9E9E9E':c.color};${isInactive?'opacity:.7':''}">
+          ${isValidImg(c.image) ? `<img src="${c.image}" alt="${c.name}" onerror="this.style.display='none'">` : initials}
         </div>
         <div style="flex:1;min-width:0">
           <div class="cc-org">${c.name}${inactiveBadge}</div>
@@ -7034,8 +7245,12 @@ function renderClients() {
 
 function filterClients(val) {
   const v = val.toLowerCase();
+  const showInactive = document.getElementById('show-inactive-toggle')?.checked || false;
   document.querySelectorAll('.client-card').forEach(card => {
-    card.style.display = card.textContent.toLowerCase().includes(v) ? '' : 'none';
+    const matchesText = card.textContent.toLowerCase().includes(v);
+    const isInactiveCard = card.querySelector('[title="Set Inactive"]') === null && card.querySelector('[title="Re-activate client"]') !== null;
+    const hidden = !matchesText || (!showInactive && isInactiveCard);
+    card.style.display = hidden ? 'none' : '';
   });
 }
 
@@ -7053,6 +7268,121 @@ function openAddClientModal() {
   openModal('modal-addclient');
 }
 
+// ── Client Logo Helpers ──────────────────────────────────────────
+let _ncLogoBase64 = ''; // stores base64 or URL of logo
+
+function handleClientLogoUpload(input) {
+  const file = input.files[0]; if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('⚠️ Image must be under 5MB', 'warning'); return; }
+
+  // --- Button loading state ---
+  const btn  = document.getElementById('nc-logo-upload-btn');
+  const icon = document.getElementById('nc-logo-upload-icon');
+  const text = document.getElementById('nc-logo-upload-text');
+  const bar  = document.getElementById('nc-logo-progress-bar');
+  if (btn)  btn.style.background  = '#00695C';
+  if (icon) icon.className = 'fas fa-spinner fa-spin';
+  if (text) text.textContent = 'Processing…';
+  if (bar)  { bar.style.width = '0%'; bar.style.transition = 'none'; }
+
+  // Animate progress bar: fake progress to 85% while processing
+  let pct = 0;
+  const tick = setInterval(() => {
+    pct = pct < 85 ? pct + (85 - pct) * 0.08 : pct;
+    if (bar) bar.style.width = pct + '%';
+  }, 50);
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 200;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } }
+      else        { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      let quality = 0.85, dataUrl;
+      do {
+        dataUrl = canvas.toDataURL('image/jpeg', quality);
+        quality -= 0.1;
+      } while (dataUrl.length > 50 * 1024 * 1.37 && quality > 0.1);
+
+      // Complete progress bar to 100%
+      clearInterval(tick);
+      if (bar) { bar.style.transition = 'width .2s ease'; bar.style.width = '100%'; }
+
+      setTimeout(() => {
+        _ncLogoBase64 = dataUrl;
+        _applyClientLogoPreview(_ncLogoBase64);
+        // Reset button
+        if (btn)  btn.style.background  = 'var(--teal)';
+        if (icon) icon.className = 'fas fa-check';
+        if (text) text.textContent = 'Uploaded!';
+        if (bar)  { bar.style.transition = 'width .4s ease'; bar.style.width = '0%'; }
+        setTimeout(() => {
+          if (icon) icon.className = 'fas fa-upload';
+          if (text) text.textContent = 'Upload';
+        }, 2000);
+        toast('✅ Logo ready (' + Math.round(dataUrl.length / 1024) + ' KB)', 'success');
+      }, 250);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function previewClientLogoUrl(url) {
+  if (!url) { _ncLogoBase64 = ''; _applyClientLogoPreview(''); return; }
+  _ncLogoBase64 = url;
+  _applyClientLogoPreview(url);
+}
+
+function _applyClientLogoPreview(src) {
+  const img      = document.getElementById('nc-logo-img');
+  const initials = document.getElementById('nc-logo-initials');
+  const preview  = document.getElementById('nc-logo-preview');
+  if (src) {
+    img.src = src; img.style.display = 'block';
+    if (initials) initials.style.display = 'none';
+    if (preview) {
+      preview.style.border      = '3px solid #00897B';
+      preview.style.boxShadow   = '0 0 0 3px rgba(0,137,123,.25), 0 2px 8px rgba(0,137,123,.35)';
+    }
+  } else {
+    img.src = ''; img.style.display = 'none';
+    if (initials) initials.style.display = '';
+    if (preview) {
+      preview.style.border    = '3px solid var(--border)';
+      preview.style.boxShadow = 'none';
+    }
+  }
+}
+
+// ── Image validity guard — prevents ERR_INVALID_URL from partial/empty base64 ──
+function isValidImg(src) {
+  if (!src || typeof src !== 'string') return false;
+  const s = src.trim();
+  return s.startsWith('data:image') || s.startsWith('http://') || s.startsWith('https://');
+}
+
+function updateClientLogoInitials() {
+  const name  = document.getElementById('nc-name')?.value || '';
+  const color = document.getElementById('nc-color')?.value || '#00897B';
+  const preview = document.getElementById('nc-logo-preview');
+  const initEl  = document.getElementById('nc-logo-initials');
+  if (preview) preview.style.background = color;
+  if (initEl)  initEl.textContent = getInitials(name) || '?';
+}
+
+function clearClientLogo() {
+  _ncLogoBase64 = '';
+  _applyClientLogoPreview('');
+  const fi = document.getElementById('nc-logo-file'); if (fi) fi.value = '';
+  const ui = document.getElementById('nc-logo-url');  if (ui) ui.value = '';
+}
+
 async function saveNewClient() {
   const name = (document.getElementById('nc-name')?.value || '').trim();
   if (!name) { toast('⚠️ Enter name', 'warning'); return; }
@@ -7064,19 +7394,22 @@ async function saveNewClient() {
     gst:    document.getElementById('nc-gst')?.value    || '',
     color:  document.getElementById('nc-color')?.value  || '#00897B',
     addr:   document.getElementById('nc-addr')?.value   || '',
-    landmark: document.getElementById('nc-landmark')?.value || ''
+    landmark: document.getElementById('nc-landmark')?.value || '',
+    logo:   _ncLogoBase64 || ''
   };
   try {
     if (STATE._editCid) {
       const c = STATE.clients.find(x => x.id === STATE._editCid);
       await api('api/clients.php?id=' + (parseInt(c?.id) || 0), 'PUT', payload);
       toast('✅ Client updated!', 'success');
+      logActivity('client_edited', `Client edited: ${name}`, payload.email || '');
       STATE._editCid = null;
       const hdr = document.querySelector('#modal-addclient .modal-header span');
       if (hdr) hdr.textContent = 'Add New Client';
     } else {
       await api('api/clients.php', 'POST', payload);
       toast('✅ "' + name + '" added!', 'success');
+      logActivity('client_added', `Client added: ${name}`, payload.email || '');
     }
     const r = await api('api/clients.php');
     STATE.clients = Array.isArray(r.data) ? r.data : STATE.clients;
@@ -7085,6 +7418,9 @@ async function saveNewClient() {
     ['nc-name','nc-person','nc-wa','nc-email','nc-gst','nc-addr','nc-landmark'].forEach(id => {
       const e = document.getElementById(id); if (e) e.value = '';
     });
+    clearClientLogo();
+    const col = document.getElementById('nc-color'); if (col) col.value = '#00897B';
+    updateClientLogoInitials();
   } catch(e) { toast('❌ ' + e.message, 'error'); }
 }
 
@@ -7095,6 +7431,15 @@ function editClient(id) {
     const f=document.getElementById(fid); if(f) f.value=c[{'nc-name':'name','nc-person':'person','nc-wa':'wa','nc-email':'email','nc-gst':'gst','nc-addr':'addr','nc-landmark':'landmark'}[fid]]||'';
   });
   const col=document.getElementById('nc-color'); if(col) col.value=c.color||'#00897B';
+  // Load existing logo if any
+  clearClientLogo();
+  if (c.image || c.logo) {
+    _ncLogoBase64 = c.image || c.logo;
+    _applyClientLogoPreview(_ncLogoBase64);
+    const ui = document.getElementById('nc-logo-url');
+    if (ui && (_ncLogoBase64.startsWith('http'))) ui.value = _ncLogoBase64;
+  }
+  updateClientLogoInitials();
   const hdr=document.querySelector('#modal-addclient .modal-header span'); if(hdr) hdr.textContent='Edit Client';
   const btn=document.querySelector('#modal-addclient .modal-footer .btn-primary'); if(btn) btn.textContent='Update Client';
   openModal('modal-addclient');
@@ -7111,6 +7456,7 @@ async function deleteClient(id) {
   try {
     const dbId = parseInt(c._dbId || c.id) || 0;
     await api('api/clients.php?id=' + dbId, 'DELETE');
+    logActivity('client_deleted', `Client deleted: ${c.name}`, c.email || '');
     toast('🗑 Client "' + c.name + '" deleted', 'info');
     const r = await api('api/clients.php');
     STATE.clients = Array.isArray(r.data) ? r.data : STATE.clients.filter(x => String(x.id) !== String(id));
@@ -7121,25 +7467,48 @@ async function deleteClient(id) {
 async function toggleClientActive(id, makeActive) {
   const c = STATE.clients.find(x => String(x.id) === String(id));
   if (!c) return;
+
+  const result = await Swal.fire({
+    title: makeActive ? 'Activate Client?' : 'Set Client Inactive?',
+    html: `<div style="font-size:14px;color:#555">
+             ${makeActive
+               ? `<i class="fas fa-user-check" style="color:#00897B;font-size:28px;display:block;margin-bottom:10px"></i>
+                  <strong>${c.name}</strong> will be marked as <span style="color:#00897B;font-weight:700">Active</span> and visible in invoices.`
+               : `<i class="fas fa-user-slash" style="color:#F9A825;font-size:28px;display:block;margin-bottom:10px"></i>
+                  <strong>${c.name}</strong> will be marked as <span style="color:#F9A825;font-weight:700">Inactive</span> and hidden from invoice selection.`
+             }
+           </div>`,
+    icon: makeActive ? 'question' : 'warning',
+    showCancelButton: true,
+    confirmButtonText: makeActive ? '✅ Yes, Activate' : '⏸ Yes, Set Inactive',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: makeActive ? '#00897B' : '#F9A825',
+    cancelButtonColor: '#aaa',
+    reverseButtons: true,
+    customClass: { popup: 'swal-compact' }
+  });
+  if (!result.isConfirmed) return;
+
   try {
     const dbId = parseInt(c._dbId || c.id) || 0;
-    await api('api/clients.php?id=' + dbId, 'PUT', {
+    const res = await api('api/clients.php?id=' + dbId, 'PUT', {
       name: c.name, person: c.person||'', email: c.email||'', wa: c.wa||'',
       gst: c.gst||'', color: c.color||'#00897B', addr: c.addr||'',
       landmark: c.landmark||'', active: makeActive ? 1 : 0
     });
-    // Update local state immediately for instant UI feedback
-    const idx = STATE.clients.findIndex(x => String(x.id) === String(id));
-    if (idx >= 0) STATE.clients[idx].active = makeActive ? 1 : 0;
-    renderClients();
-    toast(makeActive ? '✅ Client activated' : '⏸ Client set to inactive', makeActive ? 'success' : 'info');
-    updateClientDropdown();
+    if (!res || res.success === false) throw new Error(res?.error || 'API returned failure');
+    const r = await api('api/clients.php');
+    STATE.clients = Array.isArray(r.data) ? r.data : STATE.clients;
+    renderClients(); updateClientDropdown(); populateWAClientDropdown();
+    logActivity(makeActive ? 'client_activated' : 'client_deactivated',
+      `Client ${makeActive ? 'activated' : 'deactivated'}: ${c.name}`, c.email || '');
+    Swal.fire({
+      toast: true, position: 'top-end', timer: 2500, timerProgressBar: true,
+      showConfirmButton: false, icon: makeActive ? 'success' : 'info',
+      title: makeActive ? `✅ ${c.name} activated` : `⏸ ${c.name} set to inactive`
+    });
   } catch(e) {
-    // Fallback: update local state only if API not yet supporting active field
-    const idx = STATE.clients.findIndex(x => String(x.id) === String(id));
-    if (idx >= 0) STATE.clients[idx].active = makeActive ? 1 : 0;
-    renderClients();
-    toast(makeActive ? '✅ Client activated (local)' : '⏸ Client set to inactive (local)', makeActive ? 'success' : 'info');
+    Swal.fire({ icon: 'error', title: 'Failed', text: e.message, confirmButtonColor: '#e53935' });
   }
 }
 
@@ -7491,7 +7860,7 @@ function filterRptTable(v){
 }
 function exportRptCSV(){
   const h=['Invoice','Client','Service','Date','Amount','Status'];
-  const r=RPT.list.map(i=>{const c=STATE.clients.find(x=>x.id===i.client)||{name:'Unknown'};return[i.num,c.name,i.service,i.issued,i.amount,i.status].map(v=>`"${v}"`).join(',');});
+  const r=RPT.list.map(i=>{const c=STATE.clients.find(x=>x.id===i.client)||{name:i.client_name||i.clientName||'One-Time'};return[i.num,c.name,i.service,i.issued,i.amount,i.status].map(v=>`"${v}"`).join(',');});
   downloadFile('report.csv',[h.join(','),...r].join('\n'),'text/csv');
   toast('✅ Exported!','success');
 }
@@ -7515,7 +7884,7 @@ function _renderRptTable(){
   const tbody=document.getElementById('rptTbody');if(!tbody)return;
   const s=(RPT.page-1)*RPT.per,e=s+RPT.per,pg=RPT.list.slice(s,e);
   tbody.innerHTML=pg.map(inv=>{
-    const c=STATE.clients.find(x=>x.id===inv.client)||{name:'Unknown'};
+    const c=STATE.clients.find(x=>x.id===inv.client)||{name:inv.client_name||inv.clientName||'One-Time'};
     const df=inv.issued?new Date(inv.issued).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):inv.issued;
     return `<tr><td><code style="font-family:var(--mono);color:var(--teal);font-weight:700">${inv.num}</code></td><td><strong>${c.name}</strong></td><td>${inv.service}</td><td style="font-size:12px">${df}</td><td><strong style="font-family:var(--mono)">${fmt_money(inv.amount)}</strong></td><td><span class="badge badge-${inv.status.toLowerCase()}">${inv.status}</span></td></tr>`;
   }).join('')||'<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted)">No transactions in this period</td></tr>';
@@ -8496,7 +8865,7 @@ function globalSearchFn(val) {
     const c = STATE.clients.find(x=>x.id===inv.client);
     return `<div class="sr-item" onclick="openPreviewModal('${inv.id}');document.getElementById('globalSearch').value='';document.getElementById('searchResults').classList.remove('open')">
       <i class="fas fa-file-invoice" style="color:var(--teal)"></i>
-      <div><strong>${inv.num}</strong> – ${c?.name||'Unknown'}<br><small style="color:var(--muted)">${inv.service} · ${fmt_money(inv.amount)} · ${inv.status}</small></div>
+      <div><strong>${inv.num}</strong> – ${c?.name||inv.client_name||inv.clientName||'One-Time'}<br><small style="color:var(--muted)">${inv.service} · ${fmt_money(inv.amount)} · ${inv.status}</small></div>
     </div>`;
   }).join('');
   el.classList.add('open');
@@ -8625,7 +8994,17 @@ function syncServiceText(val) {
 
 function updateClientDropdown() {
   const s=document.getElementById('f-client-select'); if(!s) return;
-  s.innerHTML='<option value="">-- Quick Select Client --</option>'+STATE.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  const active  = STATE.clients.filter(c => parseInt(c.active) !== 0 && c.status !== 'inactive');
+  const inactive = STATE.clients.filter(c => parseInt(c.active) === 0 || c.status === 'inactive');
+  let html = '<option value="">-- Quick Select Client --</option>'
+    + '<option value="__onetime__" style="color:#E65100;font-weight:600">👤 One-Time / Walk-in Client (not saved)</option>'
+    + active.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if (inactive.length) {
+    html += `<optgroup label="─── Inactive Clients ───" style="color:#999">`;
+    html += inactive.map(c=>`<option value="${c.id}" style="color:#aaa">${c.name} (inactive)</option>`).join('');
+    html += '</optgroup>';
+  }
+  s.innerHTML = html;
 }
 
 function editInvoice(id) {
@@ -8918,6 +9297,9 @@ function normalizeInvoice(inv) {
     try { inv.items = JSON.parse(inv.items); } catch(e) { inv.items = []; }
   }
   if (!Array.isArray(inv.items)) inv.items = [];
+  // Unify client name aliases — always expose as both clientName and client_name
+  if (!inv.clientName && inv.client_name) inv.clientName = inv.client_name;
+  if (!inv.client_name && inv.clientName) inv.client_name = inv.clientName;
   // Unify bank field aliases
   if (!inv.bank && inv.bank_details) inv.bank = inv.bank_details;
   // Unify tnc field aliases
@@ -11246,6 +11628,8 @@ let _actPage     = 0;
 const _ACT_PER   = 30;
 
 function renderActivityLog() {
+  const el = document.getElementById('activity-timeline');
+  if (el) el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-spinner fa-spin" style="font-size:24px;opacity:.4"></i><div style="margin-top:10px;font-size:13px">Loading activity…</div></div>`;
   api('api/activity.php?limit=200').then(r=>{
     if(r&&r.data) STATE.activity=r.data.map(x=>({
       id:x.id, type:x.type, label:x.label, detail:x.detail, invoiceId:x.invoice_id, ts:x.created_at
@@ -11255,6 +11639,23 @@ function renderActivityLog() {
   }).catch(()=>{
     _actFiltered=[...STATE.activity]; _actPage=0;
     _renderActivityStats(); _renderActivityTimeline(true);
+  });
+}
+
+function refreshActivityLog() {
+  const btn = document.getElementById('activity-refresh-btn');
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing…'; btn.disabled = true; }
+  api('api/activity.php?limit=200').then(r=>{
+    if(r&&r.data) STATE.activity=r.data.map(x=>({
+      id:x.id, type:x.type, label:x.label, detail:x.detail, invoiceId:x.invoice_id, ts:x.created_at
+    }));
+    // Re-apply current filters
+    filterActivity(document.getElementById('activity-search')?.value||'');
+    _renderActivityStats();
+    toast('🔄 Activity log refreshed', 'info');
+  }).catch(e=>toast('❌ Refresh failed: '+e.message,'error'))
+  .finally(()=>{
+    if (btn) { btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh'; btn.disabled = false; }
   });
 }
 
@@ -11298,14 +11699,22 @@ function _renderActivityStats() {
 
 function _actTypeInfo(type) {
   const map = {
-    invoice_created:  {icon:'📄', label:'Created',   col:'#1976D2', bg:'#e3f2fd'},
-    invoice_edited:   {icon:'✏️', label:'Edited',    col:'#7B1FA2', bg:'#f3e5f5'},
-    invoice_deleted:  {icon:'🗑️', label:'Deleted',  col:'#C62828', bg:'#ffebee'},
-    payment_recorded: {icon:'💰', label:'Payment',   col:'#388E3C', bg:'#e8f5e9'},
-    status_changed:   {icon:'🔄', label:'Status',    col:'#E65100', bg:'#fbe9e7'},
-    client_added:     {icon:'👤', label:'Client',    col:'#00897B', bg:'#e0f2f1'},
-    reminder_sent:    {icon:'🔔', label:'Reminder',  col:'#F9A825', bg:'#fff8e1'},
-    expense_added:    {icon:'💸', label:'Expense',   col:'#455A64', bg:'#eceff1'},
+    invoice_created:    {icon:'📄', label:'Created',    col:'#1976D2', bg:'#e3f2fd'},
+    invoice_edited:     {icon:'✏️', label:'Edited',     col:'#7B1FA2', bg:'#f3e5f5'},
+    invoice_deleted:    {icon:'🗑️', label:'Deleted',   col:'#C62828', bg:'#ffebee'},
+    estimate_created:   {icon:'📋', label:'Estimate',   col:'#3949AB', bg:'#e8eaf6'},
+    estimate_edited:    {icon:'📝', label:'Est.Edited', col:'#5E35B1', bg:'#ede7f6'},
+    estimate_converted: {icon:'🔁', label:'Converted',  col:'#00838F', bg:'#e0f7fa'},
+    estimate_deleted:   {icon:'🗑️', label:'Est.Del',   col:'#B71C1C', bg:'#ffebee'},
+    payment_recorded:   {icon:'💰', label:'Payment',    col:'#388E3C', bg:'#e8f5e9'},
+    status_changed:     {icon:'🔄', label:'Status',     col:'#E65100', bg:'#fbe9e7'},
+    client_added:       {icon:'👤', label:'Client',     col:'#00897B', bg:'#e0f2f1'},
+    client_edited:      {icon:'✏️', label:'Cl.Edited',  col:'#0288D1', bg:'#e1f5fe'},
+    client_deleted:     {icon:'🗑️', label:'Cl.Deleted', col:'#B71C1C', bg:'#ffebee'},
+    client_activated:   {icon:'✅', label:'Activated',  col:'#2E7D32', bg:'#E8F5E9'},
+    client_deactivated: {icon:'⏸️', label:'Inactive',   col:'#F9A825', bg:'#FFF8E1'},
+    reminder_sent:      {icon:'🔔', label:'Reminder',   col:'#F9A825', bg:'#fff8e1'},
+    expense_added:      {icon:'💸', label:'Expense',    col:'#455A64', bg:'#eceff1'},
   };
   return map[type] || {icon:'•', label:type, col:'#9E9E9E', bg:'#f5f5f5'};
 }
