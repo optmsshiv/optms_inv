@@ -467,39 +467,256 @@ function replacePlaceholders(string $tpl, array $vars): string {
 // ── Styled HTML email wrapper (type-aware accent colour) ─────────
 function buildEmailHTML(string $body, string $type = 'invoice'): string {
     $accents = [
-        'invoice'  => ['#00897B', '📄 Invoice from OPTMS Tech'],
-        'estimate' => ['#1976D2', '📋 Estimate from OPTMS Tech'],
-        'receipt'  => ['#388E3C', '✅ Payment Receipt — OPTMS Tech'],
-        'reminder' => ['#F9A825', '🔔 Payment Reminder — OPTMS Tech'],
-        'overdue'  => ['#E53935', '⚠️ Invoice Overdue — OPTMS Tech'],
-        'followup' => ['#7B1FA2', '📞 Follow-up — OPTMS Tech'],
-        'test'     => ['#00897B', '🧪 SMTP Test — OPTMS Tech'],
+        'invoice'  => ['#1e2a5e', '#f59e0b', 'Invoice',         'Pending'],
+        'estimate' => ['#1976D2', '#60a5fa', 'Estimate',        'Pending'],
+        'receipt'  => ['#1e5e2a', '#34d399', 'Payment Receipt', 'Paid'],
+        'reminder' => ['#7c4700', '#f9a825', 'Payment Reminder','Due Soon'],
+        'overdue'  => ['#5e1e1e', '#ef4444', 'Invoice Overdue', 'Overdue'],
+        'followup' => ['#3b1e5e', '#a78bfa', 'Follow-up',       'Outstanding'],
+        'test'     => ['#1e2a5e', '#f59e0b', 'SMTP Test',       'Test'],
     ];
-    [$color, $heading] = $accents[$type] ?? $accents['invoice'];
-    $b = nl2br(htmlspecialchars($body, ENT_QUOTES, 'UTF-8'));
-    // Make portal link clickable
-    $b = preg_replace(
-        '/(https?:\/\/[^\s<]+)/i',
-        '<a href="$1" style="color:'.$color.';word-break:break-all">$1</a>',
-        $b
-    );
+    [$headerBg, $accentColor, $typeLabel, $defaultBadge] = $accents[$type] ?? $accents['invoice'];
+
+    // ── Extract structured data from body text ────────────────────
+    // Patterns: "  Label      : value" or "Label: value"
+    $fields        = [];
+    $portalUrl     = '';
+    $greeting      = '';
+    $openingLine   = '';
+    $closingLines  = [];
+    $upiLine       = '';
+
+    $lines = explode("\n", $body);
+    $phase = 'header'; // header → fields → after_fields
+    $afterFields = false;
+
+    foreach ($lines as $line) {
+        $trimmed = trim($line);
+        if ($trimmed === '') continue;
+
+        // Portal URL detection
+        if (preg_match('/https?:\/\/\S+/i', $trimmed, $m)) {
+            $portalUrl = $m[0];
+            continue;
+        }
+
+        // UPI line
+        if (stripos($trimmed, 'upi') !== false && strpos($trimmed, ':') !== false) {
+            $parts = explode(':', $trimmed, 2);
+            $upiLine = trim($parts[1] ?? '');
+            continue;
+        }
+
+        // Structured field: "  Invoice No : #123" or "Amount Due: ₹12,500"
+        if (preg_match('/^\s*([\w\s#]+?)\s*:\s*(.+)$/', $trimmed, $m)) {
+            $label = trim($m[1]);
+            $value = trim($m[2]);
+            // Only pick up known invoice-style labels
+            $knownLabels = ['Invoice No','Estimate No','Service','Amount Due','Amount Paid','Balance Due',
+                            'Issue Date','Due Date','Valid Until','Total','Status','Days Overdue',
+                            'Settlement Discount','Payment Method'];
+            foreach ($knownLabels as $kl) {
+                if (stripos($label, $kl) !== false) {
+                    $fields[$kl] = $value;
+                    $afterFields = false; // reset, we're in fields
+                    goto nextLine;
+                }
+            }
+        }
+
+        // Greeting line
+        if (!$greeting && preg_match('/^Dear\s/i', $trimmed)) {
+            $greeting = $trimmed;
+            continue;
+        }
+
+        // Opening line (first non-greeting, non-field sentence before fields appear)
+        if (!$openingLine && empty($fields) && !preg_match('/^Dear\s/i', $trimmed)) {
+            $openingLine = $trimmed;
+            continue;
+        }
+
+        // Closing lines (after fields section)
+        if (!empty($fields)) {
+            $closingLines[] = $trimmed;
+        }
+
+        nextLine:
+    }
+
+    // ── Determine invoice number / status for hero section ───────
+    $invoiceNo  = $fields['Invoice No'] ?? $fields['Estimate No'] ?? '';
+    $amountDue  = $fields['Amount Due'] ?? $fields['Total'] ?? $fields['Amount Paid'] ?? '';
+    $dueDate    = $fields['Due Date'] ?? $fields['Valid Until'] ?? '';
+
+    // Badge colour based on type
+    $badgeColors = [
+        'invoice'  => ['#fff7ed','#f59e0b','#92400e'],
+        'estimate' => ['#eff6ff','#3b82f6','#1e40af'],
+        'receipt'  => ['#f0fdf4','#22c55e','#166534'],
+        'reminder' => ['#fffbeb','#f59e0b','#92400e'],
+        'overdue'  => ['#fef2f2','#ef4444','#991b1b'],
+        'followup' => ['#faf5ff','#a855f7','#581c87'],
+        'test'     => ['#f0f9ff','#0ea5e9','#0c4a6e'],
+    ];
+    [$badgeBg, $badgeBorder, $badgeText] = $badgeColors[$type] ?? $badgeColors['invoice'];
+
+    // ── Build table rows HTML ─────────────────────────────────────
+    $tableRows = '';
+    $rowData = [];
+    $labelOrder = ['Service','Issue Date','Due Date','Valid Until','Amount Due','Total',
+                   'Amount Paid','Balance Due','Settlement Discount','Payment Method','Status'];
+    foreach ($labelOrder as $lbl) {
+        if (isset($fields[$lbl])) {
+            $rowData[$lbl] = $fields[$lbl];
+        }
+    }
+    // Also include any extra fields not in the order list
+    foreach ($fields as $lbl => $val) {
+        if (!isset($rowData[$lbl])) $rowData[$lbl] = $val;
+    }
+
+    $isLast = count($rowData);
+    $i = 0;
+    foreach ($rowData as $lbl => $val) {
+        $i++;
+        $isAmountRow = in_array($lbl, ['Amount Due','Total','Balance Due']);
+        $valStyle    = $isAmountRow
+            ? "font-size:15px;font-weight:700;color:{$accentColor}"
+            : 'font-size:14px;color:#374151';
+        $borderBottom = ($i < $isLast) ? '1px solid #f3f4f6' : 'none';
+        $tableRows .= <<<ROW
+        <tr>
+          <td style="padding:11px 0;font-size:13px;color:#6b7280;border-bottom:{$borderBottom};width:50%">{$lbl}</td>
+          <td style="padding:11px 0;{$valStyle};border-bottom:{$borderBottom};text-align:right">{$val}</td>
+        </tr>
+ROW;
+    }
+
+    // ── Closing text (contact info etc.) ─────────────────────────
+    $closingHtml = '';
+    foreach ($closingLines as $cl) {
+        $safe = htmlspecialchars($cl, ENT_QUOTES, 'UTF-8');
+        // linkify emails and phones
+        $safe = preg_replace('/[\w.\-]+@[\w.\-]+\.\w+/', '<a href="mailto:$0" style="color:'.$accentColor.';text-decoration:none">$0</a>', $safe);
+        $safe = preg_replace('/\+?\d[\d\s\-]{8,}/', '<a href="tel:$0" style="color:'.$accentColor.';text-decoration:none">$0</a>', $safe);
+        $closingHtml .= "<p style='margin:4px 0;font-size:13px;color:#6b7280'>{$safe}</p>";
+    }
+
+    // ── UPI block ─────────────────────────────────────────────────
+    $upiHtml = '';
+    if ($upiLine) {
+        $upiHtml = <<<UPI
+    <div style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;padding:12px 16px;margin:20px 0;text-align:center">
+      <p style="margin:0 0 4px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8">Pay via UPI</p>
+      <p style="margin:0;font-size:15px;font-weight:700;color:#1e293b;letter-spacing:.03em">{$upiLine}</p>
+    </div>
+UPI;
+    }
+
+    // ── CTA Button ───────────────────────────────────────────────
+    $ctaHtml = '';
+    if ($portalUrl) {
+        $safeUrl = htmlspecialchars($portalUrl, ENT_QUOTES, 'UTF-8');
+        $ctaHtml = <<<CTA
+    <div style="text-align:center;margin:28px 0 8px">
+      <a href="{$safeUrl}"
+         style="display:inline-block;background:{$headerBg};color:#fff;text-decoration:none;
+                font-size:15px;font-weight:600;padding:14px 36px;border-radius:8px;
+                letter-spacing:.02em">
+        View &amp; Download Invoice &rarr;
+      </a>
+      <p style="margin:10px 0 0;font-size:11px;color:#94a3b8">Single clean button — no raw URL shown</p>
+    </div>
+CTA;
+    }
+
+    // ── Safe greeting / opening ───────────────────────────────────
+    $safeGreeting = htmlspecialchars($greeting ?: '', ENT_QUOTES, 'UTF-8');
+    $safeOpening  = htmlspecialchars($openingLine ?: 'Please find your invoice below.', ENT_QUOTES, 'UTF-8');
+
+    // ── Invoice number hero ───────────────────────────────────────
+    $heroHtml = '';
+    if ($invoiceNo) {
+        $heroHtml = <<<HERO
+    <div style="text-align:center;padding:24px 0 0">
+      <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:{$accentColor}">
+        {$typeLabel}
+      </p>
+      <p style="margin:0 0 10px;font-size:22px;font-weight:800;color:#111827">#{$invoiceNo}</p>
+      <span style="display:inline-block;background:{$badgeBg};border:1px solid {$badgeBorder};
+                   color:{$badgeText};font-size:12px;font-weight:600;padding:4px 14px;border-radius:20px">
+        ⏳ {$defaultBadge}
+        {$dueDate ? " &middot; Due {$dueDate}" : ""}
+      </span>
+    </div>
+HERO;
+    }
+
     return <<<HTML
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<style>
-  body{font-family:Arial,sans-serif;background:#f5f5f5;padding:20px;margin:0}
-  .wrap{max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.10)}
-  .hdr{background:{$color};color:#fff;padding:24px 32px;font-size:18px;font-weight:700;line-height:1.3}
-  .bdy{padding:28px 32px;color:#333;font-size:15px;line-height:1.85}
-  .ftr{background:#f9f9f9;padding:14px 32px;font-size:12px;color:#999;border-top:1px solid #eee;text-align:center}
-  a{color:{$color}}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OPTMS Tech Invoice</title>
 </head>
-<body>
-  <div class="wrap">
-    <div class="hdr">{$heading}</div>
-    <div class="bdy">{$b}</div>
-    <div class="ftr">Sent via OPTMS Tech Invoice Manager &middot; <a href="https://optmstech.in">optmstech.in</a></div>
+<body style="margin:0;padding:0;background:#eef2f7;font-family:'Segoe UI',Arial,sans-serif">
+  <div style="max-width:520px;margin:32px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.10)">
+
+    <!-- ── Header ── -->
+    <div style="background:{$headerBg};padding:20px 28px;display:flex;align-items:center">
+      <div style="width:40px;height:40px;background:rgba(255,255,255,.18);border-radius:10px;
+                  display:inline-flex;align-items:center;justify-content:center;
+                  font-size:16px;font-weight:800;color:#fff;margin-right:12px;
+                  vertical-align:middle">OT</div>
+      <div style="display:inline-block;vertical-align:middle">
+        <p style="margin:0;font-size:15px;font-weight:700;color:#fff">OPTMS Tech</p>
+        <p style="margin:0;font-size:12px;color:rgba(255,255,255,.65)">Invoice Manager</p>
+      </div>
+      <div style="margin-left:auto">
+        <span style="background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-weight:600;
+                     padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.25)">
+          ✉ Email
+        </span>
+      </div>
+    </div>
+
+    <!-- ── Body ── -->
+    <div style="padding:28px 32px">
+
+      {$heroHtml}
+
+      <!-- Greeting -->
+      <p style="margin:20px 0 4px;font-size:15px;color:#111827;font-weight:500">{$safeGreeting}</p>
+      <p style="margin:0 0 20px;font-size:14px;color:#6b7280">{$safeOpening}</p>
+
+      <!-- Invoice details card -->
+      {$tableRows ? <<<CARD
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:6px 20px 2px;margin:0 0 4px">
+        <table style="width:100%;border-collapse:collapse">
+          {$tableRows}
+        </table>
+      </div>
+CARD : ''}
+
+      {$upiHtml}
+      {$ctaHtml}
+
+      <!-- Closing lines -->
+      {$closingHtml ? "<div style='margin-top:20px'>{$closingHtml}</div>" : ''}
+
+    </div>
+
+    <!-- ── Footer ── -->
+    <div style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:14px 32px;text-align:center">
+      <p style="margin:0;font-size:11px;color:#9ca3af">
+        Sent via <strong style="color:#374151">OPTMS Tech Invoice Manager</strong>
+        &middot;
+        <a href="https://optmstech.in" style="color:{$accentColor};text-decoration:none">optmstech.in</a>
+      </p>
+    </div>
+
   </div>
 </body>
 </html>
