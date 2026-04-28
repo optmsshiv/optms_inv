@@ -291,35 +291,45 @@ function buildEmailHTML(string $body, array $data, ?string $trackToken, string $
       <tr>
         <!-- receipt icon -->
         <td width='90' style='border-right:1px solid #c4e8e0;background:#f9fefd;text-align:center;padding:22px 8px;vertical-align:middle'>
-          <div style='width:62px;height:62px;border-radius:50%;background:{$tealLight};display:inline-block;text-align:center;line-height:62px;font-size:28px'>&#128196;</div>
+          <div style='width:62px;height:62px;border-radius:50%;background:{$tealLight};display:inline-table;text-align:center;line-height:62px'>
+            <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#0b3d35' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' style='display:inline-block;vertical-align:middle'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/><polyline points='10 9 9 9 8 9'/></svg>
+          </div>
         </td>
         <!-- invoice no -->
         <td style='border-right:1px solid #e5e7eb;text-align:center;padding:18px 8px;vertical-align:middle'>
-          <div style='width:36px;height:36px;border-radius:50%;background:{$tealLight};display:inline-block;text-align:center;line-height:36px;font-size:14px;margin-bottom:6px'>#</div>
+          <div style='width:36px;height:36px;border-radius:50%;background:{$tealLight};display:inline-block;text-align:center;line-height:36px;font-size:14px;font-weight:800;color:#0b3d35;margin-bottom:6px'>#</div>
           <div style='font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px'>{$invLabel}</div>
           <div style='font-size:13px;font-weight:700;color:#111827;margin-top:3px'>{$invNum}</div>
         </td>
         <!-- amount -->
         <td style='border-right:1px solid #e5e7eb;text-align:center;padding:18px 8px;vertical-align:middle'>
-          <div style='width:36px;height:36px;border-radius:50%;background:{$tealLight};display:inline-block;text-align:center;line-height:36px;font-size:14px;margin-bottom:6px'>&#8377;</div>
+          <div style='width:36px;height:36px;border-radius:50%;background:{$tealLight};display:inline-table;text-align:center;line-height:36px;margin-bottom:6px'>
+            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#0b3d35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='display:inline-block;vertical-align:middle'><line x1='12' y1='1' x2='12' y2='23'/><path d='M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'/></svg>
+          </div>
           <div style='font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px'>Amount Due</div>
           <div style='font-size:13px;font-weight:700;color:#111827;margin-top:3px'>{$amount}</div>
         </td>
         <!-- issue date -->
         <td style='border-right:1px solid #e5e7eb;text-align:center;padding:18px 8px;vertical-align:middle'>
-          <div style='width:36px;height:36px;border-radius:50%;background:{$tealLight};display:inline-block;text-align:center;line-height:36px;font-size:14px;margin-bottom:6px'>&#128197;</div>
+          <div style='width:36px;height:36px;border-radius:50%;background:{$tealLight};display:inline-table;text-align:center;line-height:36px;margin-bottom:6px'>
+            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#0b3d35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='display:inline-block;vertical-align:middle'><rect x='3' y='4' width='18' height='18' rx='2' ry='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>
+          </div>
           <div style='font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px'>{$issueLabel}</div>
           <div style='font-size:13px;font-weight:700;color:#111827;margin-top:3px'>{$issueFormatted}</div>
         </td>
         <!-- due date -->
         <td style='border-right:1px solid #e5e7eb;text-align:center;padding:18px 8px;vertical-align:middle'>
-          <div style='width:36px;height:36px;border-radius:50%;background:{$tealLight};display:inline-block;text-align:center;line-height:36px;font-size:14px;margin-bottom:6px'>&#128198;</div>
+          <div style='width:36px;height:36px;border-radius:50%;background:{$tealLight};display:inline-table;text-align:center;line-height:36px;margin-bottom:6px'>
+            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#0b3d35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='display:inline-block;vertical-align:middle'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>
+          </div>
           <div style='font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px'>{$dueLabel}</div>
           <div style='font-size:13px;font-weight:700;color:#111827;margin-top:3px'>{$dueFormatted}</div>
         </td>
         <!-- service -->
         <td style='text-align:center;padding:18px 8px;vertical-align:middle'>
-          <div style='width:36px;height:36px;border-radius:50%;background:{$tealLight};display:inline-block;text-align:center;line-height:36px;font-size:14px;margin-bottom:6px'>&#127760;</div>
+          <div style='width:36px;height:36px;border-radius:50%;background:{$tealLight};display:inline-table;text-align:center;line-height:36px;margin-bottom:6px'>
+            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#0b3d35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='display:inline-block;vertical-align:middle'><circle cx='12' cy='12' r='10'/><line x1='2' y1='12' x2='22' y2='12'/><path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/></svg>
+          </div>
           <div style='font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px'>Service</div>
           <div style='font-size:13px;font-weight:700;color:#111827;margin-top:3px'>{$service}</div>
         </td>
@@ -331,42 +341,40 @@ function buildEmailHTML(string $body, array $data, ?string $trackToken, string $
     $bankRaw = $data['bank_details'] ?? $data['default_bank'] ?? '';
     $payRows = '';
     if ($upi) {
+        $upiSvg = "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#0b3d35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='5' y='2' width='14' height='20' rx='2' ry='2'/><line x1='12' y1='18' x2='12' y2='18'/></svg>";
         $payRows .= "
         <tr>
-          <td style='background:{$tealLight};padding:14px 0;text-align:center;width:54px;border-bottom:1px solid #c4e8e0;border-right:1px solid #c4e8e0'>
-            <span style='font-size:18px'>&#128241;</span>
-          </td>
+          <td style='background:{$tealLight};padding:14px 0;text-align:center;width:54px;border-bottom:1px solid #c4e8e0;border-right:1px solid #c4e8e0'>{$upiSvg}</td>
           <td style='padding:14px 18px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#111827;font-size:13.5px;width:130px'>UPI</td>
           <td style='padding:14px 4px;border-bottom:1px solid #e5e7eb;color:#6b7280;width:10px'>:</td>
           <td style='padding:14px 16px;border-bottom:1px solid #e5e7eb;color:#111827;font-size:13.5px'>{$upi}</td>
         </tr>";
     }
-    // Map bank detail labels to icons
-    $iconMap = [
-        'bank'           => '&#127970;',
-        'account name'   => '&#128100;',
-        'account no'     => '&#128179;',
-        'account number' => '&#128179;',
-        'ifsc'           => '&#127758;',
-        'branch'         => '&#128205;',
+    // Map bank detail labels to inline SVG icons (Gmail-safe)
+    $iconSvgMap = [
+        'bank'           => "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#0b3d35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><line x1='3' y1='22' x2='21' y2='22'/><line x1='6' y1='18' x2='6' y2='11'/><line x1='10' y1='18' x2='10' y2='11'/><line x1='14' y1='18' x2='14' y2='11'/><line x1='18' y1='18' x2='18' y2='11'/><polygon points='12 2 20 7 4 7'/></svg>",
+        'account name'   => "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#0b3d35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>",
+        'account no'     => "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#0b3d35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='5' width='20' height='14' rx='2'/><line x1='2' y1='10' x2='22' y2='10'/></svg>",
+        'account number' => "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#0b3d35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='5' width='20' height='14' rx='2'/><line x1='2' y1='10' x2='22' y2='10'/></svg>",
+        'ifsc'           => "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#0b3d35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='2' y1='12' x2='22' y2='12'/><path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/></svg>",
+        'branch'         => "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#0b3d35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z'/><circle cx='12' cy='10' r='3'/></svg>",
     ];
+    $defaultSvg = "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#0b3d35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/></svg>";
     $bankLines = array_filter(array_map('trim', explode("\n", $bankRaw)));
     $lastBankLine = end($bankLines);
     foreach ($bankLines as $line) {
         if (strpos($line, ':') === false) continue;
         [$k, $v] = array_map('trim', explode(':', $line, 2));
-        $ico = '&#128203;';
-        foreach ($iconMap as $kw => $ic) {
-            if (stripos($k, $kw) !== false) { $ico = $ic; break; }
+        $icoSvg = $defaultSvg;
+        foreach ($iconSvgMap as $kw => $svgIco) {
+            if (stripos($k, $kw) !== false) { $icoSvg = $svgIco; break; }
         }
-        $isLast = ($line === $lastBankLine);
-        $borderB = $isLast ? '' : 'border-bottom:1px solid #e5e7eb';
+        $isLast   = ($line === $lastBankLine);
+        $borderB  = $isLast ? '' : 'border-bottom:1px solid #e5e7eb';
         $borderBi = $isLast ? '' : 'border-bottom:1px solid #c4e8e0';
         $payRows .= "
         <tr>
-          <td style='background:{$tealLight};padding:14px 0;text-align:center;width:54px;{$borderBi};border-right:1px solid #c4e8e0'>
-            <span style='font-size:18px'>{$ico}</span>
-          </td>
+          <td style='background:{$tealLight};padding:14px 0;text-align:center;width:54px;{$borderBi};border-right:1px solid #c4e8e0'>{$icoSvg}</td>
           <td style='padding:14px 18px;{$borderB};font-weight:600;color:#111827;font-size:13.5px;width:130px'>" . htmlspecialchars($k) . "</td>
           <td style='padding:14px 4px;{$borderB};color:#6b7280;width:10px'>:</td>
           <td style='padding:14px 16px;{$borderB};color:#111827;font-size:13.5px'>" . htmlspecialchars($v) . "</td>
@@ -417,13 +425,13 @@ function buildEmailHTML(string $body, array $data, ?string $trackToken, string $
     $ctaBtn = '';
     if (!empty($data['invoice_link'])) {
         $ctaLink  = htmlspecialchars($data['invoice_link']);
-        $ctaLabel = $isEst ? '&#128203;&nbsp; View Estimate' : '&#128196;&nbsp; VIEW INVOICE';
+        $ctaLabel = $isEst ? 'View Estimate' : 'VIEW INVOICE';
         $ctaBtn = "
         <div style='text-align:center;margin:24px 0 28px'>
           <a href='{$ctaLink}'
             style='display:inline-block;background:{$teal};color:#ffffff;text-decoration:none;
                    padding:14px 52px;border-radius:8px;font-size:14px;font-weight:700;letter-spacing:.5px'>
-            {$ctaLabel}
+            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='display:inline-block;vertical-align:middle;margin-right:8px'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/></svg>{$ctaLabel}
           </a>
         </div>";
     }
@@ -434,16 +442,40 @@ function buildEmailHTML(string $body, array $data, ?string $trackToken, string $
       <tr valign='middle'>
         <td style='border-top:2.5px dashed #a8ddd5'></td>
         <td width='70' style='text-align:center;padding:0 11px'>
-          <div style='width:48px;height:48px;border-radius:50%;background:{$tealLight};border:2px solid {$tealBorder};
-                      display:inline-block;text-align:center;line-height:48px;font-size:22px'>&#128140;</div>
+          <div style='width:48px;height:48px;border-radius:50%;background:{$tealLight};border:2px solid {$tealBorder};display:inline-table;text-align:center;line-height:48px'>
+            <svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#0b3d35' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' style='display:inline-block;vertical-align:middle'><path d='M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z'/><polyline points='22,6 12,13 2,6'/></svg>
+          </div>
         </td>
         <td style='border-top:2.5px dashed #a8ddd5'></td>
       </tr>
     </table>";
 
     // ── Greeting / body ────────────────────────────────────────
+    // Strip lines that are rendered as dedicated HTML sections (invoice card,
+    // payment table, CTA link) so they don't duplicate as plain text.
     $clientName = htmlspecialchars($data['client_name'] ?? '');
-    $bodyText   = nl2br(htmlspecialchars($body, ENT_QUOTES, 'UTF-8'));
+    $bodyLines  = explode("\n", $body);
+    $skipPrefixes = [
+        'Dear ', 'Invoice No', 'Issue Date', 'Due Date', 'Amount Due', 'Service:',
+        'Pay via', 'Payment Options', 'Bank ', 'Bank:', 'Account', 'IFSC', 'UPI',
+        'View Invoice', 'View & Approve', 'Thank you for', 'Best regards',
+        '{company_name}', '{company_phone}', '{company_email}',
+        '📄', '📅', '⏰', '💰', '📋', '🏦', '💳', '🔗', '✅', '⚠️',
+    ];
+    $filteredLines = [];
+    foreach ($bodyLines as $line) {
+        $trimmed = ltrim($line);
+        $skip = false;
+        foreach ($skipPrefixes as $prefix) {
+            if (stripos($trimmed, $prefix) === 0) { $skip = true; break; }
+        }
+        // Also skip lines that are just placeholder tokens
+        if (preg_match('/^\{[a-z_]+\}$/', $trimmed)) $skip = true;
+        if (!$skip) $filteredLines[] = $line;
+    }
+    // Collapse 3+ blank lines into 1
+    $bodyClean = preg_replace('/(\r?\n\s*){3,}/', "\n\n", implode("\n", $filteredLines));
+    $bodyText  = nl2br(htmlspecialchars(trim($bodyClean), ENT_QUOTES, 'UTF-8'));
 
     // ── Signature / footer card ────────────────────────────────
     $sigImgHtml = $signature ? "<img src='{$signature}' alt='Signature' style='max-height:40px;max-width:130px;object-fit:contain;margin-top:6px;display:block'>" : '';
@@ -484,12 +516,6 @@ function buildEmailHTML(string $body, array $data, ?string $trackToken, string $
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Email from {$company}</title>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0" rel="stylesheet"/>
-<style>
-.ico{font-family:'Material Symbols Outlined';font-style:normal;font-weight:300;font-size:20px;
-     line-height:1;display:inline-block;vertical-align:middle;
-     font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24;color:{$teal}}
-</style>
 </head>
 <body style="margin:0;padding:0;background:#f0f4f4;font-family:'Segoe UI',Helvetica,Arial,sans-serif">
 <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f0f4f4;padding:24px 0">
@@ -606,7 +632,7 @@ function buildEmailHTML(string $body, array $data, ?string $trackToken, string $
               <tr>
                 <td style="padding-right:10px;vertical-align:middle">
                   <div style="width:34px;height:34px;border-radius:50%;background:{$tealLight};text-align:center;line-height:34px">
-                    <span class="ico" style="font-size:17px;line-height:34px">lock</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0b3d35" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                   </div>
                 </td>
                 <td style="vertical-align:middle">
@@ -620,7 +646,7 @@ function buildEmailHTML(string $body, array $data, ?string $trackToken, string $
               <tr>
                 <td style="padding-right:10px;vertical-align:middle">
                   <div style="width:34px;height:34px;border-radius:50%;background:{$tealLight};text-align:center;line-height:34px">
-                    <span class="ico" style="font-size:17px;line-height:34px">headset_mic</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0b3d35" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
                   </div>
                 </td>
                 <td style="vertical-align:middle">
@@ -634,7 +660,7 @@ function buildEmailHTML(string $body, array $data, ?string $trackToken, string $
               <tr>
                 <td style="padding-right:10px;vertical-align:middle">
                   <div style="width:34px;height:34px;border-radius:50%;background:{$tealLight};text-align:center;line-height:34px">
-                    <span class="ico" style="font-size:17px;line-height:34px">verified</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0b3d35" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><polyline points="20 6 9 17 4 12"/></svg>
                   </div>
                 </td>
                 <td style="vertical-align:middle">
