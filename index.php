@@ -429,7 +429,8 @@ canvas { max-width: 100% !important; }
   width: 32px; height: 32px; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0;
-  overflow: hidden; border: 2px solid rgba(0,0,0,0.12);
+  overflow: hidden; border: 2px solid #00897B;
+  box-shadow: 0 0 6px rgba(0,137,123,0.6), 0 0 12px rgba(0,137,123,0.3);
 }
 .cc-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .cc-name { font-weight: 600; }
