@@ -1308,6 +1308,7 @@ const SERVER = {
           <input type="date" class="table-filter" id="dateTo" onchange="filterByDate()" placeholder="To">
         </div>
         <div class="toolbar-right">
+          <button class="btn btn-outline" id="inv-refresh-btn" onclick="refreshInvoices()" title="Refresh invoices"><i class="fas fa-sync-alt"></i> Refresh</button>
           <button class="btn btn-outline" onclick="exportCSV()"><i class="fas fa-download"></i> Export CSV</button>
           <button class="btn btn-primary" onclick="showPage('create',null)"><i class="fas fa-plus"></i> New Invoice</button>
         </div>
@@ -3536,13 +3537,34 @@ View Invoice: {{6}}</pre></details>
   <div class="modal modal-md">
     <div class="modal-header"><span>Add New Client</span><button class="modal-close" onclick="closeModal('modal-addclient')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body" style="padding:24px">
+      <!-- Logo Upload -->
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;padding:14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+        <div id="nc-logo-preview" style="width:64px;height:64px;border-radius:50%;background:#00897B;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0;border:2px solid var(--border)">
+          <span id="nc-logo-initials">?</span>
+          <img id="nc-logo-img" src="" style="width:100%;height:100%;object-fit:cover;display:none">
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px;margin-bottom:6px;color:var(--text)">Client Logo <span style="font-size:10px;color:var(--muted);font-weight:400">(optional)</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:var(--teal);color:#fff;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600">
+              <i class="fas fa-upload"></i> Upload
+              <input type="file" id="nc-logo-file" accept="image/*" style="display:none" onchange="handleClientLogoUpload(this)">
+            </label>
+            <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="document.getElementById('nc-logo-url-wrap').style.display=document.getElementById('nc-logo-url-wrap').style.display==='none'?'flex':'none'"><i class="fas fa-link"></i> URL</button>
+            <button class="btn btn-outline" style="font-size:12px;padding:5px 10px;color:var(--red)" onclick="clearClientLogo()" title="Remove logo"><i class="fas fa-times"></i></button>
+          </div>
+          <div id="nc-logo-url-wrap" style="display:none;margin-top:8px;gap:6px;align-items:center">
+            <input id="nc-logo-url" placeholder="https://…logo.png" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px" oninput="previewClientLogoUrl(this.value)">
+          </div>
+        </div>
+      </div>
       <div class="form-grid g2">
-        <div class="field g-full"><label>Organization Name *</label><input id="nc-name" placeholder="Company or school name"></div>
+        <div class="field g-full"><label>Organization Name *</label><input id="nc-name" placeholder="Company or school name" oninput="updateClientLogoInitials()"></div>
         <div class="field"><label>Contact Person</label><input id="nc-person"></div>
         <div class="field"><label>WhatsApp</label><input id="nc-wa" placeholder="+91 XXXXX XXXXX"></div>
         <div class="field"><label>Email</label><input id="nc-email" type="email"></div>
         <div class="field"><label>GST Number</label><input id="nc-gst"></div>
-        <div class="field"><label>Avatar Color</label><input type="color" id="nc-color" value="#00897B"></div>
+        <div class="field"><label>Avatar Color</label><input type="color" id="nc-color" value="#00897B" oninput="updateClientLogoInitials()"></div>
         <div class="field g-full"><label>Address</label><textarea id="nc-addr"></textarea></div>
         <div class="field g-full"><label>Landmark <span style="font-size:10px;color:var(--muted)">(optional — nearby area or landmark)</span></label><input id="nc-landmark" placeholder="e.g. Near City Mall, Sector 12"></div>
       </div>
@@ -4250,6 +4272,28 @@ function calNext() { calMonth++; if (calMonth > 11) { calMonth=0; calYear++; } r
 // ══════════════════════════════════════════
 // INVOICES TABLE
 // ══════════════════════════════════════════
+async function refreshInvoices() {
+  const btn = document.getElementById('inv-refresh-btn');
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing…'; btn.disabled = true; }
+  try {
+    const [invRes, payRes] = await Promise.all([
+      api('api/invoices.php'),
+      api('api/payments.php')
+    ]);
+    if (invRes?.data) {
+      STATE.invoices = invRes.data.map(normalizeInvoice);
+      STATE.filteredInvoices = [...STATE.invoices];
+    }
+    if (payRes?.data) STATE.payments = payRes.data;
+    renderInvoicesTable(); renderDonutChart(); renderDashRecent(); updateDashStats();
+    toast('🔄 Invoices refreshed', 'info');
+  } catch(e) {
+    toast('❌ Refresh failed: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh'; btn.disabled = false; }
+  }
+}
+
 function renderInvoicesTable() {
   STATE.filteredInvoices = [...STATE.invoices];
   // Always keep the sidebar invoice badge in sync
@@ -7161,6 +7205,51 @@ function openAddClientModal() {
   openModal('modal-addclient');
 }
 
+// ── Client Logo Helpers ──────────────────────────────────────────
+let _ncLogoBase64 = ''; // stores base64 or URL of logo
+
+function handleClientLogoUpload(input) {
+  const file = input.files[0]; if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { toast('⚠️ Image must be under 2MB', 'warning'); return; }
+  const reader = new FileReader();
+  reader.onload = e => { _ncLogoBase64 = e.target.result; _applyClientLogoPreview(_ncLogoBase64); };
+  reader.readAsDataURL(file);
+}
+
+function previewClientLogoUrl(url) {
+  if (!url) { _ncLogoBase64 = ''; _applyClientLogoPreview(''); return; }
+  _ncLogoBase64 = url;
+  _applyClientLogoPreview(url);
+}
+
+function _applyClientLogoPreview(src) {
+  const img = document.getElementById('nc-logo-img');
+  const initials = document.getElementById('nc-logo-initials');
+  if (src) {
+    img.src = src; img.style.display = 'block';
+    if (initials) initials.style.display = 'none';
+  } else {
+    img.src = ''; img.style.display = 'none';
+    if (initials) initials.style.display = '';
+  }
+}
+
+function updateClientLogoInitials() {
+  const name  = document.getElementById('nc-name')?.value || '';
+  const color = document.getElementById('nc-color')?.value || '#00897B';
+  const preview = document.getElementById('nc-logo-preview');
+  const initEl  = document.getElementById('nc-logo-initials');
+  if (preview) preview.style.background = color;
+  if (initEl)  initEl.textContent = getInitials(name) || '?';
+}
+
+function clearClientLogo() {
+  _ncLogoBase64 = '';
+  _applyClientLogoPreview('');
+  const fi = document.getElementById('nc-logo-file'); if (fi) fi.value = '';
+  const ui = document.getElementById('nc-logo-url');  if (ui) ui.value = '';
+}
+
 async function saveNewClient() {
   const name = (document.getElementById('nc-name')?.value || '').trim();
   if (!name) { toast('⚠️ Enter name', 'warning'); return; }
@@ -7172,7 +7261,8 @@ async function saveNewClient() {
     gst:    document.getElementById('nc-gst')?.value    || '',
     color:  document.getElementById('nc-color')?.value  || '#00897B',
     addr:   document.getElementById('nc-addr')?.value   || '',
-    landmark: document.getElementById('nc-landmark')?.value || ''
+    landmark: document.getElementById('nc-landmark')?.value || '',
+    logo:   _ncLogoBase64 || ''
   };
   try {
     if (STATE._editCid) {
@@ -7195,6 +7285,9 @@ async function saveNewClient() {
     ['nc-name','nc-person','nc-wa','nc-email','nc-gst','nc-addr','nc-landmark'].forEach(id => {
       const e = document.getElementById(id); if (e) e.value = '';
     });
+    clearClientLogo();
+    const col = document.getElementById('nc-color'); if (col) col.value = '#00897B';
+    updateClientLogoInitials();
   } catch(e) { toast('❌ ' + e.message, 'error'); }
 }
 
@@ -7205,6 +7298,15 @@ function editClient(id) {
     const f=document.getElementById(fid); if(f) f.value=c[{'nc-name':'name','nc-person':'person','nc-wa':'wa','nc-email':'email','nc-gst':'gst','nc-addr':'addr','nc-landmark':'landmark'}[fid]]||'';
   });
   const col=document.getElementById('nc-color'); if(col) col.value=c.color||'#00897B';
+  // Load existing logo if any
+  clearClientLogo();
+  if (c.image || c.logo) {
+    _ncLogoBase64 = c.image || c.logo;
+    _applyClientLogoPreview(_ncLogoBase64);
+    const ui = document.getElementById('nc-logo-url');
+    if (ui && (_ncLogoBase64.startsWith('http'))) ui.value = _ncLogoBase64;
+  }
+  updateClientLogoInitials();
   const hdr=document.querySelector('#modal-addclient .modal-header span'); if(hdr) hdr.textContent='Edit Client';
   const btn=document.querySelector('#modal-addclient .modal-footer .btn-primary'); if(btn) btn.textContent='Update Client';
   openModal('modal-addclient');
