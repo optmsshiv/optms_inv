@@ -62,22 +62,13 @@ if (!$rawToken) {
             $stmt->execute([':token' => $rawToken]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($row) {
-                $invoiceId = (int)$row['invoice_id'];
-                // UPDATE first, then re-read — so displayed count is always the true DB value
+                $invoiceId  = (int)$row['invoice_id'];
+                $firstViewed = $row['first_viewed'];
+                $viewCount   = (int)($row['view_count'] ?? $row['views'] ?? 0) + 1;
+                // Set first_viewed on first visit, always bump counters
                 $db->prepare(
-                    'UPDATE portal_tokens
-                     SET views        = views + 1,
-                         view_count   = view_count + 1,
-                         last_viewed  = NOW(),
-                         first_viewed = COALESCE(first_viewed, NOW())
-                     WHERE token = :t'
+                    'UPDATE portal_tokens SET views = views + 1, view_count = view_count + 1, last_viewed = NOW(), first_viewed = COALESCE(first_viewed, NOW()) WHERE token = :t'
                 )->execute([':t' => $rawToken]);
-                // Re-fetch after update so counts are accurate
-                $fresh = $db->prepare('SELECT view_count, first_viewed FROM portal_tokens WHERE token = :t LIMIT 1');
-                $fresh->execute([':t' => $rawToken]);
-                $freshRow    = $fresh->fetch(PDO::FETCH_ASSOC);
-                $firstViewed = $freshRow['first_viewed'] ?? null;
-                $viewCount   = (int)($freshRow['view_count'] ?? 1);
             } else {
                 $error = 'This link is invalid or has expired. Please contact your service provider.';
             }
@@ -157,17 +148,6 @@ function fmt_date($d) {
     if (!$d || $d === '—') return '—';
     $ts = strtotime($d);
     return $ts ? date('d M Y', $ts) : htmlspecialchars($d);
-}
-function fmt_rel($d) {
-    // Returns relative label for first_viewed: "Today", "Yesterday", "3 days ago", or "d M Y" for older
-    if (!$d) return '';
-    $ts   = strtotime($d);
-    if (!$ts) return '';
-    $days = (int)floor((strtotime('today') - strtotime(date('Y-m-d', $ts))) / 86400);
-    if ($days === 0)  return 'Today';
-    if ($days === 1)  return 'Yesterday';
-    if ($days <= 6)   return $days . ' days ago';
-    return date('d M Y', $ts);
 }
 function fmt_inr($n, $sym = '₹') {
     return $sym . number_format((float)$n, 2, '.', ',');
@@ -724,7 +704,7 @@ body.src-email .view-badge{display:none}
     <div class="view-badge">
       <i class="fas fa-eye"></i>
       <?= $viewCount ?> view<?= $viewCount != 1 ? 's' : '' ?>
-      <?php if ($firstViewed): ?> · First seen <?= htmlspecialchars(fmt_rel($firstViewed)) ?><?php endif; ?>
+      <?php if ($firstViewed): ?> · First seen <?= fmt_date($firstViewed) ?><?php endif; ?>
     </div>
     <?php endif; ?>
   </div>
