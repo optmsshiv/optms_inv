@@ -596,18 +596,22 @@ function buildEmailHTML(string $body, string $type = 'invoice', array $vars = []
     <!-- Card -->
     <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08)">
 
-      <!-- Header (table layout — Gmail safe, no flexbox) -->
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:{$hdrBg};padding:0">
+      <!-- Header (td bgcolor — only way Gmail respects background color) -->
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding:16px 24px;vertical-align:middle;width:44px">
-            <div style="width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,.2);text-align:center;line-height:40px;font-size:14px;font-weight:700;color:#fff">{$compInitials}</div>
+          <td bgcolor="{$hdrBg}" style="background:{$hdrBg};padding:16px 20px 16px 20px;vertical-align:middle;width:52px">
+            <div style="width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,.2);text-align:center;line-height:40px;font-size:14px;font-weight:700;color:#fff;font-family:Arial,sans-serif">{$compInitials}</div>
           </td>
-          <td style="padding:16px 8px;vertical-align:middle">
-            <div style="font-size:15px;font-weight:700;color:#fff;margin:0">{$company}</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.65);margin-top:2px">Invoice Manager</div>
+          <td bgcolor="{$hdrBg}" style="background:{$hdrBg};padding:16px 8px;vertical-align:middle">
+            <div style="font-size:15px;font-weight:700;color:#ffffff;margin:0;font-family:Arial,sans-serif">{$company}</div>
+            <div style="font-size:11px;color:#9fa8da;margin-top:2px;font-family:Arial,sans-serif">Invoice Manager</div>
           </td>
-          <td style="padding:16px 24px;vertical-align:middle;text-align:right;white-space:nowrap">
-            <span style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:12px;padding:4px 11px;font-size:10px;font-weight:700;color:#fff">&#9993; Email</span>
+          <td bgcolor="{$hdrBg}" style="background:{$hdrBg};padding:16px 20px;vertical-align:middle;text-align:right;white-space:nowrap">
+            <table cellpadding="0" cellspacing="0" border="0" style="display:inline-table">
+              <tr>
+                <td style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:12px;padding:4px 11px;font-size:10px;font-weight:700;color:#ffffff;font-family:Arial,sans-serif;white-space:nowrap">&#9993; Email</td>
+              </tr>
+            </table>
           </td>
         </tr>
       </table>
@@ -623,17 +627,17 @@ function buildEmailHTML(string $body, string $type = 'invoice', array $vars = []
         {$contactLine}
       </div>
 
-      <!-- Navy closer (Option B) — mirrors header, Gmail-safe table -->
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:{$hdrBg}">
+      <!-- Navy closer — td bgcolor for Gmail compatibility -->
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding:18px 24px;text-align:center">
-            <div style="font-size:13px;color:rgba(255,255,255,.8);line-height:1.8">
+          <td bgcolor="{$hdrBg}" style="background:{$hdrBg};padding:18px 24px;text-align:center">
+            <div style="font-size:13px;color:#9fa8da;line-height:1.8;font-family:Arial,sans-serif">
               We look forward to working with you!
             </div>
-            <div style="font-size:14px;font-weight:700;color:#fff;margin-top:4px">
+            <div style="font-size:14px;font-weight:700;color:#ffffff;margin-top:4px;font-family:Arial,sans-serif">
               Warm regards, {$company}
             </div>
-            <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:5px">
+            <div style="font-size:11px;color:#7986cb;margin-top:5px;font-family:Arial,sans-serif">
               {$contactCloser}
             </div>
           </td>
