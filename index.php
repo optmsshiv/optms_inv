@@ -3859,6 +3859,34 @@ function hexToRgba(hex, alpha) {
   const b = parseInt(h.length===3 ? h[2]+h[2] : h.slice(4,6),16);
   return `rgba(${r},${g},${b},${alpha})`;
 }
+function applyLogoBorderColor(img) {
+  try {
+    const canvas = document.createElement('canvas');
+    const size = 24;
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, size, size);
+    const data = ctx.getImageData(0, 0, size, size).data;
+    const freq = {};
+    let best = null, bestCount = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+      if (a < 80) continue; // skip transparent
+      // skip near-white and near-black
+      if (r > 230 && g > 230 && b > 230) continue;
+      if (r < 25  && g < 25  && b < 25)  continue;
+      // quantise to reduce noise
+      const key = `${Math.round(r/16)*16},${Math.round(g/16)*16},${Math.round(b/16)*16}`;
+      freq[key] = (freq[key] || 0) + 1;
+      if (freq[key] > bestCount) { bestCount = freq[key]; best = key; }
+    }
+    if (best) {
+      const [r,g,b] = best.split(',').map(Number);
+      const wrap = img.closest('.cc-avatar');
+      if (wrap) wrap.style.borderColor = `rgba(${r},${g},${b},0.7)`;
+    }
+  } catch(e) { /* cross-origin canvas taint — silently ignore */ }
+}
 
 // ══════════════════════════════════════════
 // SIDEBAR & PAGE NAVIGATION
@@ -4335,7 +4363,7 @@ function applyFiltersAndRender() {
     const avatarColor = isClientInactive ? '#9E9E9E' : c.color;
     const initials = getInitials(c.name);
     const avatar = isValidImg(c.image)
-      ? `<div class="cc-avatar" id="cca-${c.id}" style="background:${avatarColor};border-color:${hexToRgba(avatarColor,0.45)};opacity:${isClientInactive?'.6':'1'}"><img src="${c.image}" alt="${c.name}" crossorigin="anonymous" onerror="this.style.display='none'"></div>`
+      ? `<div class="cc-avatar" id="cca-${c.id}" style="background:${avatarColor};border-color:${hexToRgba(avatarColor,0.45)};opacity:${isClientInactive?'.6':'1'}"><img src="${c.image}" alt="${c.name}" crossorigin="anonymous" onload="applyLogoBorderColor(this)" onerror="this.style.display='none'"></div>`
       : `<div class="cc-avatar" style="background:${avatarColor};border-color:${hexToRgba(avatarColor,0.45)};opacity:${isClientInactive?'.6':'1'}">${initials}</div>`;
     const inactivePill = isClientInactive
       ? `<span style="font-size:9px;font-weight:700;background:#FFF8E1;color:#F9A825;border:1px solid #F9A825;border-radius:8px;padding:1px 5px;margin-left:4px;vertical-align:middle;white-space:nowrap"><i class="fas fa-pause-circle" style="font-size:8px"></i> Inactive</span>`
