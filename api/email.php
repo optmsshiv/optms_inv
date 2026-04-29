@@ -290,7 +290,9 @@ function handleSend($db, $input) {
         $rawBody = trim(preg_replace('/View your invoice here:\s*/i', '', $rawBody));
     }
 
-    // ── Strip raw detail blocks — summary card shows these now ──
+    // ── Strip warm regards block — dedicated section handles it now ──
+    $rawBody = preg_replace('/(We look forward[^\n]*\n?)?(Warm regards[,.]?\s*\n)?({company_name}[^\n]*\n?)?({company_phone}[^\n]*\n?)?$/i', '', $rawBody);
+    $rawBody = trim($rawBody);
     // Removes lines like "  Invoice No : #INV-001", "  Amount Due : ₹1,000" etc.
     $rawBody = preg_replace('/^\s*(Invoice No|Estimate No|Service|Amount Due|Amount Paid|Balance Due|Issue Date|Due Date|Valid Until|Total|UPI|Pay via UPI)[^\n]*\n?/im', '', $rawBody);
     // Also strip "To pay via UPI, use: ..." lines (shown in portal, not needed in email)
@@ -596,15 +598,21 @@ function buildEmailHTML(string $body, string $type = 'invoice', array $vars = []
     <!-- Card -->
     <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08)">
 
-      <!-- Header -->
-      <div style="background:{$hdrBg};padding:18px 28px;display:flex;align-items:center;gap:14px">
-        <div style="width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;text-align:center;line-height:40px">{$compInitials}</div>
-        <div>
-          <div style="font-size:15px;font-weight:700;color:#fff">{$company}</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.7);margin-top:2px">Invoice Manager</div>
-        </div>
-        <div style="margin-left:auto;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:14px;padding:3px 10px;font-size:10px;font-weight:700;color:#fff">&#9993; Email</div>
-      </div>
+      <!-- Header (table layout — Gmail safe, no flexbox) -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:{$hdrBg};padding:0">
+        <tr>
+          <td style="padding:16px 24px;vertical-align:middle;width:44px">
+            <div style="width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,.2);text-align:center;line-height:40px;font-size:14px;font-weight:700;color:#fff">{$compInitials}</div>
+          </td>
+          <td style="padding:16px 8px;vertical-align:middle">
+            <div style="font-size:15px;font-weight:700;color:#fff;margin:0">{$company}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.65);margin-top:2px">Invoice Manager</div>
+          </td>
+          <td style="padding:16px 24px;vertical-align:middle;text-align:right;white-space:nowrap">
+            <span style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:12px;padding:4px 11px;font-size:10px;font-weight:700;color:#fff">&#9993; Email</span>
+          </td>
+        </tr>
+      </table>
 
       <!-- Hero (invoice number + status) -->
       {$heroSection}
@@ -615,6 +623,14 @@ function buildEmailHTML(string $body, string $type = 'invoice', array $vars = []
         {$summaryCard}
         {$ctaBtn}
         {$contactLine}
+      </div>
+
+      <!-- Warm regards section -->
+      <div style="padding:16px 28px 20px;border-top:1px solid #f0f0f0;color:#555;font-size:13px;line-height:1.7">
+        We look forward to working with you!<br>
+        <strong>Warm regards,</strong><br>
+        {$company}<br>
+        {$compPhone}
       </div>
 
     </div>
@@ -748,11 +764,7 @@ function getDefaultTemplates(): array {
 
 Please find your invoice from {company_name} below. Kindly review and make the payment before the due date.
 
-If you have any questions, feel free to contact us at {company_email} or {company_phone}.
-
-Thank you for your business!
-Warm regards,
-{company_name}",
+If you have any questions, feel free to contact us at {company_email} or {company_phone}.",
         ],
 
         // ── Estimate / Quotation ─────────────────────────────────
@@ -763,12 +775,7 @@ Warm regards,
 
 Thank you for your enquiry. Please find our estimate below.
 
-This is an estimate only and is subject to change upon your approval.
-
-We look forward to working with you!
-Warm regards,
-{company_name}
-{company_phone}",
+This is an estimate only and is subject to change upon your approval.",
         ],
 
         // ── Payment Receipt (Paid / Partial) ─────────────────────
