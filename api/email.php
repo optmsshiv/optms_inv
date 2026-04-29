@@ -283,7 +283,20 @@ function handleSend($db, $input) {
     if (!empty($vars['{invoice_link}'])) {
         $rawBody = str_replace($vars['{invoice_link}'], '', $rawBody);
         $rawBody = trim(preg_replace('/View your invoice online:\s*/i', '', $rawBody));
+        $rawBody = trim(preg_replace('/To review, approve, or request changes, please visit:\s*/i', '', $rawBody));
+        $rawBody = trim(preg_replace('/Or view and pay your invoice online:\s*/i', '', $rawBody));
+        $rawBody = trim(preg_replace('/You can also view, download, and pay your invoice online:\s*/i', '', $rawBody));
+        $rawBody = trim(preg_replace('/View and pay online:\s*/i', '', $rawBody));
+        $rawBody = trim(preg_replace('/View your invoice here:\s*/i', '', $rawBody));
     }
+
+    // ── Strip raw detail blocks — summary card shows these now ──
+    // Removes lines like "  Invoice No : #INV-001", "  Amount Due : ₹1,000" etc.
+    $rawBody = preg_replace('/^\s*(Invoice No|Estimate No|Service|Amount Due|Amount Paid|Balance Due|Issue Date|Due Date|Valid Until|Total|UPI|Pay via UPI)[^\n]*\n?/im', '', $rawBody);
+    // Also strip "To pay via UPI, use: ..." lines (shown in portal, not needed in email)
+    $rawBody = preg_replace('/^To pay via UPI, use:.*\n?/im', '', $rawBody);
+    // Clean up extra blank lines left after stripping
+    $rawBody = trim(preg_replace('/\n{3,}/', "\n\n", $rawBody));
 
     $smtp   = getSmtpConfig($input, $db);
     $html   = buildEmailHTML($rawBody, $type, $vars);   // pass $vars for structured template
@@ -512,18 +525,30 @@ function buildEmailHTML(string $body, string $type = 'invoice', array $vars = []
     $cleanBody = trim(preg_replace('/\n{3,}/', "\n\n", $cleanBody));
     $cleanBody = nl2br(htmlspecialchars($cleanBody, ENT_QUOTES, 'UTF-8'));
 
-    // Summary rows
+    // Summary rows — labels change based on type
+    $isEstimate   = ($type === 'estimate');
+    $invoiceLabel = $isEstimate ? 'Estimate No' : 'Invoice No';
+    $dueDateLabel = $isEstimate ? 'Valid Until'  : 'Due Date';
+    $amountLabel  = ($type === 'receipt') ? 'Amount Paid' : ($isEstimate ? 'Total' : 'Amount Due');
+
     $summaryRows = '';
-    if ($invoiceNo) $summaryRows .= "<tr><td style='padding:6px 0;color:#666;font-size:13px;border-bottom:1px solid #eee'>Invoice No</td><td style='padding:6px 0;text-align:right;font-size:13px;font-weight:600;color:#1A237E;border-bottom:1px solid #eee'>{$invoiceNo}</td></tr>";
+    if ($invoiceNo) $summaryRows .= "<tr><td style='padding:6px 0;color:#666;font-size:13px;border-bottom:1px solid #eee'>{$invoiceLabel}</td><td style='padding:6px 0;text-align:right;font-size:13px;font-weight:600;color:#1A237E;border-bottom:1px solid #eee'>{$invoiceNo}</td></tr>";
     if ($service)   $summaryRows .= "<tr><td style='padding:6px 0;color:#666;font-size:13px;border-bottom:1px solid #eee'>Service</td><td style='padding:6px 0;text-align:right;font-size:13px;border-bottom:1px solid #eee'>" . htmlspecialchars($service) . "</td></tr>";
     if ($issueDate) $summaryRows .= "<tr><td style='padding:6px 0;color:#666;font-size:13px;border-bottom:1px solid #eee'>Issue Date</td><td style='padding:6px 0;text-align:right;font-size:13px;border-bottom:1px solid #eee'>{$issueDate}</td></tr>";
-    if ($dueDate)   $summaryRows .= "<tr><td style='padding:6px 0;color:#666;font-size:13px;border-bottom:1px solid #eee'>Due Date</td><td style='padding:6px 0;text-align:right;font-size:13px;border-bottom:1px solid #eee'>{$dueDate}</td></tr>";
-    if ($amount)    $summaryRows .= "<tr><td style='padding:8px 0 0;color:#333;font-size:14px;font-weight:700'>Amount Due</td><td style='padding:8px 0 0;text-align:right;font-size:15px;font-weight:700;color:{$accent}'>{$amount}</td></tr>";
+    if ($dueDate)   $summaryRows .= "<tr><td style='padding:6px 0;color:#666;font-size:13px;border-bottom:1px solid #eee'>{$dueDateLabel}</td><td style='padding:6px 0;text-align:right;font-size:13px;border-bottom:1px solid #eee'>{$dueDate}</td></tr>";
+    if ($amount)    $summaryRows .= "<tr><td style='padding:8px 0 0;color:#333;font-size:14px;font-weight:700'>{$amountLabel}</td><td style='padding:8px 0 0;text-align:right;font-size:15px;font-weight:700;color:{$accent}'>{$amount}</td></tr>";
+
+    // CTA button label based on type
+    $ctaLabel = match($type) {
+        'estimate' => 'View &amp; Download Estimate',
+        'receipt'  => 'View Payment Receipt',
+        default    => 'View &amp; Download Invoice',
+    };
 
     // CTA button (only if portal link exists)
     $ctaBtn = $portalLink ? "
     <div style='text-align:center;margin:24px 0 8px'>
-      <a href='{$portalLink}' style='display:inline-block;background:{$hdrBg};color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:15px;font-weight:700;font-family:Arial,sans-serif;letter-spacing:.3px'>{$emoji} View &amp; Download {$typeLabel}</a>
+      <a href='{$portalLink}' style='display:inline-block;background:{$hdrBg};color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:15px;font-weight:700;font-family:Arial,sans-serif;letter-spacing:.3px'>{$emoji} {$ctaLabel}</a>
     </div>
     <p style='text-align:center;font-size:11px;color:#aaa;margin:0 0 8px'>Button not working? <a href='{$portalLink}' style='color:{$accent}'>Click here</a></p>
     " : '';
@@ -596,8 +621,8 @@ function buildEmailHTML(string $body, string $type = 'invoice', array $vars = []
 
     <!-- Footer -->
     <div style="text-align:center;padding:14px;font-size:11px;color:#aaa">
-      Sent via <a href="https://optms.co.in" style="color:#777">OPTMS Tech Invoice Manager</a>
-      &middot; <a href="https://optms.co.in" style="color:#777">optms.co.in</a>
+      Sent via <a href="https://optmstech.in" style="color:#777">OPTMS Tech Invoice Manager</a>
+      &middot; <a href="https://optmstech.in" style="color:#777">optmstech.in</a>
     </div>
 
   </div>
@@ -721,18 +746,7 @@ function getDefaultTemplates(): array {
             'body'    =>
 "Dear {client_name},
 
-Please find attached your invoice from {company_name}.
-
-  Invoice No : #{invoice_no}
-  Service    : {service}
-  Amount Due : {amount}
-  Issue Date : {issue_date}
-  Due Date   : {due_date}
-
-To pay via UPI, use: {upi}
-
-You can also view, download, and pay your invoice online:
-{invoice_link}
+Please find your invoice from {company_name} below. Kindly review and make the payment before the due date.
 
 If you have any questions, feel free to contact us at {company_email} or {company_phone}.
 
@@ -749,15 +763,7 @@ Warm regards,
 
 Thank you for your enquiry. Please find our estimate below.
 
-  Estimate No : #{invoice_no}
-  Service     : {service}
-  Total       : {amount}
-  Valid Until : {due_date}
-
 This is an estimate only and is subject to change upon your approval.
-
-To review, approve, or request changes, please visit:
-{invoice_link}
 
 We look forward to working with you!
 Warm regards,
