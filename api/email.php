@@ -582,6 +582,55 @@ function buildEmailHTML(string $body, string $type = 'invoice', array $vars = []
 
     $compInitials = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $company), 0, 2));
 
+    // Build header and closer as PHP strings — ensures bgcolor="#hex" is literal in HTML
+    // Using solid hex for inner elements — Gmail strips rgba()
+    // Semi-transparent white overlay approximated as solid lighter shade of hdrBg
+    $logoBox  = 'background:#ffffff;opacity:0.15'; // fallback — overridden per-type below
+    // Compute a lightened version for logo box background (20% white overlay approximation)
+    $logoBg   = '#3949AB'; // default
+    $badgeBg  = '#3949AB';
+    $logoBgMap = [
+        '#1A237E' => '#3949AB',
+        '#1565C0' => '#1976D2',
+        '#1B5E20' => '#2E7D32',
+        '#E65100' => '#F57C00',
+        '#B71C1C' => '#C62828',
+        '#4A148C' => '#6A1B9A',
+        '#004D40' => '#00695C',
+    ];
+    $logoBg = $logoBgMap[$hdrBg] ?? '#3949AB';
+
+    $emailHeader = '
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td bgcolor="' . $hdrBg . '" style="background:' . $hdrBg . ';padding:16px 20px;vertical-align:middle;width:52px">
+            <div style="width:40px;height:40px;border-radius:8px;background:' . $logoBg . ';text-align:center;line-height:40px;font-size:14px;font-weight:700;color:#fff;font-family:Arial,sans-serif">' . $compInitials . '</div>
+          </td>
+          <td bgcolor="' . $hdrBg . '" style="background:' . $hdrBg . ';padding:16px 8px;vertical-align:middle">
+            <div style="font-size:15px;font-weight:700;color:#ffffff;margin:0;font-family:Arial,sans-serif">' . htmlspecialchars($company) . '</div>
+            <div style="font-size:11px;color:#c5cae9;margin-top:2px;font-family:Arial,sans-serif">Invoice Manager</div>
+          </td>
+          <td bgcolor="' . $hdrBg . '" style="background:' . $hdrBg . ';padding:16px 20px;vertical-align:middle;text-align:right;white-space:nowrap">
+            <table cellpadding="0" cellspacing="0" border="0" style="display:inline-table;margin-left:auto">
+              <tr>
+                <td bgcolor="' . $logoBg . '" style="background:' . $logoBg . ';border-radius:12px;padding:4px 11px;font-size:10px;font-weight:700;color:#ffffff;font-family:Arial,sans-serif;white-space:nowrap">&#9993; Email</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>';
+
+    $emailCloser = '
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td bgcolor="' . $hdrBg . '" style="background:' . $hdrBg . ';padding:18px 24px;text-align:center">
+            <div style="font-size:13px;color:#c5cae9;line-height:1.8;font-family:Arial,sans-serif">We look forward to working with you!</div>
+            <div style="font-size:14px;font-weight:700;color:#ffffff;margin-top:4px;font-family:Arial,sans-serif">Warm regards, ' . htmlspecialchars($company) . '</div>
+            <div style="font-size:11px;color:#9fa8da;margin-top:5px;font-family:Arial,sans-serif">' . $contactCloser . '</div>
+          </td>
+        </tr>
+      </table>';
+
     return <<<HTML
 <!DOCTYPE html>
 <html>
@@ -596,25 +645,8 @@ function buildEmailHTML(string $body, string $type = 'invoice', array $vars = []
     <!-- Card -->
     <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08)">
 
-      <!-- Header (td bgcolor — only way Gmail respects background color) -->
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td bgcolor="{$hdrBg}" style="background:{$hdrBg};padding:16px 20px 16px 20px;vertical-align:middle;width:52px">
-            <div style="width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,.2);text-align:center;line-height:40px;font-size:14px;font-weight:700;color:#fff;font-family:Arial,sans-serif">{$compInitials}</div>
-          </td>
-          <td bgcolor="{$hdrBg}" style="background:{$hdrBg};padding:16px 8px;vertical-align:middle">
-            <div style="font-size:15px;font-weight:700;color:#ffffff;margin:0;font-family:Arial,sans-serif">{$company}</div>
-            <div style="font-size:11px;color:#9fa8da;margin-top:2px;font-family:Arial,sans-serif">Invoice Manager</div>
-          </td>
-          <td bgcolor="{$hdrBg}" style="background:{$hdrBg};padding:16px 20px;vertical-align:middle;text-align:right;white-space:nowrap">
-            <table cellpadding="0" cellspacing="0" border="0" style="display:inline-table">
-              <tr>
-                <td style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:12px;padding:4px 11px;font-size:10px;font-weight:700;color:#ffffff;font-family:Arial,sans-serif;white-space:nowrap">&#9993; Email</td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
+      <!-- Header -->
+      {$emailHeader}
 
       <!-- Hero (invoice number + status) -->
       {$heroSection}
@@ -627,22 +659,8 @@ function buildEmailHTML(string $body, string $type = 'invoice', array $vars = []
         {$contactLine}
       </div>
 
-      <!-- Navy closer — td bgcolor for Gmail compatibility -->
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td bgcolor="{$hdrBg}" style="background:{$hdrBg};padding:18px 24px;text-align:center">
-            <div style="font-size:13px;color:#9fa8da;line-height:1.8;font-family:Arial,sans-serif">
-              We look forward to working with you!
-            </div>
-            <div style="font-size:14px;font-weight:700;color:#ffffff;margin-top:4px;font-family:Arial,sans-serif">
-              Warm regards, {$company}
-            </div>
-            <div style="font-size:11px;color:#7986cb;margin-top:5px;font-family:Arial,sans-serif">
-              {$contactCloser}
-            </div>
-          </td>
-        </tr>
-      </table>
+      <!-- Navy closer -->
+      {$emailCloser}
 
     </div>
 
