@@ -1821,12 +1821,11 @@ const SERVER = {
             <input type="hidden" id="tpl-color-theme" value="1">
           </div>
 
-          <!-- Color pickers — hidden for Template 2 (uses its own themes) -->
-          <div id="tpl-color-pickers" class="form-grid g2" style="margin-bottom:16px">
+          <div class="form-grid g2" style="margin-bottom:16px">
             <div class="field">
               <label>Primary Color <span style="font-size:10px;color:var(--muted)">(header background)</span></label>
               <div style="display:flex;gap:8px;align-items:center">
-                <input type="color" id="tpl-color1" value="#1A2332" style="width:44px;height:38px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px" oninput="setTplColor('tpl-color1',this.value);_tplMarkUnsaved()">
+                <input type="color" id="tpl-color1" value="#1A2332" style="width:44px;height:38px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px" oninput="setTplColor('tpl-color1',this.value)">
                 <input id="tpl-color1-hex" value="#1A2332" placeholder="#1A2332" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:13px" oninput="document.getElementById('tpl-color1').value=this.value;TPL_CUSTOM.color1=this.value;livePreview()">
                 <div style="display:flex;gap:4px;flex-wrap:wrap">
                   <span onclick="setTplColor('tpl-color1','#1A2332')" style="width:20px;height:20px;background:#1A2332;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
@@ -1843,7 +1842,7 @@ const SERVER = {
             <div class="field">
               <label>Accent Color <span style="font-size:10px;color:var(--muted)">(invoice number, totals)</span></label>
               <div style="display:flex;gap:8px;align-items:center">
-                <input type="color" id="tpl-color2" value="#4DB6AC" style="width:44px;height:38px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px" oninput="setTplColor('tpl-color2',this.value);_tplMarkUnsaved()">
+                <input type="color" id="tpl-color2" value="#4DB6AC" style="width:44px;height:38px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px" oninput="setTplColor('tpl-color2',this.value)">
                 <input id="tpl-color2-hex" value="#4DB6AC" placeholder="#4DB6AC" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:13px" oninput="document.getElementById('tpl-color2').value=this.value;TPL_CUSTOM.color2=this.value;livePreview()">
                 <div style="display:flex;gap:4px;flex-wrap:wrap">
                   <span onclick="setTplColor('tpl-color2','#4DB6AC')" style="width:20px;height:20px;background:#4DB6AC;border-radius:4px;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ddd"></span>
@@ -1857,13 +1856,47 @@ const SERVER = {
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- Common controls — all templates -->
-          <div class="form-grid g2" style="margin-bottom:16px">
+            <div class="field">
+              <label>Company Name Size <span style="font-size:10px;color:var(--muted)">(px)</span></label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="range" id="tpl-r-name-size" min="16" max="48" value="28" style="flex:1" oninput="(document.getElementById('tpl-r-name-size-val')||{}).textContent=this.value+'px'; (document.getElementById('tpl-name-size')||{value:0}).value=this.value; TPL_CUSTOM.companyNameSize=this.value; livePreview()">
+                <span id="tpl-r-name-size-val" style="width:36px;font-size:12px;font-weight:700;color:var(--teal)">28px</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Company Name Color</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="color" id="tpl-r-name-color" value="#ffffff" style="width:44px;height:36px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px" oninput="document.getElementById('tpl-name-color').value=this.value;TPL_CUSTOM.companyNameColor=this.value;livePreview()">
+                <div style="display:flex;gap:4px">
+                  <span onclick="document.getElementById('tpl-name-color').value='#ffffff';document.getElementById('tpl-r-name-color').value='#ffffff';TPL_CUSTOM.companyNameColor='#ffffff';livePreview()" style="width:20px;height:20px;background:#fff;border-radius:4px;cursor:pointer;border:1px solid #ddd"></span>
+                  <span onclick="document.getElementById('tpl-name-color').value='#FFD54F';document.getElementById('tpl-r-name-color').value='#FFD54F';TPL_CUSTOM.companyNameColor='#FFD54F';livePreview()" style="width:20px;height:20px;background:#FFD54F;border-radius:4px;cursor:pointer;border:1px solid #ddd"></span>
+                  <span onclick="document.getElementById('tpl-name-color').value='#4DB6AC';document.getElementById('tpl-r-name-color').value='#4DB6AC';TPL_CUSTOM.companyNameColor='#4DB6AC';livePreview()" style="width:20px;height:20px;background:#4DB6AC;border-radius:4px;cursor:pointer;border:1px solid #ddd"></span>
+                  <span onclick="document.getElementById('tpl-name-color').value='#1A2332';document.getElementById('tpl-r-name-color').value='#1A2332';TPL_CUSTOM.companyNameColor='#1A2332';livePreview()" style="width:20px;height:20px;background:#1A2332;border-radius:4px;cursor:pointer;border:1px solid #ddd"></span>
+                  <span onclick="document.getElementById('tpl-name-color').value='#E53935';document.getElementById('tpl-r-name-color').value='#E53935';TPL_CUSTOM.companyNameColor='#E53935';livePreview()" style="width:20px;height:20px;background:#E53935;border-radius:4px;cursor:pointer;border:1px solid #ddd"></span>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label>Company Name Style</label>
+              <select id="tpl-r-name-style" onchange="TPL_CUSTOM.companyNameWeight=this.value;livePreview()">
+                <option value="800">Extra Bold</option>
+                <option value="700" selected>Bold</option>
+                <option value="600">Semi-Bold</option>
+                <option value="400">Normal</option>
+                <option value="300">Light</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Logo Position</label>
+              <select id="tpl-r-logo-pos" onchange="TPL_CUSTOM.logoPosition=this.value;livePreview()">
+                <option value="left">Left (Default)</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+            </div>
             <div class="field">
               <label>Font Family</label>
-              <select id="tpl-font" onchange="TPL_CUSTOM.font=this.value;livePreview();_tplMarkUnsaved()">
+              <select id="tpl-font" onchange="TPL_CUSTOM.font=this.value;livePreview()">
                 <option value="'Public Sans',sans-serif">Public Sans (Default)</option>
                 <option value="'Roboto',sans-serif">Roboto</option>
                 <option value="'Inter',sans-serif">Inter</option>
@@ -1875,24 +1908,79 @@ const SERVER = {
               </select>
             </div>
             <div class="field">
+              <label>Invoice Header Style</label>
+              <select id="tpl-header-style" onchange="TPL_CUSTOM.headerStyle=this.value;livePreview()">
+                <option value="gradient">Gradient Background</option>
+                <option value="solid">Solid Color</option>
+                <option value="minimal">Minimal (White + Border)</option>
+                <option value="split">Split Layout</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Table Header Style</label>
+              <select id="tpl-table-style" onchange="TPL_CUSTOM.tableStyle=this.value;livePreview()">
+                <option value="dark">Dark Header (Default)</option>
+                <option value="accent">Accent Color Header</option>
+                <option value="light">Light Gray Header</option>
+                <option value="outline">Outline / Borderless</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Footer Text</label>
+              <input id="tpl-footer-text" placeholder="e.g. Thank you for your business!">
+            </div>
+            <div class="field">
+              <label>Invoice Tagline <span style="font-size:10px;color:var(--muted)">(shown near company name)</span></label>
+              <input id="tpl-tagline" placeholder="e.g. Tax Invoice · GST Registered">
+            </div>
+            <div class="field">
+              <label>Page Watermark Text <span style="font-size:10px;color:var(--muted)">(on paid invoices)</span></label>
+              <input id="tpl-watermark-text" value="PAID" placeholder="PAID">
+            </div>
+            <div class="field">
+              <label>Company Name Size (px)</label>
+              <input type="number" id="tpl-name-size" value="28" min="14" max="56" placeholder="28">
+            </div>
+            <div class="field">
+              <label>Company Name Color</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="color" id="tpl-name-color" value="#ffffff" style="width:44px;height:38px;border:1.5px solid var(--border);border-radius:8px;padding:2px">
+                <input id="tpl-name-color-hex" value="#ffffff" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:13px" oninput="document.getElementById('tpl-name-color').value=this.value">
+              </div>
+            </div>
+            <div class="field">
+              <label>Company Name Font Weight</label>
+              <select id="tpl-name-weight">
+                <option value="400">Regular (400)</option>
+                <option value="500">Medium (500)</option>
+                <option value="600">SemiBold (600)</option>
+                <option value="700">Bold (700)</option>
+                <option value="800" selected>ExtraBold (800)</option>
+                <option value="900">Black (900)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Company Name Font Style</label>
+              <select id="tpl-name-style">
+                <option value="normal" selected>Normal</option>
+                <option value="italic">Italic</option>
+                <option value="oblique">Oblique</option>
+              </select>
+            </div>
+            <div class="field">
               <label>Logo Position</label>
-              <select id="tpl-logo-pos" onchange="TPL_CUSTOM.logoPosition=this.value;livePreview();_tplMarkUnsaved()">
-                <option value="left">Left (Default)</option>
+              <select id="tpl-logo-pos">
+                <option value="left" selected>Left (default)</option>
                 <option value="center">Center</option>
                 <option value="right">Right</option>
               </select>
             </div>
-            <div class="field">
-              <label>Watermark Text <span style="font-size:10px;color:var(--muted)">(shown on paid invoices)</span></label>
-              <input id="tpl-watermark-text" value="PAID" placeholder="PAID" oninput="TPL_CUSTOM.watermarkText=this.value;livePreview();_tplMarkUnsaved()">
-            </div>
           </div>
 
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn btn-primary" onclick="applyTplCustomization()"><i class="fas fa-magic"></i> Apply &amp; Preview</button>
-            <button class="btn btn-success" onclick="saveTplCustomization()"><i class="fas fa-save"></i> Save</button>
-            <button class="btn btn-outline" onclick="resetTplCustomization()"><i class="fas fa-undo"></i> Reset</button>
-            <span id="tpl-unsaved-badge" style="display:none;font-size:11px;font-weight:700;color:#E64A19;background:#FFF3E0;padding:3px 10px;border-radius:20px;border:1px solid #FFCCBC"><i class="fas fa-circle" style="font-size:7px;margin-right:4px"></i>Unsaved changes</span>
+            <button class="btn btn-success" onclick="saveTplCustomization()"><i class="fas fa-save"></i> Save Customization</button>
+            <button class="btn btn-outline" onclick="resetTplCustomization()"><i class="fas fa-undo"></i> Reset to Default</button>
           </div>
         </div>
       </div>
@@ -8395,9 +8483,9 @@ function previewTemplate(n) {
     cname:'Sample Client Ltd',cperson:'Contact Person',cemail:'client@example.com',cwa:'+91 9876543210',
     cgst:'',caddr:'Your City, State, India',disc:0,discAmt:0,
     notes: sc.defaultNotes || (sc.company ? 'Thank you for choosing ' + sc.company + '.' : 'Thank you for your business.'),
-    bank: sc.defaultBank || sc.bank || '',
+    bank: sc.bank || '',
     tnc: sc.defaultTnc || 'All prices inclusive of applicable taxes.',
-    status:'Paid',sym: STATE.settings.currency || '₹',sub:88500,gstAmt:15930,grand:104430,invId:'',
+    status:'Paid',sym:'₹',sub:88500,gstAmt:15930,grand:104430,invId:'',
     companyLogo:sc.logo||'',clientLogo:'',signature:'',qrUrl:'',
     popt:{bank:true,qr:false,sign:true,logo:true,clientLogo:false,notes:true,tnc:true,gstCol:true,footer:true,watermark:true}};
   const iHTML=`<tr><td style="padding:9px 12px;border-bottom:1px solid #eee">Website Development Premium</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee;font-size:11px;color:#666">Service</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">1</td><td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">₹75,000.00</td><td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">₹75,000.00</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">18%</td><td style="padding:9px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">₹88,500.00</td></tr><tr><td style="padding:9px 12px;border-bottom:1px solid #eee">Domain & Hosting</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee;font-size:11px;color:#666">Product</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">1</td><td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">₹4,500.00</td><td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">₹4,500.00</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">18%</td><td style="padding:9px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">₹5,310.00</td></tr>`;
@@ -8412,19 +8500,13 @@ function previewTemplate(n) {
   toast(`👁️ Template ${n}: ${tplNames[n-1]}`, 'info');
 }
 
-async function setActiveTemplate(n) {
+function setActiveTemplate(n) {
   STATE.settings.activeTemplate = n;
-  const fTpl = document.getElementById('f-template');
-  const sdTpl = document.getElementById('sd-tpl');
-  if (fTpl)  fTpl.value  = String(n);
-  if (sdTpl) sdTpl.value = String(n);
-  syncThemePicker();
+  document.getElementById('f-template').value = n;
+  document.getElementById('sd-tpl').value = n;
   renderTemplatesGrid();
   livePreview();
-  try {
-    await api('api/settings.php', 'POST', { active_template: String(n) });
-    toast(`✅ Template ${n} set as active`, 'success');
-  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  toast(`✅ Template ${n} set as default`, 'success');
 }
 
 // ══════════════════════════════════════════
@@ -9881,16 +9963,41 @@ async function loadAllData() {
         tpl_name_festival: s.wa_tpl_name_festival || '',
         tpl_lang_festival: s.wa_tpl_lang_festival || 'en_US',
       };
-      // Restore TPL_CUSTOM from PHP-bridge settings (runs synchronously before DOM ready)
+      // Parse TPL_CUSTOM settings
       if (window.TPL_CUSTOM) {
-        if (s.tpl_color1)        TPL_CUSTOM.color1        = s.tpl_color1;
-        if (s.tpl_color2)        TPL_CUSTOM.color2        = s.tpl_color2;
-        if (s.tpl_font)          TPL_CUSTOM.font          = s.tpl_font;
-        if (s.tpl_logo_position) TPL_CUSTOM.logoPosition  = s.tpl_logo_position;
-        if (s.tpl_watermark_text)TPL_CUSTOM.watermarkText = s.tpl_watermark_text;
-        if (s.tpl_color_theme)   TPL_CUSTOM.colorTheme    = parseInt(s.tpl_color_theme)||1;
-        // Sync UI controls after DOM ready via populateTemplateForm
-        setTimeout(() => populateTemplateForm(), 200);
+        if (s.tpl_color1)        TPL_CUSTOM.color1         = s.tpl_color1;
+        if (s.tpl_color2)        TPL_CUSTOM.color2         = s.tpl_color2;
+        if (s.tpl_font)          TPL_CUSTOM.font           = s.tpl_font;
+        if (s.tpl_name_size)     TPL_CUSTOM.companyNameSize= String(parseInt(s.tpl_name_size)||28);
+        if (s.tpl_name_color)    TPL_CUSTOM.companyNameColor=s.tpl_name_color;
+        if (s.tpl_name_weight)   TPL_CUSTOM.companyNameWeight=s.tpl_name_weight;
+        if (s.tpl_name_style)    TPL_CUSTOM.companyNameStyle=s.tpl_name_style||'normal';
+        if (s.tpl_logo_position) TPL_CUSTOM.logoPosition   = s.tpl_logo_position;
+        if (s.tpl_footer_text)   TPL_CUSTOM.footerText     = s.tpl_footer_text;
+        if (s.tpl_tagline)       TPL_CUSTOM.tagline        = s.tpl_tagline;
+        if (s.tpl_watermark_text)TPL_CUSTOM.watermarkText  = s.tpl_watermark_text;
+        if (s.tpl_header_style)  TPL_CUSTOM.headerStyle    = s.tpl_header_style;
+        if (s.tpl_table_style)   TPL_CUSTOM.tableStyle     = s.tpl_table_style;
+        if (s.tpl_color_theme)   TPL_CUSTOM.colorTheme     = parseInt(s.tpl_color_theme)||1;
+        // Sync UI controls to restored values (done after DOM ready)
+        setTimeout(() => {
+          const sync = (id, val) => { const e=document.getElementById(id); if(e) e.value=val; };
+          sync('tpl-color1',      TPL_CUSTOM.color1);
+          sync('tpl-color1-hex',  TPL_CUSTOM.color1);
+          sync('tpl-color2',      TPL_CUSTOM.color2);
+          sync('tpl-color2-hex',  TPL_CUSTOM.color2);
+          sync('tpl-font',        TPL_CUSTOM.font);
+          sync('tpl-name-size',   TPL_CUSTOM.companyNameSize);
+          sync('tpl-name-color',  TPL_CUSTOM.companyNameColor);
+          sync('tpl-name-style',  TPL_CUSTOM.companyNameStyle);
+          sync('tpl-header-style',TPL_CUSTOM.headerStyle);
+          sync('tpl-table-style', TPL_CUSTOM.tableStyle);
+          sync('tpl-footer-text', TPL_CUSTOM.footerText);
+          sync('tpl-tagline',     TPL_CUSTOM.tagline);
+          sync('tpl-watermark-text', TPL_CUSTOM.watermarkText);
+          const sv = document.getElementById('tpl-name-size-val');
+          if (sv) sv.textContent = TPL_CUSTOM.companyNameSize + 'px';
+        }, 200);
       }
       STATE.settings.company   = s.company_name    || STATE.settings.company;
       STATE.settings.gst       = s.company_gst     || STATE.settings.gst;
@@ -9943,16 +10050,20 @@ async function loadAllData() {
       if (s.item_types) {
         try { const iTypes = JSON.parse(s.item_types); if (Array.isArray(iTypes) && iTypes.length) STATE.itemTypes = iTypes; } catch(e) {}
       }
-      // TPL_CUSTOM already restored in PHP-bridge block above — just re-sync UI
-      if (window.TPL_CUSTOM) {
-        if (s.tpl_color1)        TPL_CUSTOM.color1        = s.tpl_color1;
-        if (s.tpl_color2)        TPL_CUSTOM.color2        = s.tpl_color2;
-        if (s.tpl_font)          TPL_CUSTOM.font          = s.tpl_font;
-        if (s.tpl_logo_position) TPL_CUSTOM.logoPosition  = s.tpl_logo_position;
-        if (s.tpl_watermark_text)TPL_CUSTOM.watermarkText = s.tpl_watermark_text;
-        if (s.tpl_color_theme)   TPL_CUSTOM.colorTheme    = parseInt(s.tpl_color_theme)||1;
-        populateTemplateForm();
-      }
+      // Restore TPL_CUSTOM from saved settings
+      if (s.tpl_color1)      TPL_CUSTOM.color1          = s.tpl_color1;
+      if (s.tpl_color2)      TPL_CUSTOM.color2          = s.tpl_color2;
+      if (s.tpl_font)        TPL_CUSTOM.font            = s.tpl_font;
+      if (s.tpl_name_size)   TPL_CUSTOM.companyNameSize = s.tpl_name_size;
+      if (s.tpl_name_color)  TPL_CUSTOM.companyNameColor= s.tpl_name_color;
+      if (s.tpl_name_weight) TPL_CUSTOM.companyNameWeight=s.tpl_name_weight;
+      if (s.tpl_name_style)  TPL_CUSTOM.companyNameStyle=s.tpl_name_style;
+      if (s.tpl_footer_text) TPL_CUSTOM.footerText      = s.tpl_footer_text;
+      if (s.tpl_tagline)     TPL_CUSTOM.tagline         = s.tpl_tagline;
+      if (s.tpl_watermark_text) TPL_CUSTOM.watermarkText= s.tpl_watermark_text;
+      if (s.tpl_header_style) TPL_CUSTOM.headerStyle    = s.tpl_header_style;
+      if (s.tpl_table_style)  TPL_CUSTOM.tableStyle     = s.tpl_table_style;
+    if (s.tpl_color_theme)  TPL_CUSTOM.colorTheme     = parseInt(s.tpl_color_theme)||1;
     }
     console.log('Loaded:', STATE.invoices.length,'invoices,', STATE.clients.length,'clients');
     // Load new feature data
@@ -10262,8 +10373,19 @@ function populateSettingsForm() {
   set('sd-bank',    s.defaultBank  || '');
   set('sd-notes',   s.defaultNotes || '');
   set('sd-tnc',     s.defaultTnC   || '');
-  // Restore template customization UI — calls populateTemplateForm which handles all 5 controls
-  populateTemplateForm();
+  // Restore template customization
+  const setV = (id,v) => { const e=document.getElementById(id); if(e&&v!==undefined&&v!=='')e.value=v; };
+  if (TPL_CUSTOM.color1)          { setV('tpl-color1',TPL_CUSTOM.color1); setV('tpl-color1-hex',TPL_CUSTOM.color1); }
+  if (TPL_CUSTOM.color2)          { setV('tpl-color2',TPL_CUSTOM.color2); setV('tpl-color2-hex',TPL_CUSTOM.color2); }
+  setV('tpl-font',         TPL_CUSTOM.font);
+  setV('tpl-watermark-text',TPL_CUSTOM.watermarkText||'PAID');
+  setV('tpl-footer-text',  TPL_CUSTOM.footerText);
+  setV('tpl-tagline',      TPL_CUSTOM.tagline);
+  setV('tpl-name-size',    TPL_CUSTOM.companyNameSize||'28');
+  if (TPL_CUSTOM.companyNameColor) { setV('tpl-name-color',TPL_CUSTOM.companyNameColor); setV('tpl-name-color-hex',TPL_CUSTOM.companyNameColor); }
+  setV('tpl-name-weight',  TPL_CUSTOM.companyNameWeight||'800');
+  setV('tpl-name-style',   TPL_CUSTOM.companyNameStyle||'normal');
+  setV('tpl-logo-pos',     TPL_CUSTOM.logoPosition||'left');
   // Show logo preview if set
   // Show logo preview
   if (s.logo || STATE.settings.logo) {
@@ -10955,12 +11077,10 @@ const TPL_CUSTOM = {
 
 // Show/hide theme picker depending on active template
 function syncThemePicker() {
-  const tplNum  = STATE.settings.activeTemplate || 1;
+  const tplSel = document.getElementById('f-template');
   const picker  = document.getElementById('tpl2-theme-picker');
-  const cpicker = document.getElementById('tpl-color-pickers');
-  const isTpl2  = String(tplNum) === '2';
-  if (picker)  picker.style.display  = isTpl2 ? 'block' : 'none';
-  if (cpicker) cpicker.style.display = isTpl2 ? 'none'  : 'grid';
+  if (!picker) return;
+  picker.style.display = (tplSel && tplSel.value === '2') ? 'block' : 'none';
 }
 
 // Set matte theme for Template 2
@@ -10994,44 +11114,76 @@ function setTplColor(inputId, color) {
 function populateTemplateForm() {
   const C = window.TPL_CUSTOM || {};
   const setV = (id,v) => { const e=document.getElementById(id); if(e&&v!==undefined) e.value=String(v); };
-  setV('tpl-color1',        C.color1         || '#1A2332');
-  setV('tpl-color1-hex',    C.color1         || '#1A2332');
-  setV('tpl-color2',        C.color2         || '#4DB6AC');
-  setV('tpl-color2-hex',    C.color2         || '#4DB6AC');
-  setV('tpl-font',          C.font           || "'Public Sans',sans-serif");
-  setV('tpl-logo-pos',      C.logoPosition   || 'left');
-  setV('tpl-watermark-text',C.watermarkText  || 'PAID');
-  // Restore matte theme button highlight
-  if (C.colorTheme) setMatteTheme(parseInt(C.colorTheme)||1);
-  // Show/hide color pickers vs theme picker
-  syncThemePicker();
+  setV('tpl-color1',       C.color1        || '#1A2332');
+  setV('tpl-color1-hex',   C.color1        || '#1A2332');
+  setV('tpl-color2',       C.color2        || '#4DB6AC');
+  setV('tpl-color2-hex',   C.color2        || '#4DB6AC');
+  setV('tpl-font',         C.font          || "'Public Sans',sans-serif");
+  setV('tpl-header-style', C.headerStyle   || 'gradient');
+  setV('tpl-table-style',  C.tableStyle    || 'dark');
+  setV('tpl-footer-text',  C.footerText    || '');
+  setV('tpl-tagline',      C.tagline       || '');
+  setV('tpl-watermark-text',C.watermarkText|| 'PAID');
+  setV('tpl-name-size',    C.companyNameSize   || '28');
+  setV('tpl-name-color',   C.companyNameColor  || '#ffffff');
+  setV('tpl-name-style',   C.companyNameStyle  || 'normal');
+  setV('tpl-logo-pos',     C.logoPosition  || 'left');
+  // Also populate user-visible (renamed) panel
+  setV('tpl-r-name-size',  C.companyNameSize   || '28');
+  setV('tpl-r-name-color', C.companyNameColor  || '#ffffff');
+  setV('tpl-r-name-style', C.companyNameWeight || '800');
+  setV('tpl-r-logo-pos',   C.logoPosition      || 'left');
+  const rsLbl = document.getElementById('tpl-r-name-size-val');
+  if (rsLbl) rsLbl.textContent = (C.companyNameSize||'28')+'px';
 }
 
 window.applyTplCustomization = function() {
   // Read color from hex input first (most reliably updated), fallback to color picker
   const readColor = (hexId, pickerId) => {
-    const hex  = document.getElementById(hexId);
+    const hex = document.getElementById(hexId);
     const pick = document.getElementById(pickerId);
     const v = (hex && hex.value && hex.value.match(/^#[0-9a-fA-F]{3,6}$/)) ? hex.value : (pick ? pick.value : '');
-    if (hex && v)  hex.value  = v;
+    if (hex && v) hex.value = v;
     if (pick && v) pick.value = v;
     return v;
   };
-  // Only read color pickers for non-Template2 templates
-  const isTpl2 = String(STATE.settings.activeTemplate||1) === '2';
-  if (!isTpl2) {
-    TPL_CUSTOM.color1 = readColor('tpl-color1-hex', 'tpl-color1') || TPL_CUSTOM.color1;
-    TPL_CUSTOM.color2 = readColor('tpl-color2-hex', 'tpl-color2') || TPL_CUSTOM.color2;
-  }
-  TPL_CUSTOM.colorTheme    = parseInt(document.getElementById('tpl-color-theme')?.value||'1') || 1;
-  TPL_CUSTOM.font          = document.getElementById('tpl-font')?.value          || TPL_CUSTOM.font;
-  TPL_CUSTOM.logoPosition  = document.getElementById('tpl-logo-pos')?.value      || TPL_CUSTOM.logoPosition;
-  TPL_CUSTOM.watermarkText = document.getElementById('tpl-watermark-text')?.value|| 'PAID';
+  TPL_CUSTOM.color1       = readColor('tpl-color1-hex', 'tpl-color1') || TPL_CUSTOM.color1;
+  TPL_CUSTOM.color2       = readColor('tpl-color2-hex', 'tpl-color2') || TPL_CUSTOM.color2;
+  TPL_CUSTOM.font         = document.getElementById('tpl-font')?.value        || TPL_CUSTOM.font;
+  TPL_CUSTOM.colorTheme   = parseInt(document.getElementById('tpl-color-theme')?.value||'1') || 1;
+  TPL_CUSTOM.headerStyle  = document.getElementById('tpl-header-style')?.value|| TPL_CUSTOM.headerStyle;
+  TPL_CUSTOM.tableStyle   = document.getElementById('tpl-table-style')?.value || TPL_CUSTOM.tableStyle;
+  TPL_CUSTOM.footerText   = document.getElementById('tpl-footer-text')?.value ?? '';
+  TPL_CUSTOM.tagline      = document.getElementById('tpl-tagline')?.value     ?? '';
+  TPL_CUSTOM.watermarkText= document.getElementById('tpl-watermark-text')?.value || 'PAID';
+  // Read from user-visible panel (tpl-r-*) preferentially
+  const _rSizeEl = document.getElementById('tpl-r-name-size');
+  TPL_CUSTOM.companyNameSize  = (_rSizeEl?.value) || document.getElementById('tpl-name-size')?.value || '28';
+  const _rColorEl = document.getElementById('tpl-r-name-color');
+  TPL_CUSTOM.companyNameColor = (_rColorEl?.value) || document.getElementById('tpl-name-color')?.value || '#ffffff';
+  const _rStyleEl = document.getElementById('tpl-r-name-style');
+  TPL_CUSTOM.companyNameWeight= (_rStyleEl?.value) || document.getElementById('tpl-name-weight')?.value || '800';
+  // Sync range slider label
+  const _rSlideLbl = document.getElementById('tpl-r-name-size-val');
+  if (_rSlideLbl) _rSlideLbl.textContent = TPL_CUSTOM.companyNameSize + 'px';
+  TPL_CUSTOM.companyNameStyle = document.getElementById('tpl-name-style')?.value || TPL_CUSTOM.companyNameStyle || 'normal';
+  const _rLogoPosEl = document.getElementById('tpl-r-logo-pos');
+  TPL_CUSTOM.logoPosition = (_rLogoPosEl?.value) || document.getElementById('tpl-logo-pos')?.value || 'left';
+  // Sync all UI controls
+  const sync = (id, val) => { const e=document.getElementById(id); if(e) e.value=val; };
+  sync('tpl-color1',     TPL_CUSTOM.color1); sync('tpl-color1-hex', TPL_CUSTOM.color1);
+  sync('tpl-color2',     TPL_CUSTOM.color2); sync('tpl-color2-hex', TPL_CUSTOM.color2);
+  const sizeVal = document.getElementById('tpl-name-size-val');
+  if (sizeVal) sizeVal.textContent = TPL_CUSTOM.companyNameSize + 'px';
+  const sizeRange = document.getElementById('tpl-name-size');
+  if (sizeRange) sizeRange.value = TPL_CUSTOM.companyNameSize;
+  const nc = document.getElementById('tpl-name-color');
+  if (nc) nc.value = TPL_CUSTOM.companyNameColor;
   // Preview
   const n = STATE.settings.activeTemplate || 1;
   previewTemplate(n);
   if (document.getElementById('invoicePreviewWrap')) livePreview();
-  toast('✅ Applied! Click Save to persist.', 'success');
+  toast('✅ Customization applied! Click Save to persist.', 'success');
 };
 
 window.saveTplCustomization = async function() {
@@ -11040,42 +11192,37 @@ window.saveTplCustomization = async function() {
     tpl_color1:        TPL_CUSTOM.color1,
     tpl_color2:        TPL_CUSTOM.color2,
     tpl_font:          TPL_CUSTOM.font,
-    tpl_logo_position: TPL_CUSTOM.logoPosition,
+    tpl_header_style:  TPL_CUSTOM.headerStyle,
+    tpl_table_style:   TPL_CUSTOM.tableStyle,
+    tpl_footer_text:   TPL_CUSTOM.footerText,
+    tpl_tagline:       TPL_CUSTOM.tagline,
     tpl_watermark_text:TPL_CUSTOM.watermarkText,
+    tpl_name_size:     TPL_CUSTOM.companyNameSize,
+    tpl_name_color:    TPL_CUSTOM.companyNameColor,
+    tpl_name_weight:   TPL_CUSTOM.companyNameWeight,
+    tpl_name_style:    TPL_CUSTOM.companyNameStyle,
+    tpl_logo_position: TPL_CUSTOM.logoPosition,
     tpl_color_theme:   TPL_CUSTOM.colorTheme,
-    active_template:   String(STATE.settings.activeTemplate || 1),
   };
   try {
     await api('api/settings.php', 'POST', payload);
-    const badge = document.getElementById('tpl-unsaved-badge');
-    if (badge) badge.style.display = 'none';
     toast('✅ Template customization saved!', 'success');
   } catch(e) { toast('❌ ' + e.message, 'error'); }
 };
 
-function _tplMarkUnsaved() {
-  const badge = document.getElementById('tpl-unsaved-badge');
-  if (badge) badge.style.display = 'inline-flex';
-}
-
 window.resetTplCustomization = function() {
-  TPL_CUSTOM.color1        = '#1A2332';
-  TPL_CUSTOM.color2        = '#4DB6AC';
-  TPL_CUSTOM.font          = "'Public Sans',sans-serif";
-  TPL_CUSTOM.logoPosition  = 'left';
-  TPL_CUSTOM.watermarkText = 'PAID';
-  TPL_CUSTOM.colorTheme    = 1;
-  setTplColor('tpl-color1', '#1A2332');
-  setTplColor('tpl-color2', '#4DB6AC');
-  const tplFont = document.getElementById('tpl-font');
-  if (tplFont) tplFont.value = "'Public Sans',sans-serif";
-  const logoPosEl = document.getElementById('tpl-logo-pos');
-  if (logoPosEl) logoPosEl.value = 'left';
-  const wmEl = document.getElementById('tpl-watermark-text');
-  if (wmEl) wmEl.value = 'PAID';
+  TPL_CUSTOM.color1 = '#1A2332'; TPL_CUSTOM.color2 = '#4DB6AC';
+  TPL_CUSTOM.font   = "'Public Sans',sans-serif";
+  TPL_CUSTOM.headerStyle='gradient'; TPL_CUSTOM.tableStyle='dark';
+  TPL_CUSTOM.footerText=''; TPL_CUSTOM.tagline=''; TPL_CUSTOM.watermarkText='PAID';
+  TPL_CUSTOM.colorTheme=1; TPL_CUSTOM.companyNameSize='28'; TPL_CUSTOM.companyNameColor='#ffffff'; TPL_CUSTOM.companyNameWeight='800';
+  setTplColor('tpl-color1','#1A2332'); setTplColor('tpl-color2','#4DB6AC');
+  const tplFont=document.getElementById('tpl-font'); if(tplFont)tplFont.value="'Public Sans',sans-serif";
+  const hdSel=document.getElementById('tpl-header-style'); if(hdSel)hdSel.value='gradient';
+  const tbSel=document.getElementById('tpl-table-style'); if(tbSel)tbSel.value='dark';
   setMatteTheme(1);
   toast('↩️ Reset to defaults', 'info');
-  if (document.getElementById('invoicePreviewWrap')) livePreview();
+  if(document.getElementById('invoicePreviewWrap')) livePreview();
   previewTemplate(STATE.settings.activeTemplate||1);
 };
 
