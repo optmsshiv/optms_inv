@@ -1612,6 +1612,7 @@ const SERVER = {
               <label class="pdf-opt"><input type="checkbox" id="popt-footer" checked onchange="savePoptPrefs();livePreview()"><span>Footer Bar</span></label>
               <label class="pdf-opt"><input type="checkbox" id="popt-watermark" onchange="savePoptPrefs();livePreview()"><span>Paid Watermark</span></label>
               <label class="pdf-opt"><input type="checkbox" id="popt-payment-block" checked onchange="savePoptPrefs();livePreview()"><span>Payment Details</span></label>
+              <label class="pdf-opt"><input type="checkbox" id="popt-previous-due" onchange="savePoptPrefs();livePreview()"><span>Previous Due</span></label>
             </div>
           </div>
 
@@ -4790,8 +4791,8 @@ function closeAllDropdowns(e) {
 
 // ── PDF Options: persist checkbox state in localStorage ────────
 const POPT_STORAGE_KEY = 'optms_popt_prefs';
-const POPT_IDS = ['popt-bank','popt-qr','popt-sign','popt-logo','popt-client-logo','popt-notes','popt-tnc','popt-gst-col','popt-footer','popt-watermark','popt-payment-block'];
-const POPT_DEFAULTS = { 'popt-bank':true,'popt-qr':false,'popt-sign':true,'popt-logo':true,'popt-client-logo':false,'popt-notes':true,'popt-tnc':true,'popt-gst-col':true,'popt-footer':true,'popt-watermark':false,'popt-payment-block':true };
+const POPT_IDS = ['popt-bank','popt-qr','popt-sign','popt-logo','popt-client-logo','popt-notes','popt-tnc','popt-gst-col','popt-footer','popt-watermark','popt-payment-block','popt-previous-due'];
+const POPT_DEFAULTS = { 'popt-bank':true,'popt-qr':false,'popt-sign':true,'popt-logo':true,'popt-client-logo':false,'popt-notes':true,'popt-tnc':true,'popt-gst-col':true,'popt-footer':true,'popt-watermark':false,'popt-payment-block':true,'popt-previous-due':false };
 
 function savePoptPrefs() {
   const prefs = {};
@@ -5075,6 +5076,7 @@ function getFormData() {
   const generatedBy = document.getElementById('f-generated-by')?.value || (STATE.settings.company ? STATE.settings.company + ' Invoice Manager' : 'Invoice Manager');
   const showGeneratedBy = document.getElementById('f-show-generated')?.checked !== false;
   const status  = document.querySelector('input[name="inv-status"]:checked')?.value||'Draft';
+  const clientId = document.getElementById('f-client')?.value || '';
   const sym     = document.getElementById('f-currency')?.value||'₹';
   // Logos
   const companyLogo = document.getElementById('f-company-logo')?.value || STATE.settings.logo || '';
@@ -5096,7 +5098,8 @@ function getFormData() {
     gstCol:     document.getElementById('popt-gst-col')?.checked !== false,
     footer:     document.getElementById('popt-footer')?.checked !== false,
     watermark:    document.getElementById('popt-watermark')?.checked || false,
-    paymentBlock: document.getElementById('popt-payment-block')?.checked !== false,
+    paymentBlock:  document.getElementById('popt-payment-block')?.checked !== false,
+    previousDue:   document.getElementById('popt-previous-due')?.checked || false,
   };
 
   // Per-item GST totals
@@ -5125,7 +5128,7 @@ function getFormData() {
   }
 
   const invId = STATE.editingInvoiceId ? String(STATE.editingInvoiceId) : '';
-  return { tpl, num, date, due, svc, cname, cperson, cemail, cwa, cgst, caddr, disc: discPct, discRaw: disc, discType, notes, bank, tnc, status, sym, sub, discAmt, gstAmt: gstAfterDisc, grand, companyLogo, clientLogo, signature, qrUrl, popt, generatedBy, showGeneratedBy, invId };
+  return { tpl, num, date, due, svc, cname, cperson, cemail, cwa, cgst, caddr, disc: discPct, discRaw: disc, discType, notes, bank, tnc, status, sym, sub, discAmt, gstAmt: gstAfterDisc, grand, companyLogo, clientLogo, signature, qrUrl, popt, generatedBy, showGeneratedBy, invId, clientId };
 }
 
 function livePreview() {
@@ -5458,6 +5461,71 @@ function totalsRows(d, accentColor, borderColor) {
   </div>`;
 }
 
+// ── Previous Due Block — other outstanding invoices for same client ──────────
+function previousDueBlock(d, accentColor, bgColor, borderColor) {
+  if (d.popt && d.popt.previousDue === false) return '';
+  const clientId = d.clientId || d.client_id || '';
+  const currentNum = String(d.num || '');
+  if (!clientId || typeof STATE === 'undefined') return '';
+
+  // Find other unpaid invoices for same client (exclude current)
+  const outstanding = (STATE.invoices || []).filter(inv => {
+    if (String(inv.client) !== String(clientId)) return false;
+    if (String(inv.num || inv.invoice_number || '') === currentNum) return false;
+    return ['Pending', 'Overdue', 'Partial'].includes(inv.status);
+  });
+
+  if (!outstanding.length) return '';
+
+  const sym = d.sym || (STATE.settings && STATE.settings.currency) || '₹';
+  const accent = accentColor || '#92400E';
+  const bg     = bgColor     || '#FFFBEB';
+  const border = borderColor || '#FCD34D';
+
+  // Calculate remaining balance for each invoice
+  const rows = outstanding.map(inv => {
+    const invId    = String(inv.id || '');
+    const totalPaid = (STATE.payments || [])
+      .filter(p => String(p.invoice_id) === invId)
+      .reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+    const grand    = parseFloat(inv.amount || inv.grand_total || 0);
+    const balance  = Math.max(0, grand - totalPaid);
+    const num      = inv.num || inv.invoice_number || '—';
+    const due      = inv.due || inv.due_date || '';
+    const dueF     = due ? new Date(due).toLocaleDateString(_moneyLocale(), {day:'2-digit',month:'short',year:'numeric'}) : '—';
+    const isOverdue= inv.status === 'Overdue';
+    const statusColor = isOverdue ? '#DC2626' : inv.status === 'Partial' ? '#D97706' : '#92400E';
+    return { num, dueF, balance, statusColor, status: inv.status };
+  });
+
+  const totalOutstanding = rows.reduce((s, r) => s + r.balance, 0);
+
+  const rowsHTML = rows.map(r => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:0.5px solid ${border};font-size:10px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-family:monospace;font-weight:700;color:#0F172A">#${r.num}</span>
+        <span style="font-size:9px;font-weight:700;text-transform:uppercase;color:${r.statusColor}">${r.status}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <span style="color:#64748B">Due: ${r.dueF}</span>
+        <span style="font-family:monospace;font-weight:700;color:${r.statusColor}">${fmt_money(r.balance, sym)}</span>
+      </div>
+    </div>`).join('');
+
+  return `
+  <div style="margin:10px 0 0;padding:12px 14px;background:${bg};border-radius:8px;border:1.5px solid ${border};border-left:4px solid ${accent}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:${accent}">⚠ Other Outstanding Invoices</span>
+      <span style="font-size:9px;color:#94A3B8">${rows.length} invoice${rows.length>1?'s':''}</span>
+    </div>
+    ${rowsHTML}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1.5px solid ${border}">
+      <span style="font-size:10px;font-weight:700;color:${accent}">Total Outstanding (excl. this invoice)</span>
+      <span style="font-family:monospace;font-size:12px;font-weight:800;color:${accent}">${fmt_money(totalOutstanding, sym)}</span>
+    </div>
+  </div>`;
+}
+
 // ── TEMPLATE A: Clean Minimal ────────────────────────────────────────────────
 function buildTplA(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
   sc = resolveCompany(sc);
@@ -5542,6 +5610,7 @@ function buildTplA(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
     </div>
     <div style="width:220px">
       ${totalsRows(d,accent,'#E2E8F0')}
+      ${previousDueBlock(d,'#92400E','#FFFBEB','#FCD34D')}
       ${tplSignHTML(d)}
     </div>
   </div>
@@ -5642,6 +5711,7 @@ function buildTplB(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
     </div>
     <div style="width:230px">
       ${totalsRows(d,primary,lightBdr)}
+      ${previousDueBlock(d,'#1565C0','rgba(21,101,192,0.05)','rgba(21,101,192,0.25)')}
       ${tplSignHTML(d)}
     </div>
   </div>
@@ -5737,6 +5807,7 @@ function buildTplE(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
     </div>
     <div style="width:220px">
       ${totalsRows(d,dark,'#E2E8F0')}
+      ${previousDueBlock(d,accent,'rgba(56,189,248,0.06)','rgba(56,189,248,0.3)')}
       ${tplSignHTML(d)}
     </div>
   </div>
@@ -6099,6 +6170,9 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
     </div>
   </div>
 
+  <!-- PREVIOUS DUE -->
+  ${previousDueBlock(d,'#92400E','rgba(146,64,14,0.06)','rgba(146,64,14,0.25)')}
+
   <!-- FOOTER -->
   ${d.popt.footer!==false?`
   <div style="padding:12px 24px;background:${T.footbg};display:flex;justify-content:space-between;align-items:center">
@@ -6255,7 +6329,7 @@ function printInvoiceById(inv) {
       // Parse pdf_options from DB (may be JSON string or already an object)
       let saved = inv.pdf_options || inv.popt || null;
       if (saved && typeof saved === 'string') { try { saved = JSON.parse(saved); } catch(e) { saved = null; } }
-      return Object.assign({bank:true,qr:!!(inv.qr_code),sign:true,logo:true,clientLogo:false,notes:true,tnc:true,gstCol:true,footer:true,watermark:(inv.status==='Paid'||inv.status==='Cancelled'),paymentBlock:true}, saved||{});
+      return Object.assign({bank:true,qr:!!(inv.qr_code),sign:true,logo:true,clientLogo:false,notes:true,tnc:true,gstCol:true,footer:true,watermark:(inv.status==='Paid'||inv.status==='Cancelled'),paymentBlock:true,previousDue:false}, saved||{});
     })()
   };
   d._rawItems = d.items || [];
@@ -6467,6 +6541,7 @@ function openPreviewModal(id) {
   // Build data object directly from invoice — no form manipulation needed
   const d = {
     tpl: inv.template || inv.template_id || STATE.settings.activeTemplate || '2',
+    clientId: String(inv.client || inv.client_id || ''),
     num: inv.num || inv.invoice_number,
     date: inv.issued,
     due: inv.due,
@@ -6611,6 +6686,7 @@ function loadInvoiceIntoForm(inv) {
     _sc('popt-footer',     _savedPopt.footer      !== false);
     _sc('popt-watermark',    !!_savedPopt.watermark);
     _sc('popt-payment-block',_savedPopt.paymentBlock !== false);
+    _sc('popt-previous-due',  !!_savedPopt.previousDue);
   }
   formItems = inv.items.map(i => ({ id: Date.now() + Math.random(), desc: i.desc||i.description||'', itemType: i.itemType||i.item_type||'Service', qty: parseFloat(i.qty||i.quantity)||1, gst: (i.gst!==undefined&&i.gst!==null&&i.gst!==''?parseFloat(i.gst):i.gstRate!==undefined&&i.gstRate!==null&&i.gstRate!==''?parseFloat(i.gstRate):i.gst_rate!==undefined&&i.gst_rate!==''?parseFloat(i.gst_rate):18), rate: parseFloat(i.rate)||0 }));
   renderFormItems();
