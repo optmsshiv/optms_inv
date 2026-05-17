@@ -5711,11 +5711,24 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
             </div>`
           : '';
         const paidLabel = isPaid2 ? '✅ Paid in Full' : `💚 Total Paid${pays2.length>1?' ('+pays2.length+' instalments)':''}`;
+        // Show payment date for single full payment
+        const _singlePaidDate = (isPaid2 && pays2.length === 1)
+          ? (() => {
+              const dt = pays2[0].date || pays2[0].payment_date || '';
+              if (!dt) return '';
+              const dtF = new Date(dt).toLocaleDateString(_moneyLocale(), {day:'2-digit', month:'short', year:'numeric'});
+              const meth = pays2[0].method || '';
+              const txn  = pays2[0].txn || '';
+              return `<div style="font-size:10px;color:#4CAF50;margin-top:2px;font-weight:600">
+                ${dtF}${meth ? ' · ' + meth : ''}${txn ? ' · ' + txn : ''}
+              </div>`;
+            })()
+          : '';
         const paidRow2 = `<div style="padding:8px 22px;border-top:1px solid ${T.totbr}">
           ${isCancelled2?`<div style="font-size:9.5px;font-weight:700;color:#B71C1C;text-transform:uppercase;letter-spacing:.8px;padding:4px 0 2px">⚠ Payment received before cancellation</div>`:''}
           ${settleRow2}
           <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;${pays2.length>1?'border-bottom:2px solid #A5D6A7':''}">
-            <span style="color:#388E3C;font-weight:700">${paidLabel}</span>
+            <div><span style="color:#388E3C;font-weight:700">${paidLabel}</span>${_singlePaidDate}</div>
             <span style="font-family:monospace;font-weight:800;color:#388E3C">-${fmt_money(totalPaid2,d.sym)}</span>
           </div>
           ${pays2.length>1?`<div style="background:#F1F8E9;border-radius:6px;padding:4px 8px;margin-top:4px">${instalRows2}</div>`:''}
