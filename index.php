@@ -1392,7 +1392,10 @@ const SERVER = {
               </div>
               <div class="field"><label>PDF Template</label>
                 <select id="f-template" onchange="syncThemePicker();livePreview()">
-                  <option value="2" selected>Colorful Matte</option>
+                  <option value="2">Colorful Matte</option>
+                  <option value="A">Clean Minimal</option>
+                  <option value="B">Corporate Split</option>
+                  <option value="E">Dark Header</option>
                 </select>
               </div>
             </div>
@@ -1619,8 +1622,11 @@ const SERVER = {
           <div class="preview-toolbar">
             <span class="preview-label"><i class="fas fa-eye"></i> Live Preview</span>
             <div style="display:flex;gap:8px">
-              <select id="prevTplSelect" class="mini-select" onchange="document.getElementById('f-template').value=this.value;livePreview()">
-                <option value="2" selected>Colorful Matte</option>
+              <select id="prevTplSelect" class="mini-select" onchange="document.getElementById('f-template').value=this.value;syncThemePicker();livePreview()">
+                <option value="2">Colorful Matte</option>
+                <option value="A">Clean Minimal</option>
+                <option value="B">Corporate Split</option>
+                <option value="E">Dark Header</option>
               </select>
               <button class="mini-btn" onclick="livePreview()"><i class="fas fa-sync"></i></button>
             </div>
@@ -2761,7 +2767,10 @@ View Invoice: {{6}}</pre></details>
             </div>
             <div class="field"><label>Default Template</label>
               <select id="sd-tpl">
-                <option value="2" selected>Colorful Matte</option>
+                <option value="2">Colorful Matte</option>
+                <option value="A">Clean Minimal</option>
+                <option value="B">Corporate Split</option>
+                <option value="E">Dark Header</option>
               </select>
             </div>
             <div class="field"><label>Invoice Number Prefix</label>
@@ -5176,8 +5185,33 @@ function buildInvoiceHTML(d, forPrint) {
   const gstColHeader = showGstCol ? `<th style="padding:10px 8px;text-align:center">GST%</th>` : '';
   const rowNumHeader = `<th style="padding:10px 8px;text-align:left;width:28px">#</th>`;
 
-  const fn = buildTpl2;
+  d._rawItems = d.items || formItems;
+  const _tplMap = {'2':buildTpl2,'A':buildTplA,'B':buildTplB,'E':buildTplE};
+  const fn = _tplMap[String(d.tpl)] || buildTpl2;
   return fn(d, sc, itemsHTML, gstColHeader, rowNumHeader);
+}
+
+// ── Simple items rows for templates A, B, E ─────────────────────────────────
+function buildSimpleItemRows(d, gstColHeader) {
+  const items = d._rawItems || [];
+  const sym   = d.sym || '₹';
+  if (!items.length) return `<tr><td colspan="${gstColHeader?6:5}" style="padding:20px;text-align:center;color:#aaa;font-size:11px">No items</td></tr>`;
+  return items.map((item, idx) => {
+    const qty     = parseFloat(item.qty||1);
+    const rate    = parseFloat(item.rate||0);
+    const line    = qty * rate;
+    const gstPct  = parseFloat(item.gst??0);
+    const gstAmt  = line * gstPct / 100;
+    const total   = line + gstAmt;
+    const bg      = idx % 2 === 1 ? 'background:#F8FAFC' : '';
+    return `<tr style="${bg}">
+      <td style="padding:9px 12px;font-size:11px;color:#0F172A;font-weight:600;border-bottom:0.5px solid #F1F5F9">${item.desc||'—'}</td>
+      <td style="padding:9px 12px;text-align:right;font-size:11px;color:#64748B;border-bottom:0.5px solid #F1F5F9;font-family:monospace">${qty}</td>
+      <td style="padding:9px 12px;text-align:right;font-size:11px;color:#64748B;border-bottom:0.5px solid #F1F5F9;font-family:monospace">${fmt_money(rate,sym)}</td>
+      ${gstColHeader?`<td style="padding:9px 12px;text-align:right;font-size:11px;color:#64748B;border-bottom:0.5px solid #F1F5F9">${gstPct}%</td>`:''}
+      <td style="padding:9px 12px;text-align:right;font-size:11px;font-weight:700;color:#0F172A;border-bottom:0.5px solid #F1F5F9;font-family:monospace">${fmt_money(total,sym)}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ── Shared helpers for templates ──
@@ -5394,6 +5428,297 @@ const _MATTE_THEMES = {
   7:{ name:'Slate',     hbg:'#1E293B', htext:'#fff', htag:'#94A3B8', hnum:'#fff', metabg:'#F1F5F9', metabr:'#CBD5E1', metalbl:'#475569', metaval:'#0F172A', billbg:'#F1F5F9', billbr:'#CBD5E1', billlbl:'#475569', issbg:'#E2E8F0', issbr:'#CBD5E1', isslbl:'#334155', thbg:'#1E293B', thtext:'#fff', notesbg:'#F1F5F9', notesbr:'#CBD5E1', noteslbl:'#475569', totbg:'#F1F5F9', totbr:'#CBD5E1', totlbl:'#475569', totval:'#0F172A', grandbg:'#1E293B', grandtext:'#fff', footbg:'#1E293B', foottext:'rgba(148,163,184,.8)', pillpaid:'#166534|#DCFCE7', pillpending:'#92400E|#FEF3C7', pilloverdue:'#991B1B|#FEE2E2', pilldraft:'#1E293B|#F1F5F9', band:'#1E293B,#334155,#64748B' },
   8:{ name:'Crimson',   hbg:'#7F1D1D', htext:'#fff', htag:'#FCA5A5', hnum:'#fff', metabg:'#FEF2F2', metabr:'#FECACA', metalbl:'#DC2626', metaval:'#450A0A', billbg:'#FEF2F2', billbr:'#FECACA', billlbl:'#DC2626', issbg:'#FFF5F5', issbr:'#FECACA', isslbl:'#B91C1C', thbg:'#7F1D1D', thtext:'#fff', notesbg:'#FEF2F2', notesbr:'#FECACA', noteslbl:'#DC2626', totbg:'#FEF2F2', totbr:'#FECACA', totlbl:'#DC2626', totval:'#450A0A', grandbg:'#7F1D1D', grandtext:'#fff', footbg:'#7F1D1D', foottext:'rgba(252,165,165,.8)', pillpaid:'#166534|#DCFCE7', pillpending:'#92400E|#FEF3C7', pilloverdue:'#991B1B|#FEE2E2', pilldraft:'#7F1D1D|#FEF2F2', band:'#7F1D1D,#DC2626,#FCA5A5' }
 };
+
+
+// ── TEMPLATE A: Clean Minimal ────────────────────────────────────────────────
+function buildTplA(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
+  sc = resolveCompany(sc);
+  const sym = d.sym || '₹';
+  const accent = (window.TPL_CUSTOM && TPL_CUSTOM.color1) ? TPL_CUSTOM.color1 : '#1E293B';
+  const font   = (window.TPL_CUSTOM && TPL_CUSTOM.font)   ? TPL_CUSTOM.font   : "'Public Sans',sans-serif";
+
+  const statusColors = { Paid:'#166534|#DCFCE7', Pending:'#92400E|#FEF3C7', Overdue:'#991B1B|#FEE2E2', Draft:'#374151|#F3F4F6', Partial:'#92400E|#FFF7ED', Cancelled:'#6B7280|#F9FAFB', Estimate:'#1E40AF|#DBEAFE' };
+  const [stxt, sbg] = (statusColors[d.status] || '#374151|#F3F4F6').split('|');
+
+  const thS = `padding:8px 0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${accent};border-bottom:1.5px solid ${accent}`;
+  const tdS = `padding:9px 0;font-size:11px;color:#444;border-bottom:0.5px solid #F1F5F9`;
+  const tdR = `${tdS};text-align:right;font-family:monospace;font-weight:600;color:#1E293B`;
+
+  return `<div style="font-family:${font};background:#fff;width:794px;min-height:1123px;position:relative;overflow:hidden">
+  ${tplWatermark(d)}
+  <div style="border-left:5px solid ${accent};padding:32px 40px 24px 36px;display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      ${sc.logo?`<img src="${sc.logo}" style="height:56px;max-width:200px;object-fit:contain;display:block;margin-bottom:10px" onerror="this.style.display='none'">`:''}
+      <div style="font-size:22px;font-weight:700;color:${accent};letter-spacing:-.5px;line-height:1;${sc.logo?'display:none':''}">${sc.company}</div>
+      <div style="margin-top:8px;font-size:10px;color:#94A3B8;line-height:2">
+        ${sc.gst?`<span>GSTIN: ${sc.gst}</span><br>`:''}
+        ${sc.phone?`<span>${sc.phone}</span>${sc.email?' &nbsp;·&nbsp; ':''}`:''}
+        ${sc.email?`<span>${sc.email}</span>`:''}
+        ${sc.address?`<br><span>${sc.address.replace(/\n/g,', ')}</span>`:''}
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:28px;font-weight:300;color:${accent};letter-spacing:-1.5px;line-height:1">${d.status==='Estimate'?'ESTIMATE':'INVOICE'}</div>
+      <div style="font-size:13px;font-weight:700;color:${accent};margin-top:4px;font-family:monospace">#${d.num}</div>
+      <span style="display:inline-block;margin-top:8px;padding:3px 12px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;border-radius:20px;background:${sbg};color:${stxt}">${d.status.toUpperCase()}</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:0;background:#F8FAFC;border-top:0.5px solid #E2E8F0;border-bottom:0.5px solid #E2E8F0;padding:16px 40px">
+    <div style="flex:1.5">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#94A3B8;margin-bottom:5px">Billed To</div>
+      ${tplClientLogoHTML(d)}
+      <div style="font-size:13px;font-weight:700;color:#0F172A">${d.cname}</div>
+      ${d.cperson?`<div style="font-size:10px;color:#64748B;margin-top:1px">${d.cperson}</div>`:''}
+      ${d.cemail?`<div style="font-size:10px;color:#64748B">${d.cemail}</div>`:''}
+      ${d.cwa?`<div style="font-size:10px;color:#64748B">${d.cwa}</div>`:''}
+      ${d.caddr?`<div style="font-size:10px;color:#64748B;margin-top:3px">${d.caddr.replace(/\n/g,'<br>')}</div>`:''}
+      ${d.cgst?`<div style="font-size:10px;color:#64748B;font-weight:600;margin-top:3px">GSTIN: ${d.cgst}</div>`:''}
+    </div>
+    <div style="display:flex;gap:32px;align-items:flex-start">
+      <div>
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#94A3B8;margin-bottom:5px">Issue Date</div>
+        <div style="font-size:12px;font-weight:600;color:#0F172A">${d.date||'—'}</div>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#94A3B8;margin-bottom:5px">Due Date</div>
+        <div style="font-size:12px;font-weight:600;color:#0F172A">${d.due||'—'}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#94A3B8;margin-bottom:5px">Amount Due</div>
+        <div style="font-size:18px;font-weight:700;color:${accent};font-family:monospace">${fmt_money(d.grand,sym)}</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:24px 40px">
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr>
+        ${rowNumHeader?`<th style="${thS};width:28px">#</th>`:''}
+        <th style="${thS}">Description</th>
+        <th style="${thS};text-align:right">Qty</th>
+        <th style="${thS};text-align:right">Rate</th>
+        ${gstColHeader?`<th style="${thS};text-align:right">GST%</th>`:''}
+        <th style="${thS};text-align:right">Amount</th>
+      </tr></thead>
+      <tbody>${buildSimpleItemRows(d,gstColHeader)}</tbody>
+    </table>
+  </div>
+
+  <div style="display:flex;padding:0 40px 24px;gap:24px">
+    <div style="flex:1">
+      ${tplBankHTML(d,'#475569','#F8FAFC','border:0.5px solid #E2E8F0;border-radius:8px')}
+      ${tplNotesHTML(d,'#475569','#F8FAFC')}
+      ${tplTncHTML(d,'#94A3B8')}
+      ${paymentReceivedBlock(d,'#BBF7D0','#F0FFF4','#166534')}
+    </div>
+    <div style="width:220px">
+      ${totalsRows(d,accent,'#E2E8F0')}
+      ${tplSignHTML(d)}
+    </div>
+  </div>
+
+  <div style="border-top:0.5px solid #E2E8F0;padding:12px 40px;display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:10px;color:#CBD5E1">${d.generatedBy||sc.company||''}</span>
+    <span style="font-size:10px;color:#CBD5E1">${sc.website||sc.email||''}</span>
+  </div>
+  <div style="height:4px;background:${accent}"></div>
+</div>`;
+}
+
+// ── TEMPLATE B: Corporate Split ──────────────────────────────────────────────
+function buildTplB(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
+  sc = resolveCompany(sc);
+  const sym = d.sym || '₹';
+  const primary = (window.TPL_CUSTOM && TPL_CUSTOM.color1) ? TPL_CUSTOM.color1 : '#1565C0';
+  const font     = (window.TPL_CUSTOM && TPL_CUSTOM.font)   ? TPL_CUSTOM.font   : "'Public Sans',sans-serif";
+
+  // Lighten primary for fills — use fixed light blue tint approach
+  const lightBg  = 'rgba(21,101,192,0.06)';
+  const lightBdr = 'rgba(21,101,192,0.18)';
+
+  const statusColors = { Paid:'#166534|#DCFCE7', Pending:'#92400E|#FEF3C7', Overdue:'#991B1B|#FEE2E2', Draft:'#374151|#F3F4F6', Partial:'#92400E|#FFF7ED', Cancelled:'#6B7280|#F9FAFB', Estimate:'#1E40AF|#DBEAFE' };
+  const [stxt, sbg] = (statusColors[d.status] || '#374151|#F3F4F6').split('|');
+
+  const thS = `padding:9px 12px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#fff;text-align:left;background:${primary}`;
+  const thR = `${thS};text-align:right`;
+
+  return `<div style="font-family:${font};background:#fff;width:794px;min-height:1123px;position:relative;overflow:hidden">
+  ${tplWatermark(d)}
+
+  <div style="display:flex;min-height:130px">
+    <div style="width:44%;background:${primary};padding:28px 28px;display:flex;flex-direction:column;justify-content:center">
+      ${sc.logo?`<img src="${sc.logo}" style="height:56px;max-width:180px;object-fit:contain;display:block;margin-bottom:10px;filter:brightness(0) invert(1)" onerror="this.style.display='none'">`:''}
+      <div style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-.5px;line-height:1;${sc.logo?'display:none':''}">${sc.company}</div>
+      <div style="margin-top:6px;font-size:10px;color:rgba(255,255,255,0.6);line-height:2">
+        ${sc.gst?`<div>GSTIN: ${sc.gst}</div>`:''}
+        ${sc.phone?`<div>${sc.phone}</div>`:''}
+        ${sc.email?`<div>${sc.email}</div>`:''}
+        ${sc.address?`<div>${sc.address.replace(/\n/g,', ')}</div>`:''}
+      </div>
+    </div>
+    <div style="flex:1;padding:28px 32px;display:flex;flex-direction:column;justify-content:center;align-items:flex-end">
+      <div style="font-size:32px;font-weight:800;color:${primary};letter-spacing:-2px;line-height:1">${d.status==='Estimate'?'ESTIMATE':'INVOICE'}</div>
+      <div style="font-size:14px;font-weight:700;color:${primary};font-family:monospace;margin-top:4px">#${d.num}</div>
+      <span style="display:inline-block;margin-top:8px;padding:4px 14px;font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;border-radius:4px;background:${sbg};color:${stxt}">${d.status.toUpperCase()}</span>
+    </div>
+  </div>
+
+  <div style="display:flex;background:${lightBg};border-top:1.5px solid ${lightBdr};border-bottom:1.5px solid ${lightBdr};padding:14px 28px;gap:40px;align-items:flex-start">
+    <div style="flex:1.5">
+      <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${primary};margin-bottom:5px">Billed To</div>
+      ${tplClientLogoHTML(d)}
+      <div style="font-size:13px;font-weight:800;color:#0D1B2A">${d.cname}</div>
+      ${d.cperson?`<div style="font-size:10px;color:#64748B;margin-top:1px">${d.cperson}</div>`:''}
+      ${d.cemail?`<div style="font-size:10px;color:#64748B">${d.cemail}</div>`:''}
+      ${d.cwa?`<div style="font-size:10px;color:#64748B">${d.cwa}</div>`:''}
+      ${d.caddr?`<div style="font-size:10px;color:#64748B;margin-top:3px">${d.caddr.replace(/\n/g,'<br>')}</div>`:''}
+      ${d.cgst?`<div style="font-size:10px;color:#64748B;font-weight:700;margin-top:3px">GSTIN: ${d.cgst}</div>`:''}
+    </div>
+    <div style="display:flex;gap:28px">
+      <div>
+        <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${primary};margin-bottom:4px">Issue Date</div>
+        <div style="font-size:12px;font-weight:600;color:#0D1B2A">${d.date||'—'}</div>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${primary};margin-bottom:4px">Due Date</div>
+        <div style="font-size:12px;font-weight:600;color:#0D1B2A">${d.due||'—'}</div>
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${primary};margin-bottom:4px">Total Due</div>
+      <div style="font-size:22px;font-weight:800;color:${primary};font-family:monospace">${fmt_money(d.grand,sym)}</div>
+    </div>
+  </div>
+
+  <div style="padding:22px 28px 0">
+    <table style="width:100%;border-collapse:collapse;border-radius:6px;overflow:hidden">
+      <thead><tr>
+        ${rowNumHeader?`<th style="${thS};width:28px;border-radius:0">#</th>`:''}
+        <th style="${thS}">Description</th>
+        <th style="${thR}">Qty</th>
+        <th style="${thR}">Rate</th>
+        ${gstColHeader?`<th style="${thR}">GST%</th>`:''}
+        <th style="${thR}">Amount</th>
+      </tr></thead>
+      <tbody>${buildSimpleItemRows(d,gstColHeader)}</tbody>
+    </table>
+  </div>
+
+  <div style="display:flex;padding:16px 28px 24px;gap:24px">
+    <div style="flex:1">
+      ${tplBankHTML(d,primary,lightBg,`border:1px solid ${lightBdr};border-radius:8px`)}
+      ${tplNotesHTML(d,'#475569',lightBg)}
+      ${tplTncHTML(d,'#94A3B8')}
+      ${paymentReceivedBlock(d,'#BBF7D0','#F0FFF4','#166534')}
+    </div>
+    <div style="width:230px">
+      ${totalsRows(d,primary,lightBdr)}
+      ${tplSignHTML(d)}
+    </div>
+  </div>
+
+  <div style="background:${primary};padding:12px 28px;display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:10px;color:rgba(255,255,255,0.5)">${d.generatedBy||sc.company||''}</span>
+    <span style="font-size:10px;color:rgba(255,255,255,0.5)">${sc.phone||''}${sc.phone&&sc.email?' · ':''}${sc.email||''}</span>
+  </div>
+</div>`;
+}
+
+// ── TEMPLATE E: Dark Header Full Width ───────────────────────────────────────
+function buildTplE(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
+  sc = resolveCompany(sc);
+  const sym    = d.sym || '₹';
+  const dark   = (window.TPL_CUSTOM && TPL_CUSTOM.color1) ? TPL_CUSTOM.color1 : '#0F172A';
+  const accent = (window.TPL_CUSTOM && TPL_CUSTOM.color2) ? TPL_CUSTOM.color2 : '#38BDF8';
+  const font   = (window.TPL_CUSTOM && TPL_CUSTOM.font)   ? TPL_CUSTOM.font   : "'Public Sans',sans-serif";
+  const meta   = '#1E293B';
+
+  const statusColors = { Paid:'#4ADE80|rgba(74,222,128,0.15)', Pending:'#FCD34D|rgba(252,211,77,0.15)', Overdue:'#F87171|rgba(248,113,113,0.15)', Draft:'#94A3B8|rgba(148,163,184,0.15)', Partial:'#FCD34D|rgba(252,211,77,0.15)', Cancelled:'#94A3B8|rgba(148,163,184,0.15)', Estimate:'#818CF8|rgba(129,140,248,0.15)' };
+  const [stxt, sbg] = (statusColors[d.status]||'#94A3B8|rgba(148,163,184,0.15)').split('|');
+
+  const thS = `padding:10px 12px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:#94A3B8;text-align:left;background:#F8FAFC;border-bottom:2px solid ${dark}`;
+  const thR = `${thS};text-align:right`;
+
+  return `<div style="font-family:${font};background:#fff;width:794px;min-height:1123px;position:relative;overflow:hidden">
+  ${tplWatermark(d)}
+
+  <div style="background:${dark};padding:28px 36px;display:flex;justify-content:space-between;align-items:center">
+    <div>
+      ${sc.logo?`<img src="${sc.logo}" style="height:56px;max-width:200px;object-fit:contain;display:block;margin-bottom:8px;filter:brightness(0) invert(1)" onerror="this.style.display='none'">`:''}
+      <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-.5px;${sc.logo?'display:none':''}">${sc.company}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:4px;line-height:2">
+        ${sc.gst?`<span>GSTIN: ${sc.gst}</span><br>`:''}
+        ${sc.phone?`<span>${sc.phone}</span>${sc.email?' &nbsp;·&nbsp; ':''}`:''}${sc.email?`<span>${sc.email}</span>`:''}
+        ${sc.address?`<br><span>${sc.address.replace(/\n/g,', ')}</span>`:''}
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:10px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:${accent}">${d.status==='Estimate'?'ESTIMATE':'INVOICE'}</div>
+      <div style="font-size:28px;font-weight:800;color:#fff;font-family:monospace;letter-spacing:-1px;line-height:1.1;margin-top:2px">#${d.num}</div>
+      <span style="display:inline-block;margin-top:6px;padding:4px 12px;font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;border-radius:4px;background:${sbg};color:${stxt}">${d.status.toUpperCase()}</span>
+    </div>
+  </div>
+
+  <div style="background:${meta};padding:12px 36px;display:flex;gap:0;border-bottom:2px solid ${dark}">
+    <div style="flex:1.5;padding-right:24px;border-right:1px solid rgba(255,255,255,0.08)">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#475569;margin-bottom:4px">Billed To</div>
+      ${tplClientLogoHTML(d)}
+      <div style="font-size:13px;font-weight:700;color:#E2E8F0">${d.cname}</div>
+      ${d.cperson?`<div style="font-size:10px;color:#64748B">${d.cperson}</div>`:''}
+      ${d.cemail?`<div style="font-size:10px;color:#64748B">${d.cemail}</div>`:''}
+      ${d.cwa?`<div style="font-size:10px;color:#64748B">${d.cwa}</div>`:''}
+      ${d.caddr?`<div style="font-size:10px;color:#64748B;margin-top:3px">${d.caddr.replace(/\n/g,'<br>')}</div>`:''}
+      ${d.cgst?`<div style="font-size:10px;color:#64748B;font-weight:600;margin-top:3px">GSTIN: ${d.cgst}</div>`:''}
+    </div>
+    <div style="display:flex;gap:0;padding-left:24px">
+      <div style="padding-right:24px;border-right:1px solid rgba(255,255,255,0.08)">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#475569;margin-bottom:4px">Issue Date</div>
+        <div style="font-size:12px;font-weight:600;color:#E2E8F0">${d.date||'—'}</div>
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#475569;margin-top:10px;margin-bottom:4px">Due Date</div>
+        <div style="font-size:12px;font-weight:600;color:#E2E8F0">${d.due||'—'}</div>
+      </div>
+      <div style="padding-left:24px;text-align:right">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#475569;margin-bottom:4px">Amount Due</div>
+        <div style="font-size:22px;font-weight:800;color:${accent};font-family:monospace">${fmt_money(d.grand,sym)}</div>
+        ${d.svc?`<div style="font-size:10px;color:#64748B;margin-top:6px">${d.svc}</div>`:''}
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:22px 36px 0">
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr>
+        ${rowNumHeader?`<th style="${thS};width:28px">#</th>`:''}
+        <th style="${thS}">Description</th>
+        <th style="${thR}">Qty</th>
+        <th style="${thR}">Rate</th>
+        ${gstColHeader?`<th style="${thR}">GST%</th>`:''}
+        <th style="${thR}">Amount</th>
+      </tr></thead>
+      <tbody>${buildSimpleItemRows(d,gstColHeader)}</tbody>
+    </table>
+  </div>
+
+  <div style="display:flex;padding:16px 36px 0;gap:24px">
+    <div style="flex:1">
+      ${tplBankHTML(d,'#334155','#F8FAFC','border:0.5px solid #E2E8F0;border-radius:8px')}
+      ${tplNotesHTML(d,'#475569','#F8FAFC')}
+      ${tplTncHTML(d,'#94A3B8')}
+      ${paymentReceivedBlock(d,'rgba(56,189,248,0.3)','rgba(56,189,248,0.06)',accent)}
+    </div>
+    <div style="width:220px">
+      ${totalsRows(d,dark,'#E2E8F0')}
+      ${tplSignHTML(d)}
+    </div>
+  </div>
+
+  <div style="margin-top:24px;background:${dark};padding:14px 36px;display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:10px;color:rgba(255,255,255,0.3)">${d.generatedBy||sc.company||''}</span>
+    <span style="font-size:10px;font-weight:700;color:${accent}">${sc.website||sc.email||''}</span>
+  </div>
+</div>`;
+}
 
 // ── Payment Received Block — shown on Paid/Partial invoices ─────────────────
 function paymentReceivedBlock(d, borderColor='#C8E6C9', bgColor='#F1F8E9', accentColor='#2E7D32') {
@@ -5801,7 +6126,9 @@ function openPrintWindow(d, items) {
     : `<tr><td colspan="${showGst?8:7}" style="padding:20px;text-align:center;color:#aaa">No items</td></tr>`;
   const gstColHeader = showGst ? `<th style="padding:10px 12px;text-align:center">GST%</th>` : '';
   const rowNumHeader = `<th style="padding:10px 8px;text-align:left;width:28px">#</th>`;
-  const fn = buildTpl2;
+  d._rawItems = d.items || [];
+  const _tplMap = {'2':buildTpl2,'A':buildTplA,'B':buildTplB,'E':buildTplE};
+  const fn = _tplMap[String(d.tpl)] || buildTpl2;
   // Ensure d has sym set (fallback for when called from create form)
   if (!d.sym) d.sym = '₹';
   // Ensure d has discType set
@@ -5903,7 +6230,9 @@ function printInvoiceById(inv) {
       return Object.assign({bank:true,qr:!!(inv.qr_code),sign:true,logo:true,clientLogo:false,notes:true,tnc:true,gstCol:true,footer:true,watermark:(inv.status==='Paid'||inv.status==='Cancelled'),paymentBlock:true}, saved||{});
     })()
   };
-  const fn = buildTpl2;
+  d._rawItems = d.items || [];
+  const _tplMap = {'2':buildTpl2,'A':buildTplA,'B':buildTplB,'E':buildTplE};
+  const fn = _tplMap[String(d.tpl)] || buildTpl2;
   // Snapshot STATE so helpers (tplBankHTML, tplSignHTML etc) resolve correctly
   const _printSc2 = Object.assign({}, sc);
   const _origState2 = window.STATE;
@@ -6182,7 +6511,9 @@ function openPreviewModal(id) {
     : `<tr><td colspan="8" style="padding:20px;text-align:center;color:#aaa">No items</td></tr>`;
   const gstColHeader = `<th style="padding:10px 12px;text-align:center">GST%</th>`;
   const rowNumHeader = `<th style="padding:10px 8px;text-align:left;width:28px">#</th>`;
-  const fn = buildTpl2;
+  d._rawItems = d.items || [];
+  const _tplMap = {'2':buildTpl2,'A':buildTplA,'B':buildTplB,'E':buildTplE};
+  const fn = _tplMap[String(d.tpl)] || buildTpl2;
   const scale = 0.72;
   const scaledH = Math.round(1123*scale);
   const previewWrap = `<div style="width:${Math.round(794*scale)}px;height:${scaledH}px;overflow:hidden;position:relative;margin:0 auto"><div style="width:794px;transform:scale(${scale});transform-origin:top left;position:absolute;top:0;left:0">${fn(d, sc, previewItemsHTML, gstColHeader, rowNumHeader)}</div></div>`;
@@ -7810,33 +8141,42 @@ function _renderRptCharts(){
 // ══════════════════════════════════════════
 // TEMPLATES GRID
 // ══════════════════════════════════════════
-const tplNames = ['Colorful Matte'];
+const tplNames = ['Colorful Matte','Clean Minimal','Corporate Split','Dark Header'];
 const tplColors = ['#6366F1'];
 const tplAccents = ['#A5B4FC'];
 
 function renderTemplatesGrid() {
   const grid = document.getElementById('templatesGrid');
   if (!grid) return;
-  STATE.settings.activeTemplate = 2;
-  grid.innerHTML = `<div class="tpl-card active-tpl" id="tpl-card-2" style="max-width:260px">
-    <div class="tpl-thumb" style="background:linear-gradient(135deg,#6366F1,#8B5CF6)">
-      <div style="width:120px;background:rgba(255,255,255,.95);border-radius:4px;padding:10px;box-shadow:0 2px 8px rgba(0,0,0,.3)">
-        <div style="height:6px;background:#6366F1;border-radius:3px;margin-bottom:4px"></div>
-        <div style="height:3px;background:#A5B4FC;width:60%;border-radius:2px;margin-bottom:6px"></div>
-        <div style="display:flex;gap:4px;margin-bottom:4px">${[0,0,0].map(()=>'<div style="flex:1;height:12px;background:#f0f0f0;border-radius:2px"></div>').join('')}</div>
-        <div style="height:2px;background:#eee;margin-bottom:3px"></div>
-        <div style="height:4px;background:#6366F1;width:40%;border-radius:2px;margin-top:6px;margin-left:auto"></div>
+  const active = STATE.settings.activeTemplate || '2';
+  const templates = [
+    { id:'2', name:'Colorful Matte', desc:'8 built-in color themes', color:'#6366F1', accent:'#A5B4FC' },
+    { id:'A', name:'Clean Minimal',  desc:'Left accent · borderless', color:'#1E293B', accent:'#94A3B8' },
+    { id:'B', name:'Corporate Split',desc:'Two-column header',        color:'#1565C0', accent:'#BBDEFB' },
+    { id:'E', name:'Dark Header',    desc:'Full-width dark header',   color:'#0F172A', accent:'#38BDF8' },
+  ];
+  grid.innerHTML = templates.map(t => {
+    const isActive = String(active) === String(t.id);
+    return `<div class="tpl-card ${isActive?'active-tpl':''}" id="tpl-card-${t.id}">
+      <div class="tpl-thumb" style="background:${t.color}">
+        <div style="width:120px;background:rgba(255,255,255,.95);border-radius:4px;padding:10px;box-shadow:0 2px 8px rgba(0,0,0,.3)">
+          <div style="height:6px;background:${t.color};border-radius:3px;margin-bottom:4px"></div>
+          <div style="height:3px;background:${t.accent};width:60%;border-radius:2px;margin-bottom:6px"></div>
+          <div style="display:flex;gap:4px;margin-bottom:4px">${[0,0,0].map(()=>'<div style="flex:1;height:12px;background:#f0f0f0;border-radius:2px"></div>').join('')}</div>
+          <div style="height:2px;background:#eee;margin-bottom:3px"></div>
+          <div style="height:4px;background:${t.color};width:40%;border-radius:2px;margin-top:6px;margin-left:auto"></div>
+        </div>
       </div>
-    </div>
-    <div class="tpl-info">
-      <div class="tpl-name">Colorful Matte</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">8 built-in color themes</div>
-      <div class="tpl-btns">
-        <button class="btn btn-outline" style="font-size:11px;padding:5px 10px" onclick="previewTemplate(2)">Preview</button>
-        <span style="font-size:11px;font-weight:700;color:var(--teal);padding:5px 10px">✓ Active</span>
+      <div class="tpl-info">
+        <div class="tpl-name">${t.name}</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${t.desc}</div>
+        <div class="tpl-btns">
+          <button class="btn btn-outline" style="font-size:11px;padding:5px 10px" onclick="previewTemplate('${t.id}')">Preview</button>
+          <button class="btn btn-success" style="font-size:11px;padding:5px 10px" onclick="setActiveTemplate('${t.id}')">${isActive?'✓ Active':'Set Active'}</button>
+        </div>
       </div>
-    </div>
-  </div>`;
+    </div>`;
+  }).join('');
 }
 
 function previewTemplate(n) {
@@ -7857,7 +8197,7 @@ function previewTemplate(n) {
     popt:{bank:true,qr:false,sign:true,logo:true,clientLogo:false,notes:true,tnc:true,gstCol:true,footer:true,watermark:true}};
   const iHTML=`<tr><td style="padding:9px 12px;border-bottom:1px solid #eee">Website Development Premium</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee;font-size:11px;color:#666">Service</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">1</td><td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">₹75,000.00</td><td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">₹75,000.00</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">18%</td><td style="padding:9px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">₹88,500.00</td></tr><tr><td style="padding:9px 12px;border-bottom:1px solid #eee">Domain & Hosting</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee;font-size:11px;color:#666">Product</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">1</td><td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">₹4,500.00</td><td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">₹4,500.00</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">18%</td><td style="padding:9px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">₹5,310.00</td></tr>`;
   const gH=`<th style="padding:10px 12px;text-align:center">GST%</th>`;
-  const tpls={2:buildTpl2};
+  const tpls={'2':buildTpl2,'A':buildTplA,'B':buildTplB,'E':buildTplE};
   const fn=tpls[n]||buildTpl2;
   const scale=Math.min(0.78,(window.innerWidth-280)/794);
   const sh=Math.round(1123*scale);
@@ -10410,12 +10750,13 @@ const TPL_CUSTOM = {
 
 // Show/hide theme picker depending on active template
 function syncThemePicker() {
-  const tplNum  = STATE.settings.activeTemplate || 2;
+  const tplId   = String(document.getElementById('f-template')?.value || STATE.settings.activeTemplate || '2');
   const picker  = document.getElementById('tpl2-theme-picker');
   const cpicker = document.getElementById('tpl-color-pickers');
-  const isTpl2  = String(tplNum) === '2';
+  const isTpl2  = tplId === '2';
   if (picker)  picker.style.display  = isTpl2 ? 'block' : 'none';
   if (cpicker) cpicker.style.display = isTpl2 ? 'none'  : 'grid';
+  STATE.settings.activeTemplate = tplId;
 }
 
 // Set matte theme for Template 2
