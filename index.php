@@ -5519,9 +5519,19 @@ function previousDueBlock(d, accentColor, bgColor, borderColor) {
       <span style="font-size:9px;color:#94A3B8">${rows.length} invoice${rows.length>1?'s':''}</span>
     </div>
     ${rowsHTML}
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1.5px solid ${border}">
-      <span style="font-size:10px;font-weight:700;color:${accent}">Total Outstanding (excl. this invoice)</span>
-      <span style="font-family:monospace;font-size:12px;font-weight:800;color:${accent}">${fmt_money(totalOutstanding, sym)}</span>
+    <div style="margin-top:6px;padding-top:6px;border-top:1.5px solid ${border}">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:10px;color:#64748B">
+        <span>Previous Outstanding</span>
+        <span style="font-family:monospace;font-weight:600">${fmt_money(totalOutstanding, sym)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:10px;color:#64748B">
+        <span>This Invoice</span>
+        <span style="font-family:monospace;font-weight:600">${fmt_money(d.grand || 0, sym)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;margin-top:5px;border-radius:6px;background:${accent}">
+        <span style="font-size:11px;font-weight:800;color:#fff">Total Payable</span>
+        <span style="font-family:monospace;font-size:13px;font-weight:800;color:#fff">${fmt_money(totalOutstanding + (d.grand || 0), sym)}</span>
+      </div>
     </div>
   </div>`;
 }
