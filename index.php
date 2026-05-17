@@ -3178,9 +3178,10 @@ View Invoice: {{6}}</pre></details>
             <div class="field">
               <label>Template</label>
               <select id="rec-template" style="width:100%">
-                <option value="1">Template 1</option><option value="2" selected>Template 2</option>
-                <option value="3">Template 3</option><option value="4">Template 4</option>
-                <option value="5">Template 5</option>
+                <option value="2">Colorful Matte</option>
+                <option value="A">Clean Minimal</option>
+                <option value="B">Corporate Split</option>
+                <option value="E">Dark Header</option>
               </select>
             </div>
           </div>
@@ -3694,7 +3695,7 @@ const STATE = {
     logo:     <?= json_encode($companyLogo)    ?>,
     waToken: '',
     waPid: '',
-    activeTemplate: <?= json_encode((int)($activeTemplate ?: 2)) ?>,
+    activeTemplate: <?= json_encode($activeTemplate ?: '2') ?>,
     defaultGST: <?= json_encode((float)($defaultGst ?: 18)) ?>,
     dueDays: <?= json_encode((int)($dueDays ?: 15)) ?>
   },
@@ -4860,7 +4861,8 @@ function resetCreateForm() {
   const svcEl = document.getElementById('f-service'); if (svcEl) svcEl.value = '';
   const svcCustomEl = document.getElementById('f-service-custom'); if (svcCustomEl) svcCustomEl.value = '';
   const currEl = document.getElementById('f-currency'); if (currEl) currEl.value = STATE.settings.currency || '₹';
-  const tplEl = document.getElementById('f-template'); if (tplEl) tplEl.value = String(STATE.settings.activeTemplate || 2);
+  const tplEl = document.getElementById('f-template'); if (tplEl) tplEl.value = String(STATE.settings.activeTemplate || '2');
+  syncThemePicker();
   const clientSelEl = document.getElementById('f-client-select'); if (clientSelEl) clientSelEl.value = '';
   // Hide one-time client indicators
   const _otNotice = document.getElementById('onetime-notice'); if (_otNotice) _otNotice.style.display = 'none';
@@ -5037,7 +5039,7 @@ function switchToSaveClient() {
 // LIVE PREVIEW + 9 PDF TEMPLATES
 // ══════════════════════════════════════════
 function getFormData() {
-  const tpl     = parseInt(document.getElementById('f-template')?.value)||1;
+  const tpl     = document.getElementById('f-template')?.value || STATE.settings.activeTemplate || '2';
   // FIX: never send blank invoice_number — auto-generate from prefix if field is empty
   const _numRaw = document.getElementById('f-num')?.value || '';
   const _status = document.querySelector('input[name="inv-status"]:checked')?.value || 'Draft';
@@ -6438,7 +6440,7 @@ function openPreviewModal(id) {
   const sc = STATE.settings;
   // Build data object directly from invoice — no form manipulation needed
   const d = {
-    tpl: parseInt(inv.template) || STATE.settings.activeTemplate || 2,
+    tpl: inv.template || inv.template_id || STATE.settings.activeTemplate || '2',
     num: inv.num || inv.invoice_number,
     date: inv.issued,
     due: inv.due,
@@ -6557,7 +6559,7 @@ function loadInvoiceIntoForm(inv) {
   const _bankEl = document.getElementById('f-bank'); if(_bankEl) _bankEl.value = inv.bank||inv.bank_details||STATE.settings.defaultBank||'';
   const _tncEl  = document.getElementById('f-tnc');  if(_tncEl)  _tncEl.value  = inv.tnc||inv.terms||STATE.settings.defaultTnC||'';
   // f-bank and f-tnc set above
-  document.getElementById('f-template').value = inv.template||1;
+  document.getElementById('f-template').value = String(inv.template || inv.template_id || STATE.settings.activeTemplate || '2');
   document.getElementById('f-currency').value = inv.currency||'₹';
   document.getElementById('f-cname').value    = c ? c.name   : (inv.clientName || inv.client_name || '');
   document.getElementById('f-cperson').value  = c ? c.person : (inv.client_person || '');
@@ -7203,7 +7205,7 @@ async function duplicateInvoice(id) {
     client_logo:    inv.client_logo   || '',
     signature:      inv.signature     || '',
     qr_code:        inv.qr_code       || '',
-    template_id:    2,
+    template_id:    inv.template || inv.template_id || STATE.settings.activeTemplate || '2',
     generated_by:   inv.generated_by  || (STATE.settings.company ? STATE.settings.company + ' Invoice Manager' : 'Invoice Manager'),
     show_generated: inv.show_generated ?? 1,
     pdf_options:    inv.pdf_options   || null,
@@ -7269,7 +7271,7 @@ async function convertEstimateToInvoice(id) {
       grand_total:    inv.amount || inv.grand_total || 0,
       bank_details:   inv.bank || inv.bank_details || '',
       terms:          inv.tnc  || inv.terms || '',
-      template_id:    inv.template || 1,
+      template_id:    inv.template || inv.template_id || STATE.settings.activeTemplate || '2',
       items:          (inv.items || []).map(i => ({ desc: i.desc||i.description||'', qty: i.qty||1, rate: i.rate||0, gst: i.gst||18 }))
     });
 
@@ -8184,7 +8186,8 @@ function previewTemplate(n) {
   const inner=document.getElementById('tplPreviewInner');
   const label=document.getElementById('tplPreviewLabel');
   if(!panel||!inner){return;}
-  label.textContent='Colorful Matte Preview';
+  const _lblMap={'2':'Colorful Matte','A':'Clean Minimal','B':'Corporate Split','E':'Dark Header'};
+  if(label) label.textContent=(_lblMap[String(n)]||'Template '+n)+' Preview';
   const sc=STATE.settings;
   const sd={tpl:n,num:'DEMO-001',date:'2025-04-10',due:'2025-04-25',svc:'Website Development',
     cname:'Sample Client Ltd',cperson:'Contact Person',cemail:'client@example.com',cwa:'+91 9876543210',
@@ -8197,14 +8200,16 @@ function previewTemplate(n) {
     popt:{bank:true,qr:false,sign:true,logo:true,clientLogo:false,notes:true,tnc:true,gstCol:true,footer:true,watermark:true}};
   const iHTML=`<tr><td style="padding:9px 12px;border-bottom:1px solid #eee">Website Development Premium</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee;font-size:11px;color:#666">Service</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">1</td><td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">₹75,000.00</td><td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">₹75,000.00</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">18%</td><td style="padding:9px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">₹88,500.00</td></tr><tr><td style="padding:9px 12px;border-bottom:1px solid #eee">Domain & Hosting</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee;font-size:11px;color:#666">Product</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">1</td><td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">₹4,500.00</td><td style="padding:9px 12px;text-align:right;border-bottom:1px solid #eee">₹4,500.00</td><td style="padding:9px 12px;text-align:center;border-bottom:1px solid #eee">18%</td><td style="padding:9px 12px;text-align:right;font-weight:700;border-bottom:1px solid #eee">₹5,310.00</td></tr>`;
   const gH=`<th style="padding:10px 12px;text-align:center">GST%</th>`;
+  sd._rawItems=[{desc:'Website Development Premium',qty:1,rate:75000,gst:18},{desc:'Domain & Hosting',qty:1,rate:4500,gst:18}];
   const tpls={'2':buildTpl2,'A':buildTplA,'B':buildTplB,'E':buildTplE};
-  const fn=tpls[n]||buildTpl2;
+  const fn=tpls[String(n)]||buildTpl2;
   const scale=Math.min(0.78,(window.innerWidth-280)/794);
   const sh=Math.round(1123*scale);
   inner.innerHTML=`<div style="width:${Math.round(794*scale)}px;height:${sh}px;overflow:hidden;position:relative;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,.2)"><div style="width:794px;transform:scale(${scale});transform-origin:top left;position:absolute;top:0;left:0">${fn(sd,sc,iHTML,gH)}</div></div>`;
   panel.style.display='block';
   panel.scrollIntoView({behavior:'smooth',block:'start'});
-  toast(`👁️ Template ${n}: ${tplNames[n-1]}`, 'info');
+  const _tplLabel = {'2':'Colorful Matte','A':'Clean Minimal','B':'Corporate Split','E':'Dark Header'};
+  toast(`👁️ ${_tplLabel[String(n)] || 'Template '+n}`, 'info');
 }
 
 async function setActiveTemplate(n) {
@@ -9540,7 +9545,7 @@ document.addEventListener('click', e => closeAllDropdowns(e));
   STATE.settings.address   = s.company_address || STATE.settings.address;
   STATE.settings.logo      = s.company_logo    || '';
   STATE.settings.signature = s.company_sign    || '';
-  STATE.settings.activeTemplate = parseInt(s.active_template) || 2;
+  STATE.settings.activeTemplate = s.active_template || '2';
   STATE.settings.defaultGST     = (s.default_gst !== undefined && s.default_gst !== null && s.default_gst !== '') ? parseInt(s.default_gst) : 18;
   STATE.settings.dueDays        = parseInt(s.due_days) || 15;
   // Apply WA settings from PHP-rendered SERVER.wa (guaranteed accurate)
@@ -9698,7 +9703,7 @@ async function loadAllData() {
       STATE.settings.address   = s.company_address || STATE.settings.address;
       STATE.settings.logo      = s.company_logo    || '';
       STATE.settings.signature = s.company_sign    || '';
-      STATE.settings.activeTemplate = parseInt(s.active_template)||1;
+      STATE.settings.activeTemplate = s.active_template || '2';
       STATE.settings.defaultGST     = (s.default_gst !== undefined && s.default_gst !== '') ? parseInt(s.default_gst) : 18;
       STATE.settings.dueDays        = parseInt(s.due_days)||15;
       STATE.settings.defaultBank    = s.default_bank  || '';
@@ -9890,7 +9895,7 @@ window.saveInvoiceDefaults = async function() {
   const payload = {
     default_gst:     document.getElementById('sd-gst')?.value ?? '0',
     due_days:        document.getElementById('sd-due')?.value     || '15',
-    active_template: document.getElementById('sd-tpl')?.value     || '1',
+    active_template: document.getElementById('sd-tpl')?.value     || '2',
     invoice_prefix:  document.getElementById('sd-prefix')?.value  || STATE.settings.prefix || 'OT-',
     estimate_prefix: document.getElementById('sd-estimate-prefix')?.value || STATE.settings.estPrefix || 'QT-',
     default_currency:document.getElementById('sd-currency')?.value|| '₹',
@@ -9902,7 +9907,8 @@ window.saveInvoiceDefaults = async function() {
   // Also update STATE
   STATE.settings.defaultGST     = parseInt(payload.default_gst ?? '0');
   STATE.settings.dueDays        = parseInt(payload.due_days);
-  STATE.settings.activeTemplate = parseInt(payload.active_template);
+  STATE.settings.activeTemplate = payload.active_template || STATE.settings.activeTemplate || '2';
+  STATE.settings.activeTemplate = payload.active_template || STATE.settings.activeTemplate || '2';
   if (payload.invoice_prefix)                       STATE.settings.prefix      = payload.invoice_prefix;
   if (payload.estimate_prefix !== undefined && payload.estimate_prefix !== null) STATE.settings.estPrefix = payload.estimate_prefix;
   if (payload.default_notes  !== undefined) STATE.settings.defaultNotes  = payload.default_notes;
@@ -10079,7 +10085,7 @@ function populateSettingsForm() {
     const e=document.getElementById(id);
     if (!e) return;
     if (id==='sd-gst')      e.value = String(s.defaultGST ?? 18);
-    if (id==='sd-tpl')      e.value = String(s.activeTemplate||1);
+    if (id==='sd-tpl')      e.value = String(s.activeTemplate||'2');
     if (id==='sd-currency') e.value = s.currency || '₹';
   });
 }
@@ -10814,7 +10820,7 @@ window.applyTplCustomization = function() {
     return v;
   };
   // Only read color pickers for non-Template2 templates
-  const isTpl2 = String(STATE.settings.activeTemplate||1) === '2';
+  const isTpl2 = String(STATE.settings.activeTemplate||'2') === '2';
   if (!isTpl2) {
     TPL_CUSTOM.color1 = readColor('tpl-color1-hex', 'tpl-color1') || TPL_CUSTOM.color1;
     TPL_CUSTOM.color2 = readColor('tpl-color2-hex', 'tpl-color2') || TPL_CUSTOM.color2;
@@ -10872,7 +10878,7 @@ window.resetTplCustomization = function() {
   setMatteTheme(1);
   toast('↩️ Reset to defaults', 'info');
   if (document.getElementById('invoicePreviewWrap')) livePreview();
-  previewTemplate(STATE.settings.activeTemplate||1);
+  previewTemplate(STATE.settings.activeTemplate||'2');
 };
 
 // Override tplLogoHTML to use custom font
@@ -12639,7 +12645,7 @@ if (!STATE.recurring) STATE.recurring = [];
           nextDate:    s.nextDate    || s.next_date || '',
           endDate:     s.endDate     || s.end_date || '',
           dueDays:     s.dueDays     || s.due_days || 15,
-          template:    s.template    || s.template_id || 2,
+          template:    s.template    || s.template_id || STATE.settings.activeTemplate || '2',
           notes:       s.notes       || '',
         });
       } catch(e) {
@@ -12698,7 +12704,7 @@ function recNormalizeRow(r) {
     nextDate:       r.next_date   || '',
     endDate:        r.end_date    || '',
     dueDays:        parseInt(r.due_days)       || 15,
-    template:       parseInt(r.template_id)    || 2,
+    template:       r.template_id              || STATE.settings.activeTemplate || '2',
     notes:          r.notes       || '',
     status:         r.status      || 'active',
     generatedCount: parseInt(r.generated_count) || 0,
@@ -12765,7 +12771,7 @@ async function openRecurringModal(id) {
     document.getElementById('rec-start').value             = s.nextDate  || today;
     document.getElementById('rec-end').value               = s.endDate   || '';
     document.getElementById('rec-due-days').value          = s.dueDays   || 15;
-    document.getElementById('rec-template').value          = s.template  || 2;
+    document.getElementById('rec-template').value          = String(s.template || s.template_id || STATE.settings.activeTemplate || '2');
     document.getElementById('rec-notes').value             = s.notes     || '';
 
     // Items — support legacy single-item schedules
@@ -12790,7 +12796,7 @@ async function openRecurringModal(id) {
     document.getElementById('rec-start').value             = today;
     document.getElementById('rec-end').value               = '';
     document.getElementById('rec-due-days').value          = String(STATE.settings.dueDays || 15);
-    document.getElementById('rec-template').value          = '2';
+    document.getElementById('rec-template').value          = String(STATE.settings.activeTemplate || '2');
     document.getElementById('rec-notes').value             = '';
 
     const rdtEl2 = document.getElementById('rec-disc-type'); if (rdtEl2) rdtEl2.value = 'pct';
@@ -12872,7 +12878,7 @@ async function saveRecurring() {
   const start     = document.getElementById('rec-start').value;
   const endDate   = document.getElementById('rec-end').value || '';
   const dueDays   = parseInt(document.getElementById('rec-due-days').value) || 15;
-  const template  = parseInt(document.getElementById('rec-template').value) || 2;
+  const template  = document.getElementById('rec-template').value || STATE.settings.activeTemplate || '2';
   const notes     = document.getElementById('rec-notes').value.trim();
   const editId    = document.getElementById('rec-edit-id').value;
   const discType  = document.getElementById('rec-disc-type')?.value || 'pct';
@@ -12978,7 +12984,7 @@ async function openRecurringFromInvoice(inv) {
   document.getElementById('rec-due-days').value = dueDays;
  
   // ── 6. Pre-fill template ──────────────────────────────────────
-  document.getElementById('rec-template').value = inv.template || STATE.settings.activeTemplate || 2;
+  document.getElementById('rec-template').value = String(inv.template || inv.template_id || STATE.settings.activeTemplate || '2');
  
   // ── 7. Pre-fill discount ──────────────────────────────────────
   // Detect discount type: if discount_type is 'fixed' OR (discAmt > 0 but discPct == 0) → fixed
