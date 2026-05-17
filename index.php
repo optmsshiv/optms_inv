@@ -5432,6 +5432,32 @@ const _MATTE_THEMES = {
 };
 
 
+// ── Shared totals block for Templates A, B, E ───────────────────────────────
+function totalsRows(d, accentColor, borderColor) {
+  const sym       = d.sym || '₹';
+  const accent    = accentColor || '#1E293B';
+  const border    = borderColor || '#E2E8F0';
+  const sub       = d.sub       || 0;
+  const discAmt   = d.discAmt   || 0;
+  const gstAmt    = d.gstAmt    || 0;
+  const grand     = d.grand     || 0;
+  const discType  = d.discType  || 'percent';
+  const disc      = d.disc      || 0;
+  const rowStyle  = `display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:11px;color:#64748B;border-bottom:0.5px solid ${border}`;
+  const valStyle  = `font-family:monospace;font-weight:600;color:#0F172A`;
+  const grandStyle= `display:flex;justify-content:space-between;align-items:center;padding:9px 12px;margin-top:6px;border-radius:6px;background:${accent}`;
+
+  return `<div style="padding:14px;background:#F8FAFC;border:0.5px solid ${border};border-radius:8px">
+    <div style="${rowStyle}"><span>Subtotal</span><span style="${valStyle}">${fmt_money(sub,sym)}</span></div>
+    ${discAmt>0?`<div style="${rowStyle}"><span>Discount${discType==='fixed'?' (₹)':disc>0?' ('+Math.round(disc*100)/100+'%)':''}</span><span style="font-family:monospace;font-weight:600;color:#DC2626">−${fmt_money(discAmt,sym)}</span></div>`:''}
+    ${gstAmt>0?`<div style="${rowStyle}"><span>GST</span><span style="${valStyle}">+${fmt_money(gstAmt,sym)}</span></div>`:''}
+    <div style="${grandStyle}">
+      <span style="font-size:12px;font-weight:700;color:#fff">Total</span>
+      <span style="font-family:monospace;font-weight:800;font-size:15px;color:#fff">${fmt_money(grand,sym)}</span>
+    </div>
+  </div>`;
+}
+
 // ── TEMPLATE A: Clean Minimal ────────────────────────────────────────────────
 function buildTplA(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
   sc = resolveCompany(sc);
