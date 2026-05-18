@@ -5138,25 +5138,30 @@ function livePreview() {
     const d = getFormData();
     const scale = 0.685;
     const scaledH = Math.round(1123 * scale);
-    // Set the wrapper dimensions so the preview-scroll knows the height
     wrap.style.cssText = `width:545px;height:${scaledH}px;overflow:hidden;position:relative;border-radius:6px;box-shadow:0 2px 16px rgba(0,0,0,.12);background:#fff`;
     const inner = document.createElement('div');
     inner.style.cssText = `width:794px;transform:scale(${scale});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none`;
-    inner.innerHTML = buildInvoiceHTML(d, false);
+    const html = buildInvoiceHTML(d, false);
+    if (!html || html.trim() === '') {
+      wrap.innerHTML = `<div style="padding:20px;color:#e53935;font-size:12px">Preview returned empty — template may not be loading correctly. Check console for errors.</div>`;
+      return;
+    }
+    inner.innerHTML = html;
     wrap.innerHTML = '';
     wrap.appendChild(inner);
     // Sync template dropdowns
     const ps = document.getElementById('prevTplSelect');
     if (ps && ps.value !== String(d.tpl)) ps.value = d.tpl;
   } catch(e) {
-    console.warn('livePreview error:', e);
+    console.error('livePreview error:', e);
     const wrap2 = document.getElementById('invoicePreviewWrap');
-    if (wrap2) wrap2.innerHTML = `<div style="padding:20px;color:#e53935;font-size:12px">Preview error: ${e.message}</div>`;
+    if (wrap2) wrap2.innerHTML = `<div style="padding:20px;color:#e53935;font-size:12px">Preview error: ${e.message}<br><small style="color:#aaa">${e.stack?.split('\n')[1]||''}</small></div>`;
   }
 }
 
 function buildInvoiceHTML(d, forPrint) {
   const sc = STATE.settings;
+  d.popt = d.popt || {};  // safety guard — popt must always be an object
   // Build items HTML with GST column
   const showGstCol = d.popt ? d.popt.gstCol : true;
   const itemsHTML = formItems.length
@@ -5244,7 +5249,7 @@ function tplLogoHTML(d, sc) {
   return `<div>${nameDiv}${tagDiv}</div>`;
 }
 function tplClientLogoHTML(d) {
-  if (!d.popt.clientLogo || !d.clientLogo) return '';
+  if (!d.popt || !d.popt.clientLogo || !d.clientLogo) return '';
   return `<img src="${d.clientLogo}" style="height:36px;max-width:120px;object-fit:contain;display:block;margin-bottom:6px" onerror="this.style.display='none'">`;
 }
 // Full company info block for PDF header (used by all templates)
@@ -5541,6 +5546,7 @@ function previousDueBlock(d, accentColor, bgColor, borderColor) {
 
 // ── TEMPLATE A: Clean Minimal ────────────────────────────────────────────────
 function buildTplA(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
+  d.popt = d.popt || {};
   sc = resolveCompany(sc);
   const sym = d.sym || '₹';
   const accent = (window.TPL_CUSTOM && TPL_CUSTOM.color1) ? TPL_CUSTOM.color1 : '#1E293B';
@@ -5638,6 +5644,7 @@ function buildTplA(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
 
 // ── TEMPLATE B: Corporate Split ──────────────────────────────────────────────
 function buildTplB(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
+  d.popt = d.popt || {};
   sc = resolveCompany(sc);
   const sym = d.sym || '₹';
   const primary = (window.TPL_CUSTOM && TPL_CUSTOM.color1) ? TPL_CUSTOM.color1 : '#1565C0';
@@ -5738,6 +5745,7 @@ function buildTplB(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
 
 // ── TEMPLATE E: Dark Header Full Width ───────────────────────────────────────
 function buildTplE(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
+  d.popt = d.popt || {};
   sc = resolveCompany(sc);
   const sym    = d.sym || '₹';
   const dark   = (window.TPL_CUSTOM && TPL_CUSTOM.color1) ? TPL_CUSTOM.color1 : '#0F172A';
