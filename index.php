@@ -4792,7 +4792,7 @@ function closeAllDropdowns(e) {
 // ── PDF Options: persist checkbox state in localStorage ────────
 const POPT_STORAGE_KEY = 'optms_popt_prefs';
 const POPT_IDS = ['popt-bank','popt-qr','popt-sign','popt-logo','popt-client-logo','popt-notes','popt-tnc','popt-gst-col','popt-footer','popt-watermark','popt-payment-block','popt-previous-due'];
-const POPT_DEFAULTS = { 'popt-bank':true,'popt-qr':false,'popt-sign':true,'popt-logo':true,'popt-client-logo':false,'popt-notes':true,'popt-tnc':true,'popt-gst-col':true,'popt-footer':true,'popt-watermark':false,'popt-payment-block':true,'popt-previous-due':false };
+const POPT_DEFAULTS = { 'popt-bank':true,'popt-qr':false,'popt-sign':true,'popt-logo':true,'popt-client-logo':false,'popt-notes':true,'popt-tnc':true,'popt-gst-col':true,'popt-footer':true,'popt-watermark':false,'popt-payment-block':true,'popt-previous-due':true };
 
 function savePoptPrefs() {
   const prefs = {};
@@ -5099,7 +5099,7 @@ function getFormData() {
     footer:     document.getElementById('popt-footer')?.checked !== false,
     watermark:    document.getElementById('popt-watermark')?.checked || false,
     paymentBlock:  document.getElementById('popt-payment-block')?.checked !== false,
-    previousDue:   document.getElementById('popt-previous-due')?.checked || false,
+    previousDue:   document.getElementById('popt-previous-due')?.checked !== false,
   };
 
   // Per-item GST totals
@@ -6249,10 +6249,14 @@ function openPrintWindow(d, items) {
   if (!d.sym) d.sym = '₹';
   // Ensure d has discType set
   if (!d.discType) d.discType = 'percent';
-  // Snapshot STATE.settings so helpers (tplBankHTML, tplSignHTML etc) work correctly
+  // Snapshot STATE — preserve invoices/payments for previousDueBlock
   const _printSc = Object.assign({}, STATE.settings);
   const _origStatePrint = window.STATE;
-  window.STATE = Object.assign({}, STATE, { settings: _printSc });
+  window.STATE = Object.assign({}, STATE, {
+    settings: _printSc,
+    invoices: STATE.invoices || [],
+    payments: STATE.payments || [],
+  });
   const html = fn(d, _printSc, itemsHTML, gstColHeader, rowNumHeader);
   window.STATE = _origStatePrint;
   const w = window.open('','_blank','width=920,height=750');
@@ -6344,16 +6348,20 @@ function printInvoiceById(inv) {
       // Parse pdf_options from DB (may be JSON string or already an object)
       let saved = inv.pdf_options || inv.popt || null;
       if (saved && typeof saved === 'string') { try { saved = JSON.parse(saved); } catch(e) { saved = null; } }
-      return Object.assign({bank:true,qr:!!(inv.qr_code),sign:true,logo:true,clientLogo:false,notes:true,tnc:true,gstCol:true,footer:true,watermark:(inv.status==='Paid'||inv.status==='Cancelled'),paymentBlock:true,previousDue:false}, saved||{});
+      return Object.assign({bank:true,qr:!!(inv.qr_code),sign:true,logo:true,clientLogo:false,notes:true,tnc:true,gstCol:true,footer:true,watermark:(inv.status==='Paid'||inv.status==='Cancelled'),paymentBlock:true,previousDue:true}, saved||{});
     })()
   };
   d._rawItems = d.items || [];
   const _tplMap = {'2':buildTpl2,'A':buildTplA,'B':buildTplB,'E':buildTplE};
   const fn = _tplMap[String(d.tpl)] || buildTpl2;
-  // Snapshot STATE so helpers (tplBankHTML, tplSignHTML etc) resolve correctly
+  // Snapshot STATE — must preserve invoices and payments for previousDueBlock
   const _printSc2 = Object.assign({}, sc);
   const _origState2 = window.STATE;
-  window.STATE = Object.assign({}, STATE, { settings: _printSc2 });
+  window.STATE = Object.assign({}, STATE, {
+    settings: _printSc2,
+    invoices: STATE.invoices || [],
+    payments: STATE.payments || [],
+  });
   const html = fn(d, _printSc2, itemsHTML, gstHdr, rowNumHdr2);
   window.STATE = _origState2;
   const w = window.open('','_blank','width=920,height=750');
