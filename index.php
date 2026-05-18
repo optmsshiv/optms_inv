@@ -5195,34 +5195,11 @@ function buildInvoiceHTML(d, forPrint) {
   const gstColHeader = showGstCol ? `<th style="padding:10px 8px;text-align:center">GST%</th>` : '';
   const rowNumHeader = `<th style="padding:10px 8px;text-align:left;width:28px">#</th>`;
 
-  d._rawItems = (d.items && d.items.length) ? d.items : formItems;
   const _tplMap = {'2':buildTpl2,'A':buildTplA,'B':buildTplB,'E':buildTplE};
   const fn = _tplMap[String(d.tpl)] || buildTpl2;
   return fn(d, sc, itemsHTML, gstColHeader, rowNumHeader);
 }
 
-// ── Simple items rows for templates A, B, E ─────────────────────────────────
-function buildSimpleItemRows(d, gstColHeader) {
-  const items = d._rawItems || [];
-  const sym   = d.sym || '₹';
-  if (!items.length) return `<tr><td colspan="${gstColHeader?6:5}" style="padding:20px;text-align:center;color:#aaa;font-size:11px">No items</td></tr>`;
-  return items.map((item, idx) => {
-    const qty     = parseFloat(item.qty||1);
-    const rate    = parseFloat(item.rate||0);
-    const line    = qty * rate;
-    const gstPct  = parseFloat(item.gst??0);
-    const gstAmt  = line * gstPct / 100;
-    const total   = line + gstAmt;
-    const bg      = idx % 2 === 1 ? 'background:#F8FAFC' : '';
-    return `<tr style="${bg}">
-      <td style="padding:9px 12px;font-size:11px;color:#0F172A;font-weight:600;border-bottom:0.5px solid #F1F5F9">${item.desc||'—'}</td>
-      <td style="padding:9px 12px;text-align:right;font-size:11px;color:#64748B;border-bottom:0.5px solid #F1F5F9;font-family:monospace">${qty}</td>
-      <td style="padding:9px 12px;text-align:right;font-size:11px;color:#64748B;border-bottom:0.5px solid #F1F5F9;font-family:monospace">${fmt_money(rate,sym)}</td>
-      ${gstColHeader?`<td style="padding:9px 12px;text-align:right;font-size:11px;color:#64748B;border-bottom:0.5px solid #F1F5F9">${gstPct}%</td>`:''}
-      <td style="padding:9px 12px;text-align:right;font-size:11px;font-weight:700;color:#0F172A;border-bottom:0.5px solid #F1F5F9;font-family:monospace">${fmt_money(total,sym)}</td>
-    </tr>`;
-  }).join('');
-}
 
 // ── Shared helpers for templates ──
 function tplLogoHTML(d, sc) {
@@ -5609,14 +5586,16 @@ function buildTplA(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
   <div style="padding:24px 40px">
     <table style="width:100%;border-collapse:collapse">
       <thead><tr>
-        ${rowNumHeader?`<th style="${thS};width:28px">#</th>`:''}
+        <th style="${thS};width:28px">#</th>
         <th style="${thS}">Description</th>
+        <th style="${thS};text-align:center">Type</th>
         <th style="${thS};text-align:right">Qty</th>
         <th style="${thS};text-align:right">Rate</th>
-        ${gstColHeader?`<th style="${thS};text-align:right">GST%</th>`:''}
+        <th style="${thS};text-align:right">Line</th>
+        ${gstColHeader?`<th style="${thS};text-align:center">GST%</th>`:''}
         <th style="${thS};text-align:right">Amount</th>
       </tr></thead>
-      <tbody>${buildSimpleItemRows(d,gstColHeader)}</tbody>
+      <tbody>${itemsHTML.replace(/border-bottom:1px solid #eee/g,'border-bottom:0.5px solid #F1F5F9').replace(/padding:9px 8px/g,'padding:9px 12px')}</tbody>
     </table>
   </div>
 
@@ -5711,14 +5690,16 @@ function buildTplB(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
   <div style="padding:22px 28px 0">
     <table style="width:100%;border-collapse:collapse;border-radius:6px;overflow:hidden">
       <thead><tr>
-        ${rowNumHeader?`<th style="${thS};width:28px;border-radius:0">#</th>`:''}
+        <th style="${thS};width:28px;border-radius:0">#</th>
         <th style="${thS}">Description</th>
+        <th style="${thS};text-align:center">Type</th>
         <th style="${thR}">Qty</th>
         <th style="${thR}">Rate</th>
+        <th style="${thR}">Line</th>
         ${gstColHeader?`<th style="${thR}">GST%</th>`:''}
         <th style="${thR}">Amount</th>
       </tr></thead>
-      <tbody>${buildSimpleItemRows(d,gstColHeader)}</tbody>
+      <tbody>${itemsHTML.replace(/border-bottom:1px solid #eee/g,'border-bottom:0.5px solid rgba(21,101,192,0.12)').replace(/padding:9px 8px/g,'padding:9px 12px')}</tbody>
     </table>
   </div>
 
@@ -5808,14 +5789,16 @@ function buildTplE(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
   <div style="padding:22px 36px 0">
     <table style="width:100%;border-collapse:collapse">
       <thead><tr>
-        ${rowNumHeader?`<th style="${thS};width:28px">#</th>`:''}
+        <th style="${thS};width:28px">#</th>
         <th style="${thS}">Description</th>
+        <th style="${thS};text-align:center">Type</th>
         <th style="${thR}">Qty</th>
         <th style="${thR}">Rate</th>
+        <th style="${thR}">Line</th>
         ${gstColHeader?`<th style="${thR}">GST%</th>`:''}
         <th style="${thR}">Amount</th>
       </tr></thead>
-      <tbody>${buildSimpleItemRows(d,gstColHeader)}</tbody>
+      <tbody>${itemsHTML.replace(/border-bottom:1px solid #eee/g,'border-bottom:0.5px solid #F1F5F9').replace(/padding:9px 8px/g,'padding:10px 12px')}</tbody>
     </table>
   </div>
 
@@ -6250,7 +6233,6 @@ function openPrintWindow(d, items) {
     : `<tr><td colspan="${showGst?8:7}" style="padding:20px;text-align:center;color:#aaa">No items</td></tr>`;
   const gstColHeader = showGst ? `<th style="padding:10px 12px;text-align:center">GST%</th>` : '';
   const rowNumHeader = `<th style="padding:10px 8px;text-align:left;width:28px">#</th>`;
-  d._rawItems = items && items.length ? items : (d.items || formItems || []);
   const _tplMap = {'2':buildTpl2,'A':buildTplA,'B':buildTplB,'E':buildTplE};
   const fn = _tplMap[String(d.tpl)] || buildTpl2;
   // Ensure d has sym set (fallback for when called from create form)
@@ -6359,12 +6341,6 @@ function printInvoiceById(inv) {
       return Object.assign({bank:true,qr:!!(inv.qr_code),sign:true,logo:true,clientLogo:false,notes:true,tnc:true,gstCol:true,footer:true,watermark:(inv.status==='Paid'||inv.status==='Cancelled'),paymentBlock:true,previousDue:true}, saved||{});
     })()
   };
-  d._rawItems = (inv.items && inv.items.length) ? inv.items.map(i => ({
-    desc: i.desc||i.description||'', qty: parseFloat(i.qty||i.quantity)||1,
-    rate: parseFloat(i.rate)||0,
-    gst: i.gst!==undefined&&i.gst!==null&&i.gst!=='' ? parseFloat(i.gst) : 18,
-    itemType: i.itemType||i.item_type||'Service'
-  })) : (d.items || []);
   const _tplMap = {'2':buildTpl2,'A':buildTplA,'B':buildTplB,'E':buildTplE};
   const fn = _tplMap[String(d.tpl)] || buildTpl2;
   // Snapshot STATE — must preserve invoices and payments for previousDueBlock
@@ -6650,7 +6626,6 @@ function openPreviewModal(id) {
     : `<tr><td colspan="8" style="padding:20px;text-align:center;color:#aaa">No items</td></tr>`;
   const gstColHeader = `<th style="padding:10px 12px;text-align:center">GST%</th>`;
   const rowNumHeader = `<th style="padding:10px 8px;text-align:left;width:28px">#</th>`;
-  d._rawItems = (d.items && d.items.length) ? d.items : (formItems || []);
   const _tplMap = {'2':buildTpl2,'A':buildTplA,'B':buildTplB,'E':buildTplE};
   const fn = _tplMap[String(d.tpl)] || buildTpl2;
   const scale = 0.72;
