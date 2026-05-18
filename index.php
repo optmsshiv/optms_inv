@@ -5614,7 +5614,7 @@ function buildTplA(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
     </table>
   </div>
 
-  <div style="display:flex;padding:0 40px 24px;gap:24px">
+  <div style="display:flex;padding:0 40px 36px;gap:24px">
     <div style="flex:1">
       ${tplBankHTML(d,'#475569','#F8FAFC','border:0.5px solid #E2E8F0;border-radius:8px')}
       ${tplNotesHTML(d,'#475569','#F8FAFC')}
@@ -5715,7 +5715,7 @@ function buildTplB(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
     </table>
   </div>
 
-  <div style="display:flex;padding:16px 28px 24px;gap:24px">
+  <div style="display:flex;padding:16px 28px 36px;gap:24px">
     <div style="flex:1">
       ${tplBankHTML(d,primary,lightBg,`border:1px solid ${lightBdr};border-radius:8px`)}
       ${tplNotesHTML(d,'#475569',lightBg)}
@@ -5811,7 +5811,7 @@ function buildTplE(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
     </table>
   </div>
 
-  <div style="display:flex;padding:16px 36px 0;gap:24px">
+  <div style="display:flex;padding:16px 36px 36px;gap:24px">
     <div style="flex:1">
       ${tplBankHTML(d,'#334155','#F8FAFC','border:0.5px solid #E2E8F0;border-radius:8px')}
       ${tplNotesHTML(d,'#475569','#F8FAFC')}
@@ -6186,6 +6186,7 @@ function buildTpl2(d, sc, itemsHTML, gstColHeader, rowNumHeader='') {
   <!-- PREVIOUS DUE -->
   ${previousDueBlock(d,'#92400E','rgba(146,64,14,0.06)','rgba(146,64,14,0.25)')}
 
+  <div style="margin-top:24px"></div>
   <!-- FOOTER -->
   ${d.popt.footer!==false?`
   <div style="padding:12px 24px;background:${T.footbg};display:flex;justify-content:space-between;align-items:center">
@@ -6322,7 +6323,7 @@ function printInvoiceById(inv) {
   const gstHdr = `<th style="padding:10px 12px;text-align:center">GST%</th>`;
   const rowNumHdr2 = `<th style="padding:10px 8px;text-align:left;width:28px">#</th>`;
   const d = {
-    tpl: 2,
+    tpl: inv.template || inv.template_id || STATE.settings.activeTemplate || '2',
     num: inv.num||inv.invoice_number, date: inv.issued||inv.issued_date,
     due: inv.due||inv.due_date, svc: inv.service||inv.service_type,
     cname: c.name||inv.clientName||inv.client_name||'',
@@ -6334,6 +6335,7 @@ function printInvoiceById(inv) {
     sub:parseFloat(inv.subtotal)||0, gstAmt:parseFloat(inv.gst_amount)||0,
     grand:parseFloat(inv.amount||inv.grand_total)||0,
     invId: String(inv.id||''),
+    clientId: String(inv.client||inv.client_id||''),
     companyLogo:inv.company_logo||sc.logo||'',
     clientLogo:inv.client_logo||'', signature:inv.signature||sc.signature||'',
     qrUrl:inv.qr_code||'', generatedBy:inv.generated_by||(STATE.settings.company ? STATE.settings.company + ' Invoice Manager' : 'Invoice Manager'),
