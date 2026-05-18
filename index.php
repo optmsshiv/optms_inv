@@ -5195,7 +5195,7 @@ function buildInvoiceHTML(d, forPrint) {
   const gstColHeader = showGstCol ? `<th style="padding:10px 8px;text-align:center">GST%</th>` : '';
   const rowNumHeader = `<th style="padding:10px 8px;text-align:left;width:28px">#</th>`;
 
-  d._rawItems = d.items || formItems;
+  d._rawItems = (d.items && d.items.length) ? d.items : formItems;
   const _tplMap = {'2':buildTpl2,'A':buildTplA,'B':buildTplB,'E':buildTplE};
   const fn = _tplMap[String(d.tpl)] || buildTpl2;
   return fn(d, sc, itemsHTML, gstColHeader, rowNumHeader);
@@ -6250,7 +6250,7 @@ function openPrintWindow(d, items) {
     : `<tr><td colspan="${showGst?8:7}" style="padding:20px;text-align:center;color:#aaa">No items</td></tr>`;
   const gstColHeader = showGst ? `<th style="padding:10px 12px;text-align:center">GST%</th>` : '';
   const rowNumHeader = `<th style="padding:10px 8px;text-align:left;width:28px">#</th>`;
-  d._rawItems = d.items || [];
+  d._rawItems = items && items.length ? items : (d.items || formItems || []);
   const _tplMap = {'2':buildTpl2,'A':buildTplA,'B':buildTplB,'E':buildTplE};
   const fn = _tplMap[String(d.tpl)] || buildTpl2;
   // Ensure d has sym set (fallback for when called from create form)
@@ -6359,7 +6359,12 @@ function printInvoiceById(inv) {
       return Object.assign({bank:true,qr:!!(inv.qr_code),sign:true,logo:true,clientLogo:false,notes:true,tnc:true,gstCol:true,footer:true,watermark:(inv.status==='Paid'||inv.status==='Cancelled'),paymentBlock:true,previousDue:true}, saved||{});
     })()
   };
-  d._rawItems = d.items || [];
+  d._rawItems = (inv.items && inv.items.length) ? inv.items.map(i => ({
+    desc: i.desc||i.description||'', qty: parseFloat(i.qty||i.quantity)||1,
+    rate: parseFloat(i.rate)||0,
+    gst: i.gst!==undefined&&i.gst!==null&&i.gst!=='' ? parseFloat(i.gst) : 18,
+    itemType: i.itemType||i.item_type||'Service'
+  })) : (d.items || []);
   const _tplMap = {'2':buildTpl2,'A':buildTplA,'B':buildTplB,'E':buildTplE};
   const fn = _tplMap[String(d.tpl)] || buildTpl2;
   // Snapshot STATE — must preserve invoices and payments for previousDueBlock
@@ -6645,7 +6650,7 @@ function openPreviewModal(id) {
     : `<tr><td colspan="8" style="padding:20px;text-align:center;color:#aaa">No items</td></tr>`;
   const gstColHeader = `<th style="padding:10px 12px;text-align:center">GST%</th>`;
   const rowNumHeader = `<th style="padding:10px 8px;text-align:left;width:28px">#</th>`;
-  d._rawItems = d.items || [];
+  d._rawItems = (d.items && d.items.length) ? d.items : (formItems || []);
   const _tplMap = {'2':buildTpl2,'A':buildTplA,'B':buildTplB,'E':buildTplE};
   const fn = _tplMap[String(d.tpl)] || buildTpl2;
   const scale = 0.72;
