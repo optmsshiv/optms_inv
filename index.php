@@ -10900,7 +10900,17 @@ function syncThemePicker() {
   const isTpl2  = tplId === '2';
   if (picker)  picker.style.display  = isTpl2 ? 'block' : 'none';
   if (cpicker) cpicker.style.display = isTpl2 ? 'none'  : 'grid';
-  STATE.settings.activeTemplate = tplId;
+  // Persist selected template so it survives page refresh
+  if (STATE.settings.activeTemplate !== tplId) {
+    STATE.settings.activeTemplate = tplId;
+    // Sync sd-tpl and other selects
+    const sdTpl = document.getElementById('sd-tpl');
+    if (sdTpl) sdTpl.value = tplId;
+    const prevSel = document.getElementById('prevTplSelect');
+    if (prevSel) prevSel.value = tplId;
+    // Save to DB silently
+    api('api/settings.php', 'POST', { active_template: tplId }).catch(() => {});
+  }
 }
 
 // Set matte theme for Template 2
