@@ -8996,6 +8996,7 @@ function logWAMessage({ inv, client, type, msg, status, error }) {
 
 const MSG_TYPE_META = {
   invoice_created:  { icon:'📄', label:'New Invoice',      color:'#1565C0' },
+  estimate_created: { icon:'📋', label:'Estimate Created', color:'#3949AB' },
   payment_received: { icon:'✅', label:'Payment Receipt',  color:'#2E7D32' },
   partial_payment:  { icon:'💛', label:'Partial Receipt',  color:'#E65100' },
   payment_overdue:  { icon:'🔴', label:'Overdue Alert',    color:'#C62828' },
@@ -12259,7 +12260,7 @@ function _buildReminderQueue() {
         <div style="font-size:12px;color:var(--muted)">${q.client.name||'—'} · ${fmt_money(q.inv.amount||0)} · Due: ${q.inv.due||'—'}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        ${phone ? `<button onclick="sendReminderNow('${q.inv.id}','whatsapp')" style="padding:5px 10px;background:#25D36615;color:#1a7a3c;border:1px solid #25D36635;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600"><i class="fab fa-whatsapp"></i> Send</button>` : ''}
+        ${phone ? `<button onclick="sendReminderNow('${q.inv.id}', getReminderSettings().channel || 'whatsapp')" style="padding:5px 10px;background:#25D36615;color:#1a7a3c;border:1px solid #25D36635;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600"><i class="fab fa-whatsapp"></i> Send</button>` : ''}
         <button onclick="sendReminderNow('${q.inv.id}','skip')" style="padding:5px 10px;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:11px">Skip</button>
       </div>
     </div>`;
@@ -12267,41 +12268,105 @@ function _buildReminderQueue() {
 }
 
 function sendReminderNow(invId, channel) {
-  const inv = STATE.invoices.find(i=>String(i.id)===String(invId));
+  const inv = STATE.invoices.find(i => String(i.id) === String(invId));
   if (!inv) return;
-  const c   = STATE.clients.find(x=>String(x.id)===String(inv.client))||{};
+  const c = STATE.clients.find(x => String(x.id) === String(inv.client)) || {};
+
+  // Determine message type: overdue if status is Overdue OR due date already passed
+  const isOverdue = inv.status === 'Overdue' ||
+    (inv.due && new Date(inv.due) < new Date(new Date().toDateString()));
+  const msgType = isOverdue ? 'payment_overdue' : 'payment_reminder';
+
   if (channel === 'whatsapp') {
-    const phone = (c.wa||c.whatsapp||c.phone||'').replace(/\D/g,'');
-    const msg   = `Dear ${c.name||'Client'},\n\nThis is a reminder for Invoice *${inv.num||''}* of *${fmt_money(inv.amount||0)}* due on ${inv.due||'—'}.\n\nPlease make payment at your earliest convenience.\n\nThank you,\n${STATE.settings.company||''}`.trimEnd();
-    if (phone) sendWA(phone, msg, 'payment_reminder', inv, c);
+    const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g, '');
+    if (phone) {
+      const wa  = STATE.settings.wa || {};
+      // Use configured WA template (overdue or remind), with all variables resolved
+      const tpl = isOverdue
+        ? (wa.tpl_overdue || getDefaultWATpl('overdue'))
+        : (wa.tpl_remind  || getDefaultWATpl('remind'));
+      const msg = formatWAMsg(tpl, inv, c, STATE.settings);
+      logWAMessage({ inv, client: c, type: msgType, msg, status: 'sending' });
+      sendWA(phone, msg, msgType, inv, c)
+        .then(res => logWAMessage({ inv, client: c, type: msgType, msg, status: res ? 'sent_api' : 'sent_web' }))
+        .catch(e  => logWAMessage({ inv, client: c, type: msgType, msg, status: 'failed', error: e.message }));
+    } else {
+      toast(`⚠️ No WhatsApp number for ${c.name || 'client'}`, 'warning');
+    }
+  } else if (channel === 'email') {
+    const email = c.email || c.mail || '';
+    if (email) {
+      sendEmailFromInvoice(inv.id, isOverdue ? 'overdue' : 'reminder', email, c.name || '');
+    } else {
+      toast(`⚠️ No email address for ${c.name || 'client'}`, 'warning');
+    }
   }
-  const entry = { id:Date.now()+'', ts:new Date().toISOString(), invNum:inv.num||inv.invoice_number||'', clientName:c.name||'', type:inv.status==='Overdue'?'Overdue Alert':'Due Reminder', channel, status: channel==='skip'?'skipped':'sent' };
+
+  if (channel !== 'skip') {
+    toast('✅ Reminder sent', 'success');
+  } else {
+    toast('⏭️ Skipped', 'success');
+  }
+
+  const entry = {
+    id: Date.now() + '',
+    ts: new Date().toISOString(),
+    invNum:     inv.num || inv.invoice_number || '',
+    clientName: c.name || '',
+    type:       isOverdue ? 'Overdue Alert' : 'Due Reminder',
+    channel,
+    status:     channel === 'skip' ? 'skipped' : 'sent'
+  };
   STATE.reminders.unshift(entry);
-  if (STATE.reminders.length>200) STATE.reminders=STATE.reminders.slice(0,200);
-  // Write to DB
-  api('api/reminders.php?action=log','POST',{
-    invoice_id:inv.id, invoice_num:inv.num||inv.invoice_number||'',
-    client_name:c.name||'', type:inv.status==='Overdue'?'overdue':'due_reminder',
-    channel, status:channel==='skip'?'skipped':'sent'
-  }).catch(e=>console.warn('reminder log write failed:',e.message));
-  logActivity('reminder_sent', `Reminder ${channel==='skip'?'skipped':'sent'}: ${inv.num||inv.invoice_number||''}`, c.name||'', inv.id);
-  toast(channel==='skip'?'⏭️ Skipped':'✅ Reminder sent','success');
+  if (STATE.reminders.length > 200) STATE.reminders = STATE.reminders.slice(0, 200);
+
+  api('api/reminders.php?action=log', 'POST', {
+    invoice_id:  inv.id,
+    invoice_num: inv.num || inv.invoice_number || '',
+    client_name: c.name || '',
+    type:        isOverdue ? 'overdue' : 'due_reminder',
+    channel,
+    status:      channel === 'skip' ? 'skipped' : 'sent'
+  }).catch(e => console.warn('reminder log write failed:', e.message));
+
+  logActivity('reminder_sent',
+    `Reminder ${channel === 'skip' ? 'skipped' : 'sent'}: ${inv.num || inv.invoice_number || ''}`,
+    c.name || '', inv.id);
   renderReminders();
 }
 
 function sendAllReminders() {
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
   const cfg   = getReminderSettings();
-  let count   = 0;
+  const ch    = cfg.channel || 'whatsapp';
+  const maxOv = cfg.maxOverdue || 3;
+
+  // Build per-invoice overdue send count from reminder history
+  const overdueCountByInv = {};
+  (STATE.reminders || []).forEach(entry => {
+    if (entry.type === 'Overdue Alert' && entry.invNum) {
+      // match by invoice number since reminderLog uses invNum not invoice_id
+      overdueCountByInv[entry.invNum] = (overdueCountByInv[entry.invNum] || 0) + 1;
+    }
+  });
+
+  let count = 0;
   STATE.invoices.forEach(inv => {
-    if (['Paid','Cancelled','Draft'].includes(inv.status)) return;
+    if (['Paid', 'Cancelled', 'Draft'].includes(inv.status)) return;
     const due = inv.due ? new Date(inv.due) : null;
     if (!due) return;
-    due.setHours(0,0,0,0);
+    due.setHours(0, 0, 0, 0);
     const daysUntilDue = Math.floor((due - today) / 864e5);
-    if (daysUntilDue <= (cfg.beforeDays||3)) { sendReminderNow(inv.id,'whatsapp'); count++; }
+    if (daysUntilDue > (cfg.beforeDays || 3)) return;
+
+    // Skip invoices that exhausted their max overdue reminder count
+    const invNum = inv.num || inv.invoice_number || '';
+    if (daysUntilDue < 0 && (overdueCountByInv[invNum] || 0) >= maxOv) return;
+
+    sendReminderNow(inv.id, ch);
+    count++;
   });
-  toast(`✅ Sent ${count} reminder${count!==1?'s':''}`, 'success');
+  toast(`✅ Sent ${count} reminder${count !== 1 ? 's' : ''} via ${ch}`, 'success');
 }
 
 function _renderReminderHistory() {
@@ -13460,6 +13525,167 @@ setTimeout(async () => {
 }, 3000);
 
 // ══════════════════════════════════════════════════════════════
+// AUTO REMINDER SCHEDULER
+// Runs once on page load (after 5s to let STATE settle).
+// Checks auto_remind, auto_overdue, auto_followup toggles and
+// fires messages silently — no toast spam, just a summary toast.
+// Uses localStorage key 'optms_auto_remind_fired_DATE' so it
+// only fires ONCE per calendar day per browser session.
+// ══════════════════════════════════════════════════════════════
+setTimeout(async () => {
+  try {
+    const todayKey = 'optms_auto_remind_fired_' + new Date().toISOString().slice(0, 10);
+    if (localStorage.getItem(todayKey)) return; // already ran today
+
+    const wa  = STATE.settings.wa || {};
+    const cfg = getReminderSettings();
+    const ch  = cfg.channel || 'whatsapp';
+
+    // Nothing to do if all three auto toggles are off
+    const remindOn  = wa.auto_remind  !== '0';
+    const overdueOn = wa.auto_overdue !== '0';
+    const followOn  = wa.auto_followup === '1';
+    if (!remindOn && !overdueOn && !followOn) return;
+
+    const today    = new Date(); today.setHours(0, 0, 0, 0);
+    const maxOv    = cfg.maxOverdue  || 3;
+    const freqDays = cfg.overdueFreq || 7;
+
+    // Build per-invoice overdue send count + last sent date from STATE.reminders
+    const overdueCountByInv = {};  // invNum → count
+    const lastSentByInv     = {};  // invNum → Date of last reminder
+    (STATE.reminders || []).forEach(entry => {
+      if (!entry.invNum) return;
+      // track overdue count
+      if (entry.type === 'Overdue Alert' && entry.status === 'sent') {
+        overdueCountByInv[entry.invNum] = (overdueCountByInv[entry.invNum] || 0) + 1;
+      }
+      // track most recent send date (any type)
+      if (entry.status === 'sent' && entry.ts) {
+        const d = new Date(entry.ts);
+        if (!lastSentByInv[entry.invNum] || d > lastSentByInv[entry.invNum]) {
+          lastSentByInv[entry.invNum] = d;
+        }
+      }
+    });
+
+    let sentCount = 0;
+    const silentSend = async (inv, msgType) => {
+      const c = STATE.clients.find(x => String(x.id) === String(inv.client)) || {};
+      if (ch === 'whatsapp') {
+        const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g, '');
+        if (!phone) return;
+        const tpl = msgType === 'payment_overdue'
+          ? (wa.tpl_overdue  || getDefaultWATpl('overdue'))
+          : msgType === 'invoice_followup'
+            ? (wa.tpl_followup || getDefaultWATpl('followup'))
+            : (wa.tpl_remind   || getDefaultWATpl('remind'));
+        const msg = formatWAMsg(tpl, inv, c, STATE.settings);
+        logWAMessage({ inv, client: c, type: msgType, msg, status: 'sending' });
+        try {
+          const res = await sendWA(phone, msg, msgType, inv, c);
+          logWAMessage({ inv, client: c, type: msgType, msg, status: res ? 'sent_api' : 'sent_web' });
+        } catch(e) {
+          logWAMessage({ inv, client: c, type: msgType, msg, status: 'failed', error: e.message });
+          return; // don't log to reminders if failed
+        }
+      } else if (ch === 'email') {
+        const email = c.email || c.mail || '';
+        if (!email) return;
+        const emailType = msgType === 'payment_overdue' ? 'overdue' : 'reminder';
+        sendEmailFromInvoice(inv.id, emailType, email, c.name || '');
+      } else {
+        return;
+      }
+
+      // Log to reminder history
+      const isOv = msgType === 'payment_overdue';
+      const invNum = inv.num || inv.invoice_number || '';
+      const entry = {
+        id: Date.now() + '_' + Math.random().toString(36).slice(2,5),
+        ts: new Date().toISOString(),
+        invNum,
+        clientName: c.name || '',
+        type: isOv ? 'Overdue Alert' : msgType === 'invoice_followup' ? 'Follow-up' : 'Due Reminder',
+        channel: ch,
+        status: 'sent'
+      };
+      STATE.reminders.unshift(entry);
+      if (STATE.reminders.length > 200) STATE.reminders = STATE.reminders.slice(0, 200);
+      api('api/reminders.php?action=log', 'POST', {
+        invoice_id:  inv.id,
+        invoice_num: invNum,
+        client_name: c.name || '',
+        type:        isOv ? 'overdue' : msgType === 'invoice_followup' ? 'followup' : 'due_reminder',
+        channel:     ch,
+        status:      'sent'
+      }).catch(e => console.warn('[AutoReminder] log write failed:', e.message));
+      logActivity('reminder_sent', `Auto-reminder sent: ${invNum}`, c.name || '', inv.id);
+      sentCount++;
+      // Small delay between sends to avoid API rate limits
+      await new Promise(r => setTimeout(r, 400));
+    };
+
+    // ── Check each invoice ────────────────────────────────────
+    for (const inv of STATE.invoices) {
+      if (['Paid', 'Cancelled', 'Draft'].includes(inv.status)) continue;
+      const due = inv.due ? new Date(inv.due) : null;
+      if (!due) continue;
+      due.setHours(0, 0, 0, 0);
+      const daysUntilDue = Math.floor((due - today) / 864e5);
+      const daysOverdue  = -daysUntilDue;
+      const invNum       = inv.num || inv.invoice_number || '';
+
+      // Last sent date for this invoice
+      const lastSent     = lastSentByInv[invNum] || null;
+      const daysSinceSent = lastSent
+        ? Math.floor((today - new Date(lastSent.toDateString())) / 864e5)
+        : 999;
+
+      // ── auto_remind: due within beforeDays, not yet overdue ──
+      if (remindOn && daysUntilDue >= 0 && daysUntilDue <= (cfg.beforeDays || 3)) {
+        // Only send if not already sent today
+        if (daysSinceSent >= 1) {
+          await silentSend(inv, 'payment_reminder');
+        }
+        continue;
+      }
+
+      // ── auto_overdue: overdue, within maxOverdue limit ───────
+      if (overdueOn && daysOverdue > 0) {
+        const ovCount = overdueCountByInv[invNum] || 0;
+        if (ovCount >= maxOv) continue; // exhausted
+        // Only send if not sent in the last overdueFreq days
+        if (daysSinceSent >= freqDays) {
+          await silentSend(inv, 'payment_overdue');
+        }
+        continue;
+      }
+
+      // ── auto_followup: overdue, after first overdue, repeat every freqDays ──
+      if (followOn && daysOverdue > 0) {
+        const ovCount = overdueCountByInv[invNum] || 0;
+        if (ovCount < 1) continue; // followup only after at least one overdue sent
+        if (ovCount >= maxOv) continue;
+        if (daysSinceSent >= freqDays) {
+          await silentSend(inv, 'invoice_followup');
+        }
+      }
+    }
+
+    // Mark as fired for today
+    try { localStorage.setItem(todayKey, '1'); } catch(e) {}
+
+    if (sentCount > 0) {
+      toast(`🔔 Auto-reminders: ${sentCount} message${sentCount > 1 ? 's' : ''} sent via ${ch}`, 'info');
+      renderReminders();
+    }
+  } catch(e) {
+    console.warn('[AutoReminder] Scheduler error:', e.message);
+  }
+}, 5000); // 5s delay — lets STATE fully settle after loadAllData
+
+// ══════════════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════════════
 
@@ -13476,11 +13702,11 @@ if (typeof _origRenderDashboard === 'function') {
     const cfg   = getReminderSettings();
     const maxOv = cfg.maxOverdue || 3;
 
-    // Build a per-invoice overdue reminder count from the reminder log
+    // Build a per-invoice overdue reminder count from STATE.reminders (reminder history)
     const overdueCountByInv = {};
-    (STATE.reminderLog || []).forEach(entry => {
-      if (entry.type === 'overdue' && entry.invoice_id) {
-        overdueCountByInv[entry.invoice_id] = (overdueCountByInv[entry.invoice_id] || 0) + 1;
+    (STATE.reminders || []).forEach(entry => {
+      if (entry.type === 'Overdue Alert' && entry.invNum) {
+        overdueCountByInv[entry.invNum] = (overdueCountByInv[entry.invNum] || 0) + 1;
       }
     });
 
