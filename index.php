@@ -12179,7 +12179,7 @@ function getReminderSettings() {
     onDue:       (s.on_due ?? s.onDue ?? 1) == 1,
     overdueFreq: parseInt(s.overdue_freq ?? s.overdueFreq ?? wa.followup_days  ?? 7),
     maxOverdue:  parseInt(s.max_overdue  ?? s.maxOverdue  ?? wa.max_followup   ?? 3),
-    channel:     s.channel || cfg.channel || 'whatsapp'
+    channel:     s.channel || (STATE.settings && STATE.settings.channel) || 'whatsapp'
   };
 }
 async function saveReminderSettings() {
