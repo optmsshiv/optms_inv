@@ -8821,7 +8821,11 @@ function emProfileProviderChange() {
 async function sendEmailFromInvoice(invId, type, to, toName) {
   if (!to) { toast('⚠️ No email address on file for this client', 'warning'); return; }
   const ec = STATE.settings.email_cfg || {};
-  if (!ec.smtp_host) { toast('⚠️ Configure SMTP settings in Email Setup first', 'warning'); showPage('email-setup'); return; }
+  // Warn but do NOT redirect — reminder flows should not navigate away unexpectedly
+  if (!ec.smtp_host || !ec.smtp_user) {
+    toast('⚠️ SMTP not configured — go to Email Setup to enable email sending', 'warning');
+    return;
+  }
   toast('📧 Sending ' + type + ' email to ' + toName + '…', 'info');
   try {
     const r = await api('api/email.php', 'POST', { action:'send', type, invoice_id: invId, to, to_name: toName });
@@ -10761,7 +10765,8 @@ async function sendWAForInvoice(inv) {
   try {
     const result = await sendWA(phone, msg, tplName, inv, client);
     logWAMessage({ inv, client, type: tplName, msg, status: result ? 'sent_api' : 'sent_web' });
-    toast(result ? `✅ ${statusLabel} sent to ${client.name}!` : `📱 WhatsApp opened for ${client.name}`, 'success');
+    const _toastName = client.name || inv.clientName || inv.client_name || 'client';
+    toast(result ? `✅ ${statusLabel} sent to ${_toastName}!` : `📱 WhatsApp opened for ${_toastName}`, 'success');
   } catch(e) {
     logWAMessage({ inv, client, type: tplName, msg, status: 'failed', error: e.message });
     toast('❌ ' + e.message, 'error');
@@ -12259,7 +12264,9 @@ function _buildReminderQueue() {
   el.innerHTML = queue.map(q => {
     const col = urgencyColors[q.urgency];
     const bg  = urgencyBg[q.urgency];
-    const phone = (q.client.wa||q.client.whatsapp||q.client.phone||'').replace(/\D/g,'');
+    // Also check invoice fields for one-time clients who have no saved client record
+    const phone = (q.client.wa||q.client.whatsapp||q.client.phone||q.inv.client_wa||q.inv.client_phone||'').replace(/\D/g,'');
+    const email = q.client.email || q.client.mail || q.inv.client_email || '';
     return `<div style="background:${bg};border:1.5px solid ${col}30;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px">
       <div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></div>
       <div style="flex:1;min-width:0">
@@ -12270,7 +12277,7 @@ function _buildReminderQueue() {
         <div style="font-size:12px;color:var(--muted)">${q.client.name||'—'} · ${fmt_money(q.inv.amount||0)} · Due: ${q.inv.due||'—'}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        ${(phone || (q.client.email || q.client.mail)) ? `<button onclick="sendReminderNow('${q.inv.id}', getReminderSettings().channel || 'whatsapp')" style="padding:5px 10px;background:#25D36615;color:#1a7a3c;border:1px solid #25D36635;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600">${(()=>{const ch=getReminderSettings().channel||'whatsapp';return ch==='email'?'<i class="fas fa-envelope"></i> Send':ch==='both'?'<i class="fas fa-paper-plane"></i> Send Both':'<i class="fab fa-whatsapp"></i> Send';})()}</button>` : ''}
+        ${(phone || email) ? `<button onclick="sendReminderNow('${q.inv.id}', getReminderSettings().channel || 'whatsapp')" style="padding:5px 10px;background:#25D36615;color:#1a7a3c;border:1px solid #25D36635;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600">${(()=>{const ch=getReminderSettings().channel||'whatsapp';return ch==='email'?'<i class="fas fa-envelope"></i> Send':ch==='both'?'<i class="fas fa-paper-plane"></i> Send Both':'<i class="fab fa-whatsapp"></i> Send';})()}</button>` : ''}
         <button onclick="sendReminderNow('${q.inv.id}','skip')" style="padding:5px 10px;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:11px">Skip</button>
       </div>
     </div>`;
@@ -12289,9 +12296,10 @@ function sendReminderNow(invId, channel) {
 
   const sendViaWA = (ch) => {
     if (ch !== 'whatsapp' && ch !== 'both') return;
-    const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g, '');
+    // Also check inv.client_wa / inv.client_phone for one-time clients with no saved record
+    const phone = (c.wa || c.whatsapp || c.phone || inv.client_wa || inv.client_phone || '').replace(/\D/g, '');
+    const _waName = c.name || inv.clientName || inv.client_name || 'client';
     if (phone) {
-      const wa  = STATE.settings.wa || {};
       const tpl = isOverdue
         ? (wa.tpl_overdue || getDefaultWATpl('overdue'))
         : (wa.tpl_remind  || getDefaultWATpl('remind'));
@@ -12301,16 +12309,18 @@ function sendReminderNow(invId, channel) {
         .then(res => logWAMessage({ inv, client: c, type: msgType, msg, status: res ? 'sent_api' : 'sent_web' }))
         .catch(e  => logWAMessage({ inv, client: c, type: msgType, msg, status: 'failed', error: e.message }));
     } else {
-      toast(`⚠️ No WhatsApp number for ${c.name || 'client'}`, 'warning');
+      toast(`⚠️ No WhatsApp number for ${_waName}`, 'warning');
     }
   };
   const sendViaEmail = (ch) => {
     if (ch !== 'email' && ch !== 'both') return;
-    const email = c.email || c.mail || '';
+    // Also check inv.client_email for one-time clients with no saved record
+    const email = c.email || c.mail || inv.client_email || '';
+    const _emailName = c.name || inv.clientName || inv.client_name || 'client';
     if (email) {
-      sendEmailFromInvoice(inv.id, isOverdue ? 'overdue' : 'reminder', email, c.name || '');
+      sendEmailFromInvoice(inv.id, isOverdue ? 'overdue' : 'reminder', email, _emailName);
     } else {
-      toast(`⚠️ No email address for ${c.name || 'client'}`, 'warning');
+      toast(`⚠️ No email address for ${_emailName}`, 'warning');
     }
   };
   sendViaWA(channel);
@@ -13590,7 +13600,8 @@ setTimeout(async () => {
 
       // ── WhatsApp branch (whatsapp or both) ──
       if (ch === 'whatsapp' || ch === 'both') {
-        const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g, '');
+        // Also check inv fields for one-time clients with no saved client record
+        const phone = (c.wa || c.whatsapp || c.phone || inv.client_wa || inv.client_phone || '').replace(/\D/g, '');
         if (phone) {
           const tpl = msgType === 'payment_overdue'
             ? (wa.tpl_overdue  || getDefaultWATpl('overdue'))
@@ -13611,7 +13622,7 @@ setTimeout(async () => {
 
       // ── Email branch (email or both) ──
       if (ch === 'email' || ch === 'both') {
-        const email = c.email || c.mail || '';
+        const email = c.email || c.mail || inv.client_email || '';
         if (email) {
           const emailType = msgType === 'payment_overdue' ? 'overdue' : 'reminder';
           sendEmailFromInvoice(inv.id, emailType, email, c.name || '');
