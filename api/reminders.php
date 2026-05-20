@@ -20,7 +20,7 @@ $isLog  = isset($_GET['log']);
 
 // ── FIX #5: Allowed values for type and channel ──────────────────
 const ALLOWED_TYPES    = ['due_reminder', 'due_soon', 'due_today', 'overdue', 'followup', 'paid'];
-const ALLOWED_CHANNELS = ['whatsapp', 'sms', 'email'];
+const ALLOWED_CHANNELS = ['whatsapp', 'sms', 'email', 'both'];
 const ALLOWED_STATUSES = ['sent', 'failed', 'pending'];
 
 try {

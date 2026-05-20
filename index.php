@@ -7217,6 +7217,7 @@ function confirmDelete() {
 async function changeInvoiceStatus(id, newStatus, cancelReason = '') {
   const inv = STATE.invoices.find(i=>String(i.id)===String(id));
   if (!inv) return;
+  const oldStatus = inv.status; // capture before overwrite
   const label = newStatus === 'Pending' ? '📤 Made Pending' : newStatus === 'Cancelled' ? '🚫 Cancelled' : newStatus;
   const payload = { status: newStatus };
   if (newStatus === 'Cancelled' && cancelReason) payload.cancel_reason = cancelReason;
@@ -7231,6 +7232,15 @@ async function changeInvoiceStatus(id, newStatus, cancelReason = '') {
     logActivity('status_changed', `Status → ${newStatus}: ${inv.num||inv.invoice_number}${cancelReason ? ' — ' + cancelReason : ''}`, inv.client_name||'', id);
     renderInvoicesTable(); renderDonutChart(); renderDashRecent(); updateDashStats();
     toast(`${label}: ${inv.num||inv.invoice_number}`, 'success');
+
+    // ── Auto-fire WA when Draft/Cancelled → Pending ──────────
+    // Fires the same sendWAForInvoice path as new invoice creation,
+    // respects the auto_inv toggle, 600ms delay matches convert flow.
+    const wa = STATE.settings.wa || {};
+    if (newStatus === 'Pending' && ['Draft', 'Cancelled'].includes(oldStatus) && wa.auto_inv === '1') {
+      setTimeout(() => sendWAForInvoice(inv), 600);
+    }
+
   } catch(e) { toast('❌ Failed: ' + e.message, 'error'); }
 }
 
@@ -11304,7 +11314,7 @@ async function loadFeatureData() {
           on_due:       cfg.on_due       ?? '1',
           overdue_freq: cfg.overdue_freq || '7',
           max_overdue:  cfg.max_overdue  || '3',
-          channel:      cfg.channel      || 'whatsapp'
+          channel:      cfg.channel      || cfg.rem_channel || 'whatsapp'
         });
       }
     }
@@ -12169,7 +12179,7 @@ function getReminderSettings() {
     onDue:       (s.on_due ?? s.onDue ?? 1) == 1,
     overdueFreq: parseInt(s.overdue_freq ?? s.overdueFreq ?? wa.followup_days  ?? 7),
     maxOverdue:  parseInt(s.max_overdue  ?? s.maxOverdue  ?? wa.max_followup   ?? 3),
-    channel:     s.channel || 'whatsapp'
+    channel:     s.channel || cfg.channel || 'whatsapp'
   };
 }
 async function saveReminderSettings() {
@@ -12260,7 +12270,7 @@ function _buildReminderQueue() {
         <div style="font-size:12px;color:var(--muted)">${q.client.name||'—'} · ${fmt_money(q.inv.amount||0)} · Due: ${q.inv.due||'—'}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        ${phone ? `<button onclick="sendReminderNow('${q.inv.id}', getReminderSettings().channel || 'whatsapp')" style="padding:5px 10px;background:#25D36615;color:#1a7a3c;border:1px solid #25D36635;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600"><i class="fab fa-whatsapp"></i> Send</button>` : ''}
+        ${(phone || (q.client.email || q.client.mail)) ? `<button onclick="sendReminderNow('${q.inv.id}', getReminderSettings().channel || 'whatsapp')" style="padding:5px 10px;background:#25D36615;color:#1a7a3c;border:1px solid #25D36635;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600">${(()=>{const ch=getReminderSettings().channel||'whatsapp';return ch==='email'?'<i class="fas fa-envelope"></i> Send':ch==='both'?'<i class="fas fa-paper-plane"></i> Send Both':'<i class="fab fa-whatsapp"></i> Send';})()}</button>` : ''}
         <button onclick="sendReminderNow('${q.inv.id}','skip')" style="padding:5px 10px;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:11px">Skip</button>
       </div>
     </div>`;
@@ -12277,11 +12287,11 @@ function sendReminderNow(invId, channel) {
     (inv.due && new Date(inv.due) < new Date(new Date().toDateString()));
   const msgType = isOverdue ? 'payment_overdue' : 'payment_reminder';
 
-  if (channel === 'whatsapp') {
+  const sendViaWA = (ch) => {
+    if (ch !== 'whatsapp' && ch !== 'both') return;
     const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g, '');
     if (phone) {
       const wa  = STATE.settings.wa || {};
-      // Use configured WA template (overdue or remind), with all variables resolved
       const tpl = isOverdue
         ? (wa.tpl_overdue || getDefaultWATpl('overdue'))
         : (wa.tpl_remind  || getDefaultWATpl('remind'));
@@ -12293,14 +12303,18 @@ function sendReminderNow(invId, channel) {
     } else {
       toast(`⚠️ No WhatsApp number for ${c.name || 'client'}`, 'warning');
     }
-  } else if (channel === 'email') {
+  };
+  const sendViaEmail = (ch) => {
+    if (ch !== 'email' && ch !== 'both') return;
     const email = c.email || c.mail || '';
     if (email) {
       sendEmailFromInvoice(inv.id, isOverdue ? 'overdue' : 'reminder', email, c.name || '');
     } else {
       toast(`⚠️ No email address for ${c.name || 'client'}`, 'warning');
     }
-  }
+  };
+  sendViaWA(channel);
+  sendViaEmail(channel);
 
   if (channel !== 'skip') {
     toast('✅ Reminder sent', 'success');
@@ -12314,7 +12328,7 @@ function sendReminderNow(invId, channel) {
     invNum:     inv.num || inv.invoice_number || '',
     clientName: c.name || '',
     type:       isOverdue ? 'Overdue Alert' : 'Due Reminder',
-    channel,
+    channel:    channel === 'skip' ? (getReminderSettings().channel || 'whatsapp') : channel,
     status:     channel === 'skip' ? 'skipped' : 'sent'
   };
   STATE.reminders.unshift(entry);
@@ -12325,7 +12339,7 @@ function sendReminderNow(invId, channel) {
     invoice_num: inv.num || inv.invoice_number || '',
     client_name: c.name || '',
     type:        isOverdue ? 'overdue' : 'due_reminder',
-    channel,
+    channel:     channel === 'skip' ? (getReminderSettings().channel || 'whatsapp') : channel,
     status:      channel === 'skip' ? 'skipped' : 'sent'
   }).catch(e => console.warn('reminder log write failed:', e.message));
 
@@ -12383,7 +12397,7 @@ function _renderReminderHistory() {
       <td style="font-family:var(--mono);font-weight:700">${r.invNum||'—'}</td>
       <td>${r.clientName||'—'}</td>
       <td>${r.type||'—'}</td>
-      <td>${r.channel||'—'}</td>
+      <td>${(()=>{const ch=r.channel||'';if(ch==='skip')return '<span style="color:#888">—</span>';if(ch==='both')return '📱+📧 Both';if(ch==='email')return '📧 Email';if(ch==='whatsapp')return '💬 WhatsApp';return ch||'—';})()}</td>
       <td><span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:${statusColor}15;color:${statusColor}">${r.status}</span></td>
     </tr>`;
   }).join('');
@@ -13572,31 +13586,40 @@ setTimeout(async () => {
     let sentCount = 0;
     const silentSend = async (inv, msgType) => {
       const c = STATE.clients.find(x => String(x.id) === String(inv.client)) || {};
-      if (ch === 'whatsapp') {
+      let anySent = false;
+
+      // ── WhatsApp branch (whatsapp or both) ──
+      if (ch === 'whatsapp' || ch === 'both') {
         const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g, '');
-        if (!phone) return;
-        const tpl = msgType === 'payment_overdue'
-          ? (wa.tpl_overdue  || getDefaultWATpl('overdue'))
-          : msgType === 'invoice_followup'
-            ? (wa.tpl_followup || getDefaultWATpl('followup'))
-            : (wa.tpl_remind   || getDefaultWATpl('remind'));
-        const msg = formatWAMsg(tpl, inv, c, STATE.settings);
-        logWAMessage({ inv, client: c, type: msgType, msg, status: 'sending' });
-        try {
-          const res = await sendWA(phone, msg, msgType, inv, c);
-          logWAMessage({ inv, client: c, type: msgType, msg, status: res ? 'sent_api' : 'sent_web' });
-        } catch(e) {
-          logWAMessage({ inv, client: c, type: msgType, msg, status: 'failed', error: e.message });
-          return; // don't log to reminders if failed
+        if (phone) {
+          const tpl = msgType === 'payment_overdue'
+            ? (wa.tpl_overdue  || getDefaultWATpl('overdue'))
+            : msgType === 'invoice_followup'
+              ? (wa.tpl_followup || getDefaultWATpl('followup'))
+              : (wa.tpl_remind   || getDefaultWATpl('remind'));
+          const msg = formatWAMsg(tpl, inv, c, STATE.settings);
+          logWAMessage({ inv, client: c, type: msgType, msg, status: 'sending' });
+          try {
+            const res = await sendWA(phone, msg, msgType, inv, c);
+            logWAMessage({ inv, client: c, type: msgType, msg, status: res ? 'sent_api' : 'sent_web' });
+            anySent = true;
+          } catch(e) {
+            logWAMessage({ inv, client: c, type: msgType, msg, status: 'failed', error: e.message });
+          }
         }
-      } else if (ch === 'email') {
-        const email = c.email || c.mail || '';
-        if (!email) return;
-        const emailType = msgType === 'payment_overdue' ? 'overdue' : 'reminder';
-        sendEmailFromInvoice(inv.id, emailType, email, c.name || '');
-      } else {
-        return;
       }
+
+      // ── Email branch (email or both) ──
+      if (ch === 'email' || ch === 'both') {
+        const email = c.email || c.mail || '';
+        if (email) {
+          const emailType = msgType === 'payment_overdue' ? 'overdue' : 'reminder';
+          sendEmailFromInvoice(inv.id, emailType, email, c.name || '');
+          anySent = true;
+        }
+      }
+
+      if (!anySent) return; // nothing sent, skip logging
 
       // Log to reminder history
       const isOv = msgType === 'payment_overdue';
@@ -13717,7 +13740,8 @@ if (typeof _origRenderDashboard === 'function') {
       const daysUntilDue = Math.floor((due - today) / 864e5);
       if (daysUntilDue > (cfg.beforeDays || 3)) return false;
       // FIX #4: Skip invoices already at or over the max overdue reminder count
-      if (daysUntilDue < 0 && (overdueCountByInv[inv.id] || 0) >= maxOv) return false;
+      const _invNum = inv.num || inv.invoice_number || '';
+    if (daysUntilDue < 0 && (overdueCountByInv[_invNum] || 0) >= maxOv) return false;
       return true;
     }).length;
 

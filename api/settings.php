@@ -37,6 +37,7 @@ switch ($method) {
       'on_due'             => '1',
       'overdue_freq'       => '7',
       'max_overdue'        => '3',
+      'channel'            => 'whatsapp',
     ];
     
     // Fetch existing settings from DB
