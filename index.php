@@ -12228,6 +12228,14 @@ function _buildReminderQueue() {
   const today = new Date(); today.setHours(0,0,0,0);
   const queue = [];
 
+  // Build overdue count per invoice to respect maxOverdue limit in queue
+  const _queueOverdueCount = {};
+  (STATE.reminders || []).forEach(entry => {
+    if (entry.type === 'Overdue Alert' && entry.invNum && entry.status === 'sent') {
+      _queueOverdueCount[entry.invNum] = (_queueOverdueCount[entry.invNum] || 0) + 1;
+    }
+  });
+
   STATE.invoices.forEach(inv => {
     if (['Paid','Cancelled','Draft'].includes(inv.status)) return;
     const c    = STATE.clients.find(x=>String(x.id)===String(inv.client))||{};
@@ -12236,16 +12244,19 @@ function _buildReminderQueue() {
     due.setHours(0,0,0,0);
     const daysUntilDue = Math.floor((due - today) / 864e5);
     const daysOverdue  = -daysUntilDue;
+    const invNum       = inv.num || inv.invoice_number || '';
 
     if (inv.status === 'Overdue' || daysOverdue > 0) {
+      // Skip if already hit maxOverdue limit
+      if ((_queueOverdueCount[invNum] || 0) >= (cfg.maxOverdue || 3)) return;
       queue.push({ inv, client:c, type:'overdue', urgency:'high',
-        label:`${daysOverdue}d overdue`, msg:`Overdue reminder for ${inv.num||''}` });
+        label:`${daysOverdue}d overdue`, msg:`Overdue reminder for ${invNum}` });
     } else if (daysUntilDue === 0) {
       queue.push({ inv, client:c, type:'due_today', urgency:'medium',
-        label:'Due today', msg:`Payment due today for ${inv.num||''}` });
+        label:'Due today', msg:`Payment due today for ${invNum}` });
     } else if (daysUntilDue <= (cfg.beforeDays||3)) {
       queue.push({ inv, client:c, type:'due_soon', urgency:'low',
-        label:`Due in ${daysUntilDue}d`, msg:`Due soon reminder for ${inv.num||''}` });
+        label:`Due in ${daysUntilDue}d`, msg:`Due soon reminder for ${invNum}` });
     }
   });
 
@@ -12274,7 +12285,7 @@ function _buildReminderQueue() {
           <strong style="font-size:13px;font-family:var(--mono)">${q.inv.num||q.inv.invoice_number||''}</strong>
           <span style="font-size:10px;padding:1px 7px;border-radius:10px;background:${col};color:#fff;font-weight:700">${q.label}</span>
         </div>
-        <div style="font-size:12px;color:var(--muted)">${q.client.name||'—'} · ${fmt_money(q.inv.amount||0)} · Due: ${q.inv.due||'—'}</div>
+        <div style="font-size:12px;color:var(--muted)">${q.client.name||q.inv.clientName||q.inv.client_name||'One-Time Client'} · ${fmt_money(q.inv.amount||0)} · Due: ${q.inv.due||'—'}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
         ${(phone || email) ? `<button onclick="sendReminderNow('${q.inv.id}', getReminderSettings().channel || 'whatsapp')" style="padding:5px 10px;background:#25D36615;color:#1a7a3c;border:1px solid #25D36635;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600">${(()=>{const ch=getReminderSettings().channel||'whatsapp';return ch==='email'?'<i class="fas fa-envelope"></i> Send':ch==='both'?'<i class="fas fa-paper-plane"></i> Send Both':'<i class="fab fa-whatsapp"></i> Send';})()}</button>` : ''}
@@ -12333,11 +12344,12 @@ function sendReminderNow(invId, channel) {
     toast('⏭️ Skipped', 'success');
   }
 
+  const _clientName = c.name || inv.clientName || inv.client_name || '';
   const entry = {
     id: Date.now() + '',
     ts: new Date().toISOString(),
     invNum:     inv.num || inv.invoice_number || '',
-    clientName: c.name || '',
+    clientName: _clientName,
     type:       isOverdue ? 'Overdue Alert' : 'Due Reminder',
     channel:    channel === 'skip' ? (getReminderSettings().channel || 'whatsapp') : channel,
     status:     channel === 'skip' ? 'skipped' : 'sent'
@@ -12348,7 +12360,7 @@ function sendReminderNow(invId, channel) {
   api('api/reminders.php?action=log', 'POST', {
     invoice_id:  inv.id,
     invoice_num: inv.num || inv.invoice_number || '',
-    client_name: c.name || '',
+    client_name: _clientName,
     type:        isOverdue ? 'overdue' : 'due_reminder',
     channel:     channel === 'skip' ? (getReminderSettings().channel || 'whatsapp') : channel,
     status:      channel === 'skip' ? 'skipped' : 'sent'
@@ -12356,7 +12368,7 @@ function sendReminderNow(invId, channel) {
 
   logActivity('reminder_sent',
     `Reminder ${channel === 'skip' ? 'skipped' : 'sent'}: ${inv.num || inv.invoice_number || ''}`,
-    c.name || '', inv.id);
+    _clientName, inv.id);
   renderReminders();
 }
 
@@ -13636,11 +13648,12 @@ setTimeout(async () => {
       // Log to reminder history
       const isOv = msgType === 'payment_overdue';
       const invNum = inv.num || inv.invoice_number || '';
+      const _cName = c.name || inv.clientName || inv.client_name || '';
       const entry = {
         id: Date.now() + '_' + Math.random().toString(36).slice(2,5),
         ts: new Date().toISOString(),
         invNum,
-        clientName: c.name || '',
+        clientName: _cName,
         type: isOv ? 'Overdue Alert' : msgType === 'invoice_followup' ? 'Follow-up' : 'Due Reminder',
         channel: ch,
         status: 'sent'
@@ -13650,12 +13663,12 @@ setTimeout(async () => {
       api('api/reminders.php?action=log', 'POST', {
         invoice_id:  inv.id,
         invoice_num: invNum,
-        client_name: c.name || '',
+        client_name: _cName,
         type:        isOv ? 'overdue' : msgType === 'invoice_followup' ? 'followup' : 'due_reminder',
         channel:     ch,
         status:      'sent'
       }).catch(e => console.warn('[AutoReminder] log write failed:', e.message));
-      logActivity('reminder_sent', `Auto-reminder sent: ${invNum}`, c.name || '', inv.id);
+      logActivity('reminder_sent', `Auto-reminder sent: ${invNum}`, _cName, inv.id);
       sentCount++;
       // Small delay between sends to avoid API rate limits
       await new Promise(r => setTimeout(r, 400));
