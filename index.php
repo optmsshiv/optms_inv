@@ -12299,6 +12299,7 @@ function sendReminderNow(invId, channel) {
     // Also check inv.client_wa / inv.client_phone for one-time clients with no saved record
     const phone = (c.wa || c.whatsapp || c.phone || inv.client_wa || inv.client_phone || '').replace(/\D/g, '');
     const _waName = c.name || inv.clientName || inv.client_name || 'client';
+    const wa = STATE.settings.wa || {};
     if (phone) {
       const tpl = isOverdue
         ? (wa.tpl_overdue || getDefaultWATpl('overdue'))
