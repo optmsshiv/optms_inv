@@ -7217,6 +7217,7 @@ function confirmDelete() {
 async function changeInvoiceStatus(id, newStatus, cancelReason = '') {
   const inv = STATE.invoices.find(i=>String(i.id)===String(id));
   if (!inv) return;
+  const oldStatus = inv.status; // capture before overwrite
   const label = newStatus === 'Pending' ? '📤 Made Pending' : newStatus === 'Cancelled' ? '🚫 Cancelled' : newStatus;
   const payload = { status: newStatus };
   if (newStatus === 'Cancelled' && cancelReason) payload.cancel_reason = cancelReason;
@@ -7231,6 +7232,15 @@ async function changeInvoiceStatus(id, newStatus, cancelReason = '') {
     logActivity('status_changed', `Status → ${newStatus}: ${inv.num||inv.invoice_number}${cancelReason ? ' — ' + cancelReason : ''}`, inv.client_name||'', id);
     renderInvoicesTable(); renderDonutChart(); renderDashRecent(); updateDashStats();
     toast(`${label}: ${inv.num||inv.invoice_number}`, 'success');
+
+    // ── Auto-fire WA when Draft/Cancelled → Pending ──────────
+    // Fires the same sendWAForInvoice path as new invoice creation,
+    // respects the auto_inv toggle, 600ms delay matches convert flow.
+    const wa = STATE.settings.wa || {};
+    if (newStatus === 'Pending' && ['Draft', 'Cancelled'].includes(oldStatus) && wa.auto_inv === '1') {
+      setTimeout(() => sendWAForInvoice(inv), 600);
+    }
+
   } catch(e) { toast('❌ Failed: ' + e.message, 'error'); }
 }
 
@@ -8811,7 +8821,11 @@ function emProfileProviderChange() {
 async function sendEmailFromInvoice(invId, type, to, toName) {
   if (!to) { toast('⚠️ No email address on file for this client', 'warning'); return; }
   const ec = STATE.settings.email_cfg || {};
-  if (!ec.smtp_host) { toast('⚠️ Configure SMTP settings in Email Setup first', 'warning'); showPage('email-setup'); return; }
+  // Warn but do NOT redirect — reminder flows should not navigate away unexpectedly
+  if (!ec.smtp_host || !ec.smtp_user) {
+    toast('⚠️ SMTP not configured — go to Email Setup to enable email sending', 'warning');
+    return;
+  }
   toast('📧 Sending ' + type + ' email to ' + toName + '…', 'info');
   try {
     const r = await api('api/email.php', 'POST', { action:'send', type, invoice_id: invId, to, to_name: toName });
@@ -8970,21 +8984,77 @@ function saveMsgLog(log) {
 
 function logWAMessage({ inv, client, type, msg, status, error }) {
   const log = getMsgLog();
+
+  // Resolve phone: check client record first, then invoice fields for one-time clients
+  const resolvedPhone = (client && (client.wa||client.whatsapp||client.phone))
+    || (inv && (inv.client_wa||inv.client_phone)) || '';
+
+  // Resolve invoice id for deduplication
+  const resolvedInvId = inv ? String(inv.id || inv._dbId || '') : '';
+
+  // ── Deduplication: if a 'sending' entry exists for same invoice+type,
+  //    update it in-place instead of adding a new row.
+  //    This prevents duplicate rows (sending → sent_api) in the log.
+  if (status !== 'sending' && resolvedInvId) {
+    const existing = log.findIndex(e =>
+      e.status === 'sending' &&
+      e.inv_id  === resolvedInvId &&
+      e.type    === (type || 'unknown')
+    );
+    if (existing !== -1) {
+      log[existing].status = status || 'sent_web';
+      log[existing].error  = error  || '';
+      saveMsgLog(log);
+      // Update DB entry too
+      api('api/wa_log.php', 'POST', {
+        id:     log[existing].id,
+        type:   log[existing].type,
+        status: status || 'sent_web',
+        error:  error  || '',
+      }).catch(e => console.warn('[wa_log] DB update failed:', e.message));
+      const failed = log.filter(e=>e.status==='failed').length;
+      const badge = document.getElementById('badge-msglog');
+      if (badge) {
+        if (failed > 0) { badge.style.display=''; badge.textContent=failed; badge.style.background='var(--red)'; }
+        else { badge.style.display='none'; }
+      }
+      return; // updated in-place, no new entry needed
+    }
+  }
+
   const entry = {
-    id:       Date.now() + '_' + Math.random().toString(36).slice(2,6),
-    ts:       new Date().toISOString(),
-    type:     type || 'unknown',
-    status:   status || 'sent_web',
-    client:   (client && client.name) || (inv && (inv.clientName||inv.client_name)) || '—',
-    phone:    (client && (client.wa||client.whatsapp||client.phone)) || '—',
-    inv_num:  inv ? (inv.num||inv.invoice_number||'') : '',
-    inv_amt:  inv ? fmt_money(parseFloat(inv.amount||inv.grand_total||0), inv.currency||'₹') : '',
+    id:         Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    ts:         new Date().toISOString(),
+    type:       type || 'unknown',
+    status:     status || 'sent_web',
+    client:     (client && client.name) || (inv && (inv.clientName||inv.client_name)) || '—',
+    phone:      resolvedPhone || '—',
+    inv_id:     resolvedInvId,
+    inv_num:    inv ? (inv.num||inv.invoice_number||'') : '',
+    inv_amt:    inv ? fmt_money(parseFloat(inv.amount||inv.grand_total||0), inv.currency||'₹') : '',
     inv_status: inv ? (inv.status||'') : '',
-    msg:      msg || '',
-    error:    error || '',
+    msg:        msg || '',
+    error:      error || '',
   };
   log.push(entry);
   saveMsgLog(log);
+
+  // Persist to DB (fire-and-forget — localStorage is immediate, DB is backup)
+  api('api/wa_log.php', 'POST', {
+    id:         entry.id,
+    ts:         entry.ts,
+    type:       entry.type,
+    status:     entry.status,
+    client:     entry.client,
+    phone:      entry.phone !== '—' ? entry.phone : '',
+    inv_id:     entry.inv_id  || '',
+    inv_num:    entry.inv_num || '',
+    inv_amt:    entry.inv_amt || '',
+    inv_status: entry.inv_status || '',
+    msg:        entry.msg   || '',
+    error:      entry.error || '',
+  }).catch(e => console.warn('[wa_log] DB write failed:', e.message));
+
   // Update badge
   const failed = log.filter(e=>e.status==='failed').length;
   const badge = document.getElementById('badge-msglog');
@@ -9099,6 +9169,7 @@ async function clearMsgLog() {
   const _logResult = await Swal.fire({ title: 'Clear Message Log?', text: 'All log entries will be permanently deleted. This cannot be undone.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Clear All', cancelButtonText: 'Cancel', confirmButtonColor: '#E53935', customClass: { popup: 'swal-compact' } });
   if (!_logResult.isConfirmed) return;
   localStorage.removeItem(MSG_LOG_KEY);
+  api('api/wa_log.php', 'DELETE').catch(e => console.warn('[wa_log] DB clear failed:', e.message));
   renderMsgLog();
   const badge = document.getElementById('badge-msglog');
   if (badge) badge.style.display = 'none';
@@ -9124,20 +9195,38 @@ function exportMsgLog() {
   toast('📥 Message log exported', 'success');
 }
 
-function resendMsgLogEntry(id) {
+async function resendMsgLogEntry(id) {
   const log   = getMsgLog();
   const entry = log.find(e => e.id === id);
   if (!entry) { toast('⚠️ Entry not found', 'warning'); return; }
-  const inv = STATE.invoices.find(i => (i.num||i.invoice_number) === entry.inv_num) ||
-              STATE.invoices.find(i => String(i.id) === String(entry.inv_id));
-  if (!inv) { toast('⚠️ Original invoice not found — sending message manually', 'warning'); }
-  // Re-use message text and open wa.me with it
-  const phone = entry.phone ? entry.phone.replace(/\D/g,'') : '';
+
+  // Find invoice by inv_id first (most reliable), then by inv_num
+  const inv = STATE.invoices.find(i => entry.inv_id && String(i.id) === String(entry.inv_id)) ||
+              STATE.invoices.find(i => (i.num||i.invoice_number) === entry.inv_num);
+  if (!inv) { toast('⚠️ Original invoice not found', 'warning'); return; }
+
+  // Resolve phone: entry.phone first, then live invoice/client data for one-time clients
+  const c     = STATE.clients.find(x => String(x.id) === String(inv.client)) || {};
+  const rawPhone = (entry.phone && entry.phone !== '—' ? entry.phone : '')
+    || c.wa || c.whatsapp || c.phone || inv.client_wa || inv.client_phone || '';
+  const phone = rawPhone.replace(/\D/g, '');
   if (!phone) { toast('⚠️ No phone number to resend to', 'warning'); return; }
-  const clean = phone.length === 10 ? '91' + phone : phone;
-  window.open('https://wa.me/' + clean + '?text=' + encodeURIComponent(entry.msg || ''), '_blank');
-  logWAMessage({ inv: inv||{num:entry.inv_num,amount:0}, client:{name:entry.client,wa:entry.phone}, type: entry.type, msg: entry.msg, status:'sent_web' });
-  toast('📱 Resend opened in WhatsApp', 'success');
+
+  const resendInv    = inv || { num: entry.inv_num, amount: 0 };
+  const resendClient = { name: entry.client, wa: phone };
+
+  logWAMessage({ inv: resendInv, client: resendClient, type: entry.type, msg: entry.msg, status: 'sending' });
+
+  try {
+    const result = await sendWA(phone, entry.msg || '', entry.type, resendInv, resendClient);
+    logWAMessage({ inv: resendInv, client: resendClient, type: entry.type, msg: entry.msg,
+      status: result ? 'sent_api' : 'sent_web' });
+    toast(result ? '✅ Resent via API' : '📱 Resend opened in WhatsApp', 'success');
+  } catch(e) {
+    logWAMessage({ inv: resendInv, client: resendClient, type: entry.type, msg: entry.msg,
+      status: 'failed', error: e.message });
+    toast('❌ Resend failed: ' + e.message, 'error');
+  }
   renderMsgLog();
 }
 
@@ -10751,7 +10840,8 @@ async function sendWAForInvoice(inv) {
   try {
     const result = await sendWA(phone, msg, tplName, inv, client);
     logWAMessage({ inv, client, type: tplName, msg, status: result ? 'sent_api' : 'sent_web' });
-    toast(result ? `✅ ${statusLabel} sent to ${client.name}!` : `📱 WhatsApp opened for ${client.name}`, 'success');
+    const _toastName = client.name || inv.clientName || inv.client_name || 'client';
+    toast(result ? `✅ ${statusLabel} sent to ${_toastName}!` : `📱 WhatsApp opened for ${_toastName}`, 'success');
   } catch(e) {
     logWAMessage({ inv, client, type: tplName, msg, status: 'failed', error: e.message });
     toast('❌ ' + e.message, 'error');
@@ -11273,10 +11363,11 @@ async function saveActivityState()  { /* data written per-operation via api() */
 // ── Load new feature data from DB ─────────────────────────────
 async function loadFeatureData() {
   // Use allSettled so one failing endpoint doesn't crash the rest
-  const [expR, remR, actR] = await Promise.allSettled([
+  const [expR, remR, actR, waLogR] = await Promise.allSettled([
     api('api/expenses.php'),
     api('api/reminders.php'),
     api('api/activity.php?limit=200'),
+    api('api/wa_log.php'),
   ]);
   if (expR.status === 'fulfilled' && expR.value?.data)
     STATE.expenses = expR.value.data;
@@ -11304,7 +11395,7 @@ async function loadFeatureData() {
           on_due:       cfg.on_due       ?? '1',
           overdue_freq: cfg.overdue_freq || '7',
           max_overdue:  cfg.max_overdue  || '3',
-          channel:      cfg.channel      || 'whatsapp'
+          channel:      cfg.channel      || cfg.rem_channel || 'whatsapp'
         });
       }
     }
@@ -11319,6 +11410,21 @@ async function loadFeatureData() {
     }));
   } else {
     console.warn('activity API unavailable (run migration?):', actR.reason?.message);
+  }
+
+  // ── Merge DB wa_log with localStorage (DB is source of truth) ──
+  if (waLogR.status === 'fulfilled' && Array.isArray(waLogR.value?.data)) {
+    const dbLog = waLogR.value.data;
+    const lsLog = getMsgLog();
+    // Build map of DB ids for dedup
+    const dbIds = new Set(dbLog.map(e => e.id));
+    // Keep localStorage entries not yet in DB (sent in current session before DB sync)
+    const lsOnly = lsLog.filter(e => !dbIds.has(e.id));
+    // Merge: DB first (newest first from API), then unsaved localStorage entries
+    const merged = [...dbLog, ...lsOnly].slice(0, MSG_LOG_MAX);
+    saveMsgLog(merged);
+  } else if (waLogR.status === 'rejected') {
+    console.warn('wa_log API unavailable (run migration?):', waLogR.reason?.message);
   }
 }
 
@@ -12169,7 +12275,7 @@ function getReminderSettings() {
     onDue:       (s.on_due ?? s.onDue ?? 1) == 1,
     overdueFreq: parseInt(s.overdue_freq ?? s.overdueFreq ?? wa.followup_days  ?? 7),
     maxOverdue:  parseInt(s.max_overdue  ?? s.maxOverdue  ?? wa.max_followup   ?? 3),
-    channel:     s.channel || 'whatsapp'
+    channel:     s.channel || (STATE.settings && STATE.settings.channel) || 'whatsapp'
   };
 }
 async function saveReminderSettings() {
@@ -12213,6 +12319,14 @@ function _buildReminderQueue() {
   const today = new Date(); today.setHours(0,0,0,0);
   const queue = [];
 
+  // Build overdue count per invoice to respect maxOverdue limit in queue
+  const _queueOverdueCount = {};
+  (STATE.reminders || []).forEach(entry => {
+    if (entry.type === 'Overdue Alert' && entry.invNum && entry.status === 'sent') {
+      _queueOverdueCount[entry.invNum] = (_queueOverdueCount[entry.invNum] || 0) + 1;
+    }
+  });
+
   STATE.invoices.forEach(inv => {
     if (['Paid','Cancelled','Draft'].includes(inv.status)) return;
     const c    = STATE.clients.find(x=>String(x.id)===String(inv.client))||{};
@@ -12221,16 +12335,19 @@ function _buildReminderQueue() {
     due.setHours(0,0,0,0);
     const daysUntilDue = Math.floor((due - today) / 864e5);
     const daysOverdue  = -daysUntilDue;
+    const invNum       = inv.num || inv.invoice_number || '';
 
     if (inv.status === 'Overdue' || daysOverdue > 0) {
+      // Skip if already hit maxOverdue limit
+      if ((_queueOverdueCount[invNum] || 0) >= (cfg.maxOverdue || 3)) return;
       queue.push({ inv, client:c, type:'overdue', urgency:'high',
-        label:`${daysOverdue}d overdue`, msg:`Overdue reminder for ${inv.num||''}` });
+        label:`${daysOverdue}d overdue`, msg:`Overdue reminder for ${invNum}` });
     } else if (daysUntilDue === 0) {
       queue.push({ inv, client:c, type:'due_today', urgency:'medium',
-        label:'Due today', msg:`Payment due today for ${inv.num||''}` });
+        label:'Due today', msg:`Payment due today for ${invNum}` });
     } else if (daysUntilDue <= (cfg.beforeDays||3)) {
       queue.push({ inv, client:c, type:'due_soon', urgency:'low',
-        label:`Due in ${daysUntilDue}d`, msg:`Due soon reminder for ${inv.num||''}` });
+        label:`Due in ${daysUntilDue}d`, msg:`Due soon reminder for ${invNum}` });
     }
   });
 
@@ -12249,7 +12366,9 @@ function _buildReminderQueue() {
   el.innerHTML = queue.map(q => {
     const col = urgencyColors[q.urgency];
     const bg  = urgencyBg[q.urgency];
-    const phone = (q.client.wa||q.client.whatsapp||q.client.phone||'').replace(/\D/g,'');
+    // Also check invoice fields for one-time clients who have no saved client record
+    const phone = (q.client.wa||q.client.whatsapp||q.client.phone||q.inv.client_wa||q.inv.client_phone||'').replace(/\D/g,'');
+    const email = q.client.email || q.client.mail || q.inv.client_email || '';
     return `<div style="background:${bg};border:1.5px solid ${col}30;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px">
       <div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></div>
       <div style="flex:1;min-width:0">
@@ -12257,10 +12376,10 @@ function _buildReminderQueue() {
           <strong style="font-size:13px;font-family:var(--mono)">${q.inv.num||q.inv.invoice_number||''}</strong>
           <span style="font-size:10px;padding:1px 7px;border-radius:10px;background:${col};color:#fff;font-weight:700">${q.label}</span>
         </div>
-        <div style="font-size:12px;color:var(--muted)">${q.client.name||'—'} · ${fmt_money(q.inv.amount||0)} · Due: ${q.inv.due||'—'}</div>
+        <div style="font-size:12px;color:var(--muted)">${q.client.name||q.inv.clientName||q.inv.client_name||'One-Time Client'} · ${fmt_money(q.inv.amount||0)} · Due: ${q.inv.due||'—'}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        ${phone ? `<button onclick="sendReminderNow('${q.inv.id}', getReminderSettings().channel || 'whatsapp')" style="padding:5px 10px;background:#25D36615;color:#1a7a3c;border:1px solid #25D36635;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600"><i class="fab fa-whatsapp"></i> Send</button>` : ''}
+        ${(phone || email) ? `<button onclick="sendReminderNow('${q.inv.id}', getReminderSettings().channel || 'whatsapp')" style="padding:5px 10px;background:#25D36615;color:#1a7a3c;border:1px solid #25D36635;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600">${(()=>{const ch=getReminderSettings().channel||'whatsapp';return ch==='email'?'<i class="fas fa-envelope"></i> Send':ch==='both'?'<i class="fas fa-paper-plane"></i> Send Both':'<i class="fab fa-whatsapp"></i> Send';})()}</button>` : ''}
         <button onclick="sendReminderNow('${q.inv.id}','skip')" style="padding:5px 10px;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:11px">Skip</button>
       </div>
     </div>`;
@@ -12277,11 +12396,13 @@ function sendReminderNow(invId, channel) {
     (inv.due && new Date(inv.due) < new Date(new Date().toDateString()));
   const msgType = isOverdue ? 'payment_overdue' : 'payment_reminder';
 
-  if (channel === 'whatsapp') {
-    const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g, '');
+  const sendViaWA = (ch) => {
+    if (ch !== 'whatsapp' && ch !== 'both') return;
+    // Also check inv.client_wa / inv.client_phone for one-time clients with no saved record
+    const phone = (c.wa || c.whatsapp || c.phone || inv.client_wa || inv.client_phone || '').replace(/\D/g, '');
+    const _waName = c.name || inv.clientName || inv.client_name || 'client';
+    const wa = STATE.settings.wa || {};
     if (phone) {
-      const wa  = STATE.settings.wa || {};
-      // Use configured WA template (overdue or remind), with all variables resolved
       const tpl = isOverdue
         ? (wa.tpl_overdue || getDefaultWATpl('overdue'))
         : (wa.tpl_remind  || getDefaultWATpl('remind'));
@@ -12291,16 +12412,22 @@ function sendReminderNow(invId, channel) {
         .then(res => logWAMessage({ inv, client: c, type: msgType, msg, status: res ? 'sent_api' : 'sent_web' }))
         .catch(e  => logWAMessage({ inv, client: c, type: msgType, msg, status: 'failed', error: e.message }));
     } else {
-      toast(`⚠️ No WhatsApp number for ${c.name || 'client'}`, 'warning');
+      toast(`⚠️ No WhatsApp number for ${_waName}`, 'warning');
     }
-  } else if (channel === 'email') {
-    const email = c.email || c.mail || '';
+  };
+  const sendViaEmail = (ch) => {
+    if (ch !== 'email' && ch !== 'both') return;
+    // Also check inv.client_email for one-time clients with no saved record
+    const email = c.email || c.mail || inv.client_email || '';
+    const _emailName = c.name || inv.clientName || inv.client_name || 'client';
     if (email) {
-      sendEmailFromInvoice(inv.id, isOverdue ? 'overdue' : 'reminder', email, c.name || '');
+      sendEmailFromInvoice(inv.id, isOverdue ? 'overdue' : 'reminder', email, _emailName);
     } else {
-      toast(`⚠️ No email address for ${c.name || 'client'}`, 'warning');
+      toast(`⚠️ No email address for ${_emailName}`, 'warning');
     }
-  }
+  };
+  sendViaWA(channel);
+  sendViaEmail(channel);
 
   if (channel !== 'skip') {
     toast('✅ Reminder sent', 'success');
@@ -12308,13 +12435,14 @@ function sendReminderNow(invId, channel) {
     toast('⏭️ Skipped', 'success');
   }
 
+  const _clientName = c.name || inv.clientName || inv.client_name || '';
   const entry = {
     id: Date.now() + '',
     ts: new Date().toISOString(),
     invNum:     inv.num || inv.invoice_number || '',
-    clientName: c.name || '',
+    clientName: _clientName,
     type:       isOverdue ? 'Overdue Alert' : 'Due Reminder',
-    channel,
+    channel:    channel === 'skip' ? (getReminderSettings().channel || 'whatsapp') : channel,
     status:     channel === 'skip' ? 'skipped' : 'sent'
   };
   STATE.reminders.unshift(entry);
@@ -12323,15 +12451,15 @@ function sendReminderNow(invId, channel) {
   api('api/reminders.php?action=log', 'POST', {
     invoice_id:  inv.id,
     invoice_num: inv.num || inv.invoice_number || '',
-    client_name: c.name || '',
+    client_name: _clientName,
     type:        isOverdue ? 'overdue' : 'due_reminder',
-    channel,
+    channel:     channel === 'skip' ? (getReminderSettings().channel || 'whatsapp') : channel,
     status:      channel === 'skip' ? 'skipped' : 'sent'
   }).catch(e => console.warn('reminder log write failed:', e.message));
 
   logActivity('reminder_sent',
     `Reminder ${channel === 'skip' ? 'skipped' : 'sent'}: ${inv.num || inv.invoice_number || ''}`,
-    c.name || '', inv.id);
+    _clientName, inv.id);
   renderReminders();
 }
 
@@ -12383,7 +12511,7 @@ function _renderReminderHistory() {
       <td style="font-family:var(--mono);font-weight:700">${r.invNum||'—'}</td>
       <td>${r.clientName||'—'}</td>
       <td>${r.type||'—'}</td>
-      <td>${r.channel||'—'}</td>
+      <td>${(()=>{const ch=r.channel||'';if(ch==='skip')return '<span style="color:#888">—</span>';if(ch==='both')return '📱+📧 Both';if(ch==='email')return '📧 Email';if(ch==='whatsapp')return '💬 WhatsApp';return ch||'—';})()}</td>
       <td><span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:${statusColor}15;color:${statusColor}">${r.status}</span></td>
     </tr>`;
   }).join('');
@@ -13572,40 +13700,51 @@ setTimeout(async () => {
     let sentCount = 0;
     const silentSend = async (inv, msgType) => {
       const c = STATE.clients.find(x => String(x.id) === String(inv.client)) || {};
-      if (ch === 'whatsapp') {
-        const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g, '');
-        if (!phone) return;
-        const tpl = msgType === 'payment_overdue'
-          ? (wa.tpl_overdue  || getDefaultWATpl('overdue'))
-          : msgType === 'invoice_followup'
-            ? (wa.tpl_followup || getDefaultWATpl('followup'))
-            : (wa.tpl_remind   || getDefaultWATpl('remind'));
-        const msg = formatWAMsg(tpl, inv, c, STATE.settings);
-        logWAMessage({ inv, client: c, type: msgType, msg, status: 'sending' });
-        try {
-          const res = await sendWA(phone, msg, msgType, inv, c);
-          logWAMessage({ inv, client: c, type: msgType, msg, status: res ? 'sent_api' : 'sent_web' });
-        } catch(e) {
-          logWAMessage({ inv, client: c, type: msgType, msg, status: 'failed', error: e.message });
-          return; // don't log to reminders if failed
+      let anySent = false;
+
+      // ── WhatsApp branch (whatsapp or both) ──
+      if (ch === 'whatsapp' || ch === 'both') {
+        // Also check inv fields for one-time clients with no saved client record
+        const phone = (c.wa || c.whatsapp || c.phone || inv.client_wa || inv.client_phone || '').replace(/\D/g, '');
+        if (phone) {
+          const tpl = msgType === 'payment_overdue'
+            ? (wa.tpl_overdue  || getDefaultWATpl('overdue'))
+            : msgType === 'invoice_followup'
+              ? (wa.tpl_followup || getDefaultWATpl('followup'))
+              : (wa.tpl_remind   || getDefaultWATpl('remind'));
+          const msg = formatWAMsg(tpl, inv, c, STATE.settings);
+          logWAMessage({ inv, client: c, type: msgType, msg, status: 'sending' });
+          try {
+            const res = await sendWA(phone, msg, msgType, inv, c);
+            logWAMessage({ inv, client: c, type: msgType, msg, status: res ? 'sent_api' : 'sent_web' });
+            anySent = true;
+          } catch(e) {
+            logWAMessage({ inv, client: c, type: msgType, msg, status: 'failed', error: e.message });
+          }
         }
-      } else if (ch === 'email') {
-        const email = c.email || c.mail || '';
-        if (!email) return;
-        const emailType = msgType === 'payment_overdue' ? 'overdue' : 'reminder';
-        sendEmailFromInvoice(inv.id, emailType, email, c.name || '');
-      } else {
-        return;
       }
+
+      // ── Email branch (email or both) ──
+      if (ch === 'email' || ch === 'both') {
+        const email = c.email || c.mail || inv.client_email || '';
+        if (email) {
+          const emailType = msgType === 'payment_overdue' ? 'overdue' : 'reminder';
+          sendEmailFromInvoice(inv.id, emailType, email, c.name || '');
+          anySent = true;
+        }
+      }
+
+      if (!anySent) return; // nothing sent, skip logging
 
       // Log to reminder history
       const isOv = msgType === 'payment_overdue';
       const invNum = inv.num || inv.invoice_number || '';
+      const _cName = c.name || inv.clientName || inv.client_name || '';
       const entry = {
         id: Date.now() + '_' + Math.random().toString(36).slice(2,5),
         ts: new Date().toISOString(),
         invNum,
-        clientName: c.name || '',
+        clientName: _cName,
         type: isOv ? 'Overdue Alert' : msgType === 'invoice_followup' ? 'Follow-up' : 'Due Reminder',
         channel: ch,
         status: 'sent'
@@ -13615,12 +13754,12 @@ setTimeout(async () => {
       api('api/reminders.php?action=log', 'POST', {
         invoice_id:  inv.id,
         invoice_num: invNum,
-        client_name: c.name || '',
+        client_name: _cName,
         type:        isOv ? 'overdue' : msgType === 'invoice_followup' ? 'followup' : 'due_reminder',
         channel:     ch,
         status:      'sent'
       }).catch(e => console.warn('[AutoReminder] log write failed:', e.message));
-      logActivity('reminder_sent', `Auto-reminder sent: ${invNum}`, c.name || '', inv.id);
+      logActivity('reminder_sent', `Auto-reminder sent: ${invNum}`, _cName, inv.id);
       sentCount++;
       // Small delay between sends to avoid API rate limits
       await new Promise(r => setTimeout(r, 400));
@@ -13717,7 +13856,8 @@ if (typeof _origRenderDashboard === 'function') {
       const daysUntilDue = Math.floor((due - today) / 864e5);
       if (daysUntilDue > (cfg.beforeDays || 3)) return false;
       // FIX #4: Skip invoices already at or over the max overdue reminder count
-      if (daysUntilDue < 0 && (overdueCountByInv[inv.id] || 0) >= maxOv) return false;
+      const _invNum = inv.num || inv.invoice_number || '';
+    if (daysUntilDue < 0 && (overdueCountByInv[_invNum] || 0) >= maxOv) return false;
       return true;
     }).length;
 

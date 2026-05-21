@@ -2849,17 +2849,18 @@ View Invoice: {{6}}</pre></details>
           <select id="msglog-filter-type" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--card);color:var(--text)" onchange="renderMsgLog()">
             <option value="">All Types</option>
             <option value="invoice_created">📄 New Invoice</option>
+            <option value="estimate_created">📋 Estimate Created</option>
             <option value="payment_received">✅ Payment Receipt</option>
             <option value="partial_payment">💛 Partial Receipt</option>
+            <option value="split_payment">⚡ Split Payment</option>
             <option value="payment_overdue">🔴 Overdue Alert</option>
             <option value="payment_reminder">🔔 Due Reminder</option>
-            <option value="split_payment">⚡ Split Payment</option>
             <option value="invoice_followup">📋 Follow-up</option>
           </select>
           <select id="msglog-filter-status" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--card);color:var(--text)" onchange="renderMsgLog()">
             <option value="">All Status</option>
             <option value="sent_api">✅ Sent (API)</option>
-            <option value="sent_web">📱 Sent (wa.me)</option>
+            <option value="sent_web">📱 Opened (Manual)</option>
             <option value="failed">❌ Failed</option>
             <option value="sending">⏳ Sending</option>
           </select>
@@ -8976,7 +8977,21 @@ const MSG_LOG_KEY = 'optms_msg_log';
 const MSG_LOG_MAX = 500;
 
 function getMsgLog() {
-  try { return JSON.parse(localStorage.getItem(MSG_LOG_KEY) || '[]'); } catch(e) { return []; }
+  try {
+    const log = JSON.parse(localStorage.getItem(MSG_LOG_KEY) || '[]');
+    // Clean up entries stuck in 'sending' for more than 5 minutes (page closed mid-send)
+    const fiveMinsAgo = Date.now() - 5 * 60 * 1000;
+    let cleaned = false;
+    log.forEach(e => {
+      if (e.status === 'sending' && e.ts && new Date(e.ts).getTime() < fiveMinsAgo) {
+        e.status = 'failed';
+        e.error  = e.error || 'Send interrupted (page closed)';
+        cleaned  = true;
+      }
+    });
+    if (cleaned) saveMsgLog(log);
+    return log;
+  } catch(e) { return []; }
 }
 function saveMsgLog(log) {
   try { localStorage.setItem(MSG_LOG_KEY, JSON.stringify(log.slice(-MSG_LOG_MAX))); } catch(e) {}
@@ -9076,10 +9091,10 @@ const MSG_TYPE_META = {
   unknown:          { icon:'💬', label:'Message',          color:'#757575' },
 };
 const MSG_STATUS_META = {
-  sent_api:  { icon:'✅', label:'Sent (API)',  color:'#2E7D32' },
-  sent_web:  { icon:'📱', label:'Opened wa.me',color:'#1565C0' },
-  failed:    { icon:'❌', label:'Failed',      color:'#C62828' },
-  sending:   { icon:'⏳', label:'Sending…',   color:'#F57F17' },
+  sent_api:  { icon:'✅', label:'Sent (API)',       color:'#2E7D32' },
+  sent_web:  { icon:'📱', label:'Opened (Manual)',  color:'#1565C0' },
+  failed:    { icon:'❌', label:'Failed',            color:'#C62828' },
+  sending:   { icon:'⏳', label:'Sending…',         color:'#F57F17' },
 };
 
 function renderMsgLog() {
@@ -9094,20 +9109,28 @@ function renderMsgLog() {
 
   // Stats bar
   if (stats) {
-    const total   = log.length;
-    const sentApi = log.filter(e=>e.status==='sent_api').length;
-    const sentWeb = log.filter(e=>e.status==='sent_web').length;
-    const failed  = log.filter(e=>e.status==='failed').length;
-    const today   = log.filter(e=>e.ts && e.ts.startsWith(new Date().toISOString().slice(0,10))).length;
+    const sentApi  = log.filter(e=>e.status==='sent_api').length;
+    const sentWeb  = log.filter(e=>e.status==='sent_web').length;
+    const failed   = log.filter(e=>e.status==='failed').length;
+    const stuck    = log.filter(e=>e.status==='sending').length;
+    // Total = only confirmed sends (API + manual opened), not sending/failed
+    const total    = sentApi + sentWeb;
+    const today    = log.filter(e=>e.ts && e.ts.startsWith(new Date().toISOString().slice(0,10))
+                       && (e.status==='sent_api'||e.status==='sent_web')).length;
     const statItems = [
-      { icon:'💬', label:'Total Sent',    val:total,   col:'var(--teal)' },
-      { icon:'✅', label:'Via API',       val:sentApi, col:'#2E7D32' },
-      { icon:'📱', label:'Via wa.me',     val:sentWeb, col:'#1565C0' },
-      { icon:'❌', label:'Failed',        val:failed,  col:'#C62828' },
-      { icon:'📅', label:"Today",         val:today,   col:'#7B1FA2' },
+      { icon:'💬', label:'Total',          val:total,   col:'var(--teal)',
+        tip:'Confirmed sent (API + Manual)' },
+      { icon:'✅', label:'Via API',        val:sentApi, col:'#2E7D32',
+        tip:'Sent via WhatsApp Business API — confirmed delivered' },
+      { icon:'📱', label:'Manual (wa.me)', val:sentWeb, col:'#1565C0',
+        tip:'Opened in WhatsApp — user had to press Send manually' },
+      { icon:'❌', label:'Failed',         val:failed,  col:'#C62828',
+        tip:'Send failed — check error details in the log' },
+      { icon:'📅', label:'Today',          val:today,   col:'#7B1FA2',
+        tip:'Sent today (API + Manual)' },
     ];
     stats.innerHTML = statItems.map(s=>`
-      <div style="display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:10px 18px;min-width:120px">
+      <div title="${s.tip||''}" style="display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:10px 18px;min-width:120px;cursor:default">
         <span style="font-size:20px">${s.icon}</span>
         <div><div style="font-size:20px;font-weight:800;color:${s.col};line-height:1">${s.val}</div><div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px">${s.label}</div></div>
       </div>`).join('');
