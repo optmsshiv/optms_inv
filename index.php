@@ -13450,15 +13450,7 @@ async function runRecurringCheck() {
   for (const s of schedules) {
     if (s.status !== 'active') continue;
 
-    // Mark as completed if past end date
-    if (s.endDate && today > s.endDate) {
-      try {
-        await api('api/recurring.php?id=' + encodeURIComponent(s.id), 'PATCH', { status: 'completed' });
-        s.status = 'completed';
-      } catch(e) { console.warn('[Recurring] Could not mark completed:', e.message); }
-      continue;
-    }
-
+    // Mark as completed only AFTER generating — check end date after nextDate check
     if (!s.nextDate || today < s.nextDate) continue;
 
     // ── Generate invoice ──────────────────────────────────
@@ -13470,8 +13462,18 @@ async function runRecurringCheck() {
         d.setDate(d.getDate() + (s.dueDays || 15));
         return d.toISOString().slice(0, 10);
       })();
-      const invoiceNum = (STATE.settings.invoice_prefix || STATE.settings.invoicePrefix || 'INV-') +
-                         new Date().getFullYear() + '-' + String(Math.floor(Math.random() * 900) + 100);
+      // ── Sequential invoice number — same logic as manual invoice creation ──
+      const _recPfx = STATE.settings.prefix || STATE.settings.invoice_prefix ||
+                      STATE.settings.invoicePrefix || ('INV-' + new Date().getFullYear() + '-');
+      let _recSeq = 1;
+      STATE.invoices.forEach(inv => {
+        const n = inv.num || inv.invoice_number || '';
+        if (n.startsWith(_recPfx)) {
+          const _s = parseInt(n.slice(_recPfx.length), 10);
+          if (!isNaN(_s) && _s >= _recSeq) _recSeq = _s + 1;
+        }
+      });
+      const invoiceNum = _recPfx + String(_recSeq).padStart(3, '0');
 
       // Build items — fall back to legacy single-item if needed
       const recInvItems = (s.items && s.items.length)
@@ -13518,14 +13520,36 @@ async function runRecurringCheck() {
         client_logo:     '',
         signature:       STATE.settings.signature    || '',
         qr_code:         '',
-        template_id:     2,
+        template_id:     parseInt(s.template || s.template_id || STATE.settings.activeTemplate || 2),
         generated_by:    (STATE.settings.company ? STATE.settings.company + ' — Recurring' : 'Recurring Invoice'),
         show_generated:  1,
         pdf_options:     recPopt,
         items:           recInvItems,
       };
 
-      await api('api/invoices.php', 'POST', invoicePayload);
+      const _recInvResult = await api('api/invoices.php', 'POST', invoicePayload);
+
+      // ── Auto-fire WA if auto_inv is ON ────────────────────────
+      const _recWA = STATE.settings.wa || {};
+      if (_recWA.auto_inv === '1') {
+        // Build a minimal invoice object for sendWAForInvoice
+        const _recInvObj = {
+          id:            _recInvResult?.id || _recInvResult?.data?.id || null,
+          num:           invoiceNum,
+          invoice_number:invoiceNum,
+          client:        s.clientId,
+          clientName:    s.clientName,
+          client_name:   s.clientName,
+          amount:        recGrand,
+          grand_total:   recGrand,
+          status:        'Pending',
+          issued:        issueDate,
+          due:           dueDate,
+          currency:      '₹',
+          service:       recInvItems.map(i => i.desc).join(', '),
+        };
+        setTimeout(() => sendWAForInvoice(_recInvObj), 800);
+      }
 
       // ── Update schedule in DB (nextDate, generatedCount, lastGenerated) ──
       const newNextDate      = recNextDate(s.nextDate, s.freq);
@@ -13542,6 +13566,14 @@ async function runRecurringCheck() {
       s.lastGenerated  = issueDate;
 
       generated++;
+
+      // ── Mark completed if this was the last generation (endDate reached) ──
+      if (s.endDate && today >= s.endDate) {
+        try {
+          await api('api/recurring.php?id=' + encodeURIComponent(s.id), 'PATCH', { status: 'completed' });
+          s.status = 'completed';
+        } catch(e) { console.warn('[Recurring] Could not mark completed:', e.message); }
+      }
 
     } catch(e) {
       console.error('[Recurring] Generation failed for schedule', s.id, e.message);
@@ -13845,7 +13877,26 @@ setTimeout(async () => {
   } catch(e) {
     console.warn('[AutoReminder] Scheduler error:', e.message);
   }
-}, 5000); // 5s delay — lets STATE fully settle after loadAllData
+}); // end auto-reminder scheduler
+
+// ── Auto-run recurring generation on page load ────────────────
+// Fires 6s after load — after STATE settles and recurring loads.
+// Uses localStorage key so it only runs once per calendar day.
+setTimeout(async () => {
+  try {
+    const _recTodayKey = 'optms_rec_check_' + new Date().toISOString().slice(0, 10);
+    if (localStorage.getItem(_recTodayKey)) return; // already ran today
+    await recLoadAll();
+    const today = new Date().toISOString().slice(0, 10);
+    const due   = STATE.recurring.filter(s => s.status === 'active' && s.nextDate <= today);
+    if (!due.length) return;
+    // Auto-generate silently then show summary toast
+    await runRecurringCheck();
+    try { localStorage.setItem(_recTodayKey, '1'); } catch(e) {}
+  } catch(e) {
+    console.warn('[Recurring] Auto-check error:', e.message);
+  }
+}, 6000); // 6s — after auto-reminder scheduler (5s)
 
 // ══════════════════════════════════════════════════════════════
 
