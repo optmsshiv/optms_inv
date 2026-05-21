@@ -8984,21 +8984,77 @@ function saveMsgLog(log) {
 
 function logWAMessage({ inv, client, type, msg, status, error }) {
   const log = getMsgLog();
+
+  // Resolve phone: check client record first, then invoice fields for one-time clients
+  const resolvedPhone = (client && (client.wa||client.whatsapp||client.phone))
+    || (inv && (inv.client_wa||inv.client_phone)) || '';
+
+  // Resolve invoice id for deduplication
+  const resolvedInvId = inv ? String(inv.id || inv._dbId || '') : '';
+
+  // ── Deduplication: if a 'sending' entry exists for same invoice+type,
+  //    update it in-place instead of adding a new row.
+  //    This prevents duplicate rows (sending → sent_api) in the log.
+  if (status !== 'sending' && resolvedInvId) {
+    const existing = log.findIndex(e =>
+      e.status === 'sending' &&
+      e.inv_id  === resolvedInvId &&
+      e.type    === (type || 'unknown')
+    );
+    if (existing !== -1) {
+      log[existing].status = status || 'sent_web';
+      log[existing].error  = error  || '';
+      saveMsgLog(log);
+      // Update DB entry too
+      api('api/wa_log.php', 'POST', {
+        id:     log[existing].id,
+        type:   log[existing].type,
+        status: status || 'sent_web',
+        error:  error  || '',
+      }).catch(e => console.warn('[wa_log] DB update failed:', e.message));
+      const failed = log.filter(e=>e.status==='failed').length;
+      const badge = document.getElementById('badge-msglog');
+      if (badge) {
+        if (failed > 0) { badge.style.display=''; badge.textContent=failed; badge.style.background='var(--red)'; }
+        else { badge.style.display='none'; }
+      }
+      return; // updated in-place, no new entry needed
+    }
+  }
+
   const entry = {
-    id:       Date.now() + '_' + Math.random().toString(36).slice(2,6),
-    ts:       new Date().toISOString(),
-    type:     type || 'unknown',
-    status:   status || 'sent_web',
-    client:   (client && client.name) || (inv && (inv.clientName||inv.client_name)) || '—',
-    phone:    (client && (client.wa||client.whatsapp||client.phone)) || '—',
-    inv_num:  inv ? (inv.num||inv.invoice_number||'') : '',
-    inv_amt:  inv ? fmt_money(parseFloat(inv.amount||inv.grand_total||0), inv.currency||'₹') : '',
+    id:         Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    ts:         new Date().toISOString(),
+    type:       type || 'unknown',
+    status:     status || 'sent_web',
+    client:     (client && client.name) || (inv && (inv.clientName||inv.client_name)) || '—',
+    phone:      resolvedPhone || '—',
+    inv_id:     resolvedInvId,
+    inv_num:    inv ? (inv.num||inv.invoice_number||'') : '',
+    inv_amt:    inv ? fmt_money(parseFloat(inv.amount||inv.grand_total||0), inv.currency||'₹') : '',
     inv_status: inv ? (inv.status||'') : '',
-    msg:      msg || '',
-    error:    error || '',
+    msg:        msg || '',
+    error:      error || '',
   };
   log.push(entry);
   saveMsgLog(log);
+
+  // Persist to DB (fire-and-forget — localStorage is immediate, DB is backup)
+  api('api/wa_log.php', 'POST', {
+    id:         entry.id,
+    ts:         entry.ts,
+    type:       entry.type,
+    status:     entry.status,
+    client:     entry.client,
+    phone:      entry.phone !== '—' ? entry.phone : '',
+    inv_id:     entry.inv_id  || '',
+    inv_num:    entry.inv_num || '',
+    inv_amt:    entry.inv_amt || '',
+    inv_status: entry.inv_status || '',
+    msg:        entry.msg   || '',
+    error:      entry.error || '',
+  }).catch(e => console.warn('[wa_log] DB write failed:', e.message));
+
   // Update badge
   const failed = log.filter(e=>e.status==='failed').length;
   const badge = document.getElementById('badge-msglog');
@@ -9113,6 +9169,7 @@ async function clearMsgLog() {
   const _logResult = await Swal.fire({ title: 'Clear Message Log?', text: 'All log entries will be permanently deleted. This cannot be undone.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Clear All', cancelButtonText: 'Cancel', confirmButtonColor: '#E53935', customClass: { popup: 'swal-compact' } });
   if (!_logResult.isConfirmed) return;
   localStorage.removeItem(MSG_LOG_KEY);
+  api('api/wa_log.php', 'DELETE').catch(e => console.warn('[wa_log] DB clear failed:', e.message));
   renderMsgLog();
   const badge = document.getElementById('badge-msglog');
   if (badge) badge.style.display = 'none';
@@ -9138,20 +9195,38 @@ function exportMsgLog() {
   toast('📥 Message log exported', 'success');
 }
 
-function resendMsgLogEntry(id) {
+async function resendMsgLogEntry(id) {
   const log   = getMsgLog();
   const entry = log.find(e => e.id === id);
   if (!entry) { toast('⚠️ Entry not found', 'warning'); return; }
-  const inv = STATE.invoices.find(i => (i.num||i.invoice_number) === entry.inv_num) ||
-              STATE.invoices.find(i => String(i.id) === String(entry.inv_id));
-  if (!inv) { toast('⚠️ Original invoice not found — sending message manually', 'warning'); }
-  // Re-use message text and open wa.me with it
-  const phone = entry.phone ? entry.phone.replace(/\D/g,'') : '';
+
+  // Find invoice by inv_id first (most reliable), then by inv_num
+  const inv = STATE.invoices.find(i => entry.inv_id && String(i.id) === String(entry.inv_id)) ||
+              STATE.invoices.find(i => (i.num||i.invoice_number) === entry.inv_num);
+  if (!inv) { toast('⚠️ Original invoice not found', 'warning'); return; }
+
+  // Resolve phone: entry.phone first, then live invoice/client data for one-time clients
+  const c     = STATE.clients.find(x => String(x.id) === String(inv.client)) || {};
+  const rawPhone = (entry.phone && entry.phone !== '—' ? entry.phone : '')
+    || c.wa || c.whatsapp || c.phone || inv.client_wa || inv.client_phone || '';
+  const phone = rawPhone.replace(/\D/g, '');
   if (!phone) { toast('⚠️ No phone number to resend to', 'warning'); return; }
-  const clean = phone.length === 10 ? '91' + phone : phone;
-  window.open('https://wa.me/' + clean + '?text=' + encodeURIComponent(entry.msg || ''), '_blank');
-  logWAMessage({ inv: inv||{num:entry.inv_num,amount:0}, client:{name:entry.client,wa:entry.phone}, type: entry.type, msg: entry.msg, status:'sent_web' });
-  toast('📱 Resend opened in WhatsApp', 'success');
+
+  const resendInv    = inv || { num: entry.inv_num, amount: 0 };
+  const resendClient = { name: entry.client, wa: phone };
+
+  logWAMessage({ inv: resendInv, client: resendClient, type: entry.type, msg: entry.msg, status: 'sending' });
+
+  try {
+    const result = await sendWA(phone, entry.msg || '', entry.type, resendInv, resendClient);
+    logWAMessage({ inv: resendInv, client: resendClient, type: entry.type, msg: entry.msg,
+      status: result ? 'sent_api' : 'sent_web' });
+    toast(result ? '✅ Resent via API' : '📱 Resend opened in WhatsApp', 'success');
+  } catch(e) {
+    logWAMessage({ inv: resendInv, client: resendClient, type: entry.type, msg: entry.msg,
+      status: 'failed', error: e.message });
+    toast('❌ Resend failed: ' + e.message, 'error');
+  }
   renderMsgLog();
 }
 
@@ -11288,10 +11363,11 @@ async function saveActivityState()  { /* data written per-operation via api() */
 // ── Load new feature data from DB ─────────────────────────────
 async function loadFeatureData() {
   // Use allSettled so one failing endpoint doesn't crash the rest
-  const [expR, remR, actR] = await Promise.allSettled([
+  const [expR, remR, actR, waLogR] = await Promise.allSettled([
     api('api/expenses.php'),
     api('api/reminders.php'),
     api('api/activity.php?limit=200'),
+    api('api/wa_log.php'),
   ]);
   if (expR.status === 'fulfilled' && expR.value?.data)
     STATE.expenses = expR.value.data;
@@ -11334,6 +11410,21 @@ async function loadFeatureData() {
     }));
   } else {
     console.warn('activity API unavailable (run migration?):', actR.reason?.message);
+  }
+
+  // ── Merge DB wa_log with localStorage (DB is source of truth) ──
+  if (waLogR.status === 'fulfilled' && Array.isArray(waLogR.value?.data)) {
+    const dbLog = waLogR.value.data;
+    const lsLog = getMsgLog();
+    // Build map of DB ids for dedup
+    const dbIds = new Set(dbLog.map(e => e.id));
+    // Keep localStorage entries not yet in DB (sent in current session before DB sync)
+    const lsOnly = lsLog.filter(e => !dbIds.has(e.id));
+    // Merge: DB first (newest first from API), then unsaved localStorage entries
+    const merged = [...dbLog, ...lsOnly].slice(0, MSG_LOG_MAX);
+    saveMsgLog(merged);
+  } else if (waLogR.status === 'rejected') {
+    console.warn('wa_log API unavailable (run migration?):', waLogR.reason?.message);
   }
 }
 
