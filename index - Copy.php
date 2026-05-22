@@ -3191,17 +3191,6 @@ View Invoice: {{6}}</pre></details>
             <label>Notes <span style="font-size:11px;color:var(--muted)">(optional)</span></label>
             <textarea id="rec-notes" rows="2" placeholder="e.g. Monthly retainer for web services" style="width:100%;resize:vertical"></textarea>
           </div>
-
-          <!-- Copy from invoice -->
-          <div id="rec-copy-row" style="display:none">
-            <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg);border:1.5px dashed var(--border);border-radius:8px">
-              <i class="fas fa-copy" style="color:var(--teal);font-size:13px"></i>
-              <span style="font-size:12px;color:var(--muted);flex:1">Auto-filled from latest invoice.</span>
-              <select id="rec-copy-select" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);max-width:220px" onchange="recCopyFromInvoice(this.value)">
-              </select>
-            </div>
-          </div>
-
           <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--teal-bg);border-radius:8px;border:1px solid var(--teal-l)">
             <i class="fas fa-info-circle" style="color:var(--teal)"></i>
             <span id="rec-preview-text" style="font-size:12px;color:var(--teal);font-weight:600">Next invoice will be generated on start date</span>
@@ -13076,105 +13065,7 @@ async function recLoadAll() {
 }
 
 // ── Freq preview helper (no DB needed) ───────────────────────
-function recClientChange() {
-  const clientId = document.getElementById('rec-client')?.value;
-  const copyRow  = document.getElementById('rec-copy-row');
-  const copySelect = document.getElementById('rec-copy-select');
-  if (!clientId) {
-    if (copyRow) copyRow.style.display = 'none';
-    return;
-  }
-
-  // Get all invoices for this client, newest first, exclude drafts/estimates
-  const clientInvs = STATE.invoices
-    .filter(i => String(i.client || i.client_id || i.clientId) === String(clientId)
-              && !['Draft','Estimate','Cancelled'].includes(i.status))
-    .sort((a, b) => new Date(b.issued || b.created_at || 0) - new Date(a.issued || a.created_at || 0));
-
-  if (!clientInvs.length) {
-    if (copyRow) copyRow.style.display = 'none';
-    return;
-  }
-
-  // Auto-fill from latest invoice immediately
-  recFillFromInvoice(clientInvs[0]);
-
-  // Build copy-from dropdown for all client invoices
-  if (copySelect) {
-    copySelect.innerHTML = clientInvs.map((inv, idx) => {
-      const num = inv.num || inv.invoice_number || 'Invoice';
-      const amt = fmt_money(parseFloat(inv.amount || inv.grand_total || 0));
-      const dt  = inv.issued ? inv.issued.slice(0, 10) : '';
-      return `<option value="${inv.id}" ${idx === 0 ? 'selected' : ''}>
-        ${num} — ${amt} ${dt ? '(' + dt + ')' : ''}
-      </option>`;
-    }).join('');
-  }
-  if (copyRow) copyRow.style.display = '';
-}
-
-// ── Fill modal items/discount/dueDays from a specific invoice ──
-function recFillFromInvoice(inv) {
-  if (!inv) return;
-
-  // Line items
-  const srcItems = Array.isArray(inv.items) && inv.items.length ? inv.items : [];
-  if (srcItems.length) {
-    recItems = srcItems.map(i => ({
-      id:   Date.now() + Math.random(),
-      desc: i.desc || i.description || '',
-      qty:  parseFloat(i.qty || i.quantity) || 1,
-      rate: parseFloat(i.rate) || 0,
-      gst:  i.gst !== undefined && i.gst !== '' ? parseFloat(i.gst)
-              : i.gstRate !== undefined ? parseFloat(i.gstRate) : 18,
-    }));
-  } else {
-    const desc = inv.service_type || inv.svc || inv.service || 'Service';
-    const rate = parseFloat(inv.subtotal || inv.amount || inv.grand_total) || 0;
-    recItems = [{ id: Date.now(), desc, qty: 1, rate, gst: 18 }];
-  }
-
-  // Discount
-  const rawDiscPct  = parseFloat(inv.disc || inv.discount_pct) || 0;
-  const rawDiscAmt  = parseFloat(inv.discount_amt) || 0;
-  const rawDiscType = inv.discount_type || ((rawDiscAmt > 0 && rawDiscPct === 0) ? 'fixed' : 'pct');
-  const discType    = rawDiscType === 'percent' ? 'pct' : rawDiscType;
-  const discVal     = discType === 'fixed' ? rawDiscAmt : rawDiscPct;
-  const rdtEl = document.getElementById('rec-disc-type');
-  const rdEl  = document.getElementById('rec-disc');
-  if (rdtEl) rdtEl.value = discType;
-  if (rdEl)  rdEl.value  = discVal || 0;
-
-  // Due days
-  if (inv.issued && inv.due) {
-    const diff = Math.round((new Date(inv.due) - new Date(inv.issued)) / 864e5);
-    if (diff > 0) {
-      const dueDaysEl = document.getElementById('rec-due-days');
-      if (dueDaysEl) dueDaysEl.value = diff;
-    }
-  }
-
-  // Template
-  const tplEl = document.getElementById('rec-template');
-  if (tplEl && (inv.template || inv.template_id)) {
-    tplEl.value = String(inv.template || inv.template_id);
-  }
-
-  // Notes
-  if (inv.notes) {
-    const notesEl = document.getElementById('rec-notes');
-    if (notesEl && !notesEl.value) notesEl.value = inv.notes;
-  }
-
-  recRenderItems();
-  recCalcTotals();
-}
-
-// ── Called when user picks a different invoice from dropdown ───
-function recCopyFromInvoice(invId) {
-  const inv = STATE.invoices.find(i => String(i.id) === String(invId));
-  if (inv) recFillFromInvoice(inv);
-}
+function recClientChange() { /* reserved for future autocomplete */ }
 
 function recFreqChange() {
   const freq  = document.getElementById('rec-freq')?.value || 'monthly';
@@ -13212,9 +13103,7 @@ async function openRecurringModal(id) {
       }
     }
 
-    document.getElementById('rec-modal-title').textContent = `Edit Schedule — ${s.clientName || ''} (${recFreqLabel(s.freq || 'monthly')})`;
-    const _crEdit = document.getElementById('rec-copy-row');
-    if (_crEdit) _crEdit.style.display = 'none';
+    document.getElementById('rec-modal-title').textContent = 'Edit Recurring Schedule';
     document.getElementById('rec-edit-id').value           = s.id;
     document.getElementById('rec-client').value            = s.clientId  || '';
     document.getElementById('rec-freq').value              = s.freq      || 'monthly';
@@ -13251,9 +13140,6 @@ async function openRecurringModal(id) {
 
     const rdtEl2 = document.getElementById('rec-disc-type'); if (rdtEl2) rdtEl2.value = 'pct';
     const rdEl2  = document.getElementById('rec-disc');      if (rdEl2)  rdEl2.value  = 0;
-    // Hide copy row until client is selected
-    const _cr = document.getElementById('rec-copy-row');
-    if (_cr) _cr.style.display = 'none';
     recItems = [];
     recAddItem();
     recCalcTotals();
