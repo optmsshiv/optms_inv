@@ -7734,8 +7734,7 @@ function sendAccountStatement(clientId) {
     const status = i.status === 'Overdue' ? '🔴 OVERDUE' :
                    i.status === 'Partial' ? '💛 PARTIAL' : '⏳ PENDING';
     return `  • *${num}* — ${amt} | Due: ${due} | ${status}`;
-  }).join('
-');
+  }).join('\n');
 
   const msg =
 `━━━━━━━━━━━━━━━━━━━━━━
