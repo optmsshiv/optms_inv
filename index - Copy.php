@@ -1034,6 +1034,7 @@ const SERVER = {
     tpl_remind:    <?= json_encode($settings['wa_tpl_remind']   ?? '') ?>,
     tpl_overdue:   <?= json_encode($settings['wa_tpl_overdue']  ?? '') ?>,
     tpl_followup:  <?= json_encode($settings['wa_tpl_followup'] ?? '') ?>,
+    tpl_recurring: <?= json_encode($settings['wa_tpl_recurring'] ?? '') ?>,
     tpl_festival:  <?= json_encode($settings['wa_tpl_festival'] ?? '') ?>,
     auto_inv:      <?= json_encode($settings['wa_auto_inv']     ?? '0') ?>,
     auto_estimate: <?= json_encode($settings['wa_auto_estimate']?? '1') ?>,
@@ -2031,6 +2032,7 @@ const SERVER = {
             <button class="wa-tab-btn" onclick="waTab('remind',this)">🔔 Reminder</button>
             <button class="wa-tab-btn" onclick="waTab('overdue',this)">⚠️ Overdue</button>
             <button class="wa-tab-btn" onclick="waTab('followup',this)">📋 Follow-up</button>
+            <button class="wa-tab-btn" onclick="waTab('recurring',this)">🔁 Recurring</button>
           </div>
 
           <!-- Variable inserter -->
@@ -2212,6 +2214,38 @@ Kindly process payment immediately or contact us to discuss.
             <div class="wa-preview-wrap" id="wa-prev-followup"><div class="wa-bubble" id="wa-prev-followup-bubble"></div><div class="wa-bubble-meta">Delivered ✓✓</div></div>
           </div>
 
+          <div class="wa-tab-pane" id="watab-recurring">
+            <div style="background:#E8F5FD;border-radius:8px;padding:10px 14px;font-size:12px;color:#0D47A1;margin-bottom:10px;line-height:1.7">
+              <strong>🔁 Recurring Invoice Template:</strong> Sent automatically when a recurring schedule generates a new invoice. Supports all standard variables plus <code>{outstanding_dues}</code> which lists previous unpaid invoices and <code>{total_payable}</code> for combined outstanding amount.
+            </div>
+            <div class="field">
+              <textarea id="wa-tpl-recurring" style="min-height:160px;font-family:var(--mono);font-size:12.5px" oninput="saveWASettings();waUpdateCounter('wa-tpl-recurring','wa-cnt-recurring');waUpdatePreview('wa-tpl-recurring','wa-prev-recurring')">Hi {client_name}! 🔁
+
+*Recurring Invoice #{invoice_no}* from *{company_name}* is ready.
+
+📋 Service: {service}
+📅 Issue Date: {issue_date}
+⏳ Due Date: *{due_date}*
+💰 Amount: *{currency}{amount}*
+
+{item_list}
+
+💳 *Pay via UPI:* {upi}
+🏦 {bank_details}
+
+{outstanding_dues}
+
+🔗 *View &amp; Download Invoice:*
+{invoice_link}
+
+Thank you for choosing {company_name}!
+📞 {company_phone} | ✉ {company_email}</textarea>
+              <div class="wa-char-counter" id="wa-cnt-recurring"></div>
+            </div>
+            <button class="btn btn-outline" style="font-size:12px;padding:5px 12px" onclick="waTogglePreview('wa-prev-recurring')"><i class="fas fa-mobile-alt"></i> Preview</button>
+            <div class="wa-preview-wrap" id="wa-prev-recurring"><div class="wa-bubble" id="wa-prev-recurring-bubble"></div><div class="wa-bubble-meta">Delivered ✓✓</div></div>
+          </div>
+
           <div style="margin-top:14px;display:flex;gap:8px">
             <button class="btn btn-primary" onclick="saveWASettings()"><i class="fas fa-save"></i> Save All Templates</button>
             <button class="btn btn-outline" onclick="waResetCurrentTab()"><i class="fas fa-undo"></i> Reset to Default</button>
@@ -2253,6 +2287,7 @@ Kindly process payment immediately or contact us to discuss.
                 <div class="field"><label>⚠️ Payment Overdue</label><div style="display:flex;gap:6px"><input id="tpl-name-overdue" placeholder="payment_overdue" style="flex:1"><input id="tpl-lang-overdue" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}days {{5}}upi {{6}}company {{7}}link</div></div>
                 <div class="field"><label>✅ Payment Received</label><div style="display:flex;gap:6px"><input id="tpl-name-paid" placeholder="payment_received" style="flex:1"><input id="tpl-lang-paid" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}disc {{5}}date {{6}}company {{7}}link</div></div>
                 <div class="field"><label>📋 Invoice Follow-up</label><div style="display:flex;gap:6px"><input id="tpl-name-followup" placeholder="invoice_followup" style="flex:1"><input id="tpl-lang-followup" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}days {{5}}upi {{6}}phone {{7}}link</div></div>
+                <div class="field"><label>🔁 Recurring Invoice</label><div style="display:flex;gap:6px"><input id="tpl-name-recurring" placeholder="recurring_invoice" style="flex:1"><input id="tpl-lang-recurring" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}due {{5}}upi {{6}}link {{7}}outstanding</div></div>
                 <div class="field"><label>💚 Partial Payment</label><div style="display:flex;gap:6px"><input id="tpl-name-partial" placeholder="partial_payment" style="flex:1"><input id="tpl-lang-partial" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}paid {{4}}remaining {{5}}due {{6}}link</div></div>
                 <div class="field"><label>🎉 Festival Greeting</label><div style="display:flex;gap:6px"><input id="tpl-name-festival" placeholder="festival_greeting" style="flex:1"><input id="tpl-lang-festival" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}company {{3}}phone</div></div>
               </div>
@@ -3092,17 +3127,31 @@ View Invoice: {{6}}</pre></details>
       </div>
     </div>
 
-    <!-- ─────────── RECURRING MODAL ─────────── -->
+    <!-- ─────────── RECURRING MODAL (2-step redesign) ─────────── -->
     <div id="modal-recurring" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-recurring')">
-      <div class="modal-box" style="width:520px;max-width:95vw">
-        <div class="modal-header">
-          <span class="modal-title" id="rec-modal-title">New Recurring Schedule</span>
-          <button class="modal-close" onclick="closeModal('modal-recurring')">×</button>
+      <div class="modal-box" style="width:580px;max-width:96vw;border-radius:14px;overflow:hidden">
+        <input type="hidden" id="rec-edit-id" value="">
+
+        <!-- ── Header ── -->
+        <div style="padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--card)">
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--text)" id="rec-modal-title">New Recurring Schedule</div>
+            <div style="display:flex;gap:6px;margin-top:8px">
+              <div id="rec-step-dot-1" style="height:4px;width:32px;border-radius:2px;background:var(--teal);transition:background .2s"></div>
+              <div id="rec-step-dot-2" style="height:4px;width:32px;border-radius:2px;background:var(--border);transition:background .2s"></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span id="rec-step-label" style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Step 1 of 2 — Schedule</span>
+            <button class="modal-close" onclick="closeModal('modal-recurring')" style="margin:0">×</button>
+          </div>
         </div>
-        <div style="padding:20px;display:flex;flex-direction:column;gap:14px;max-height:78vh;overflow-y:auto">
-          <input type="hidden" id="rec-edit-id" value="">
+
+        <!-- ══ STEP 1: Who & When ══ -->
+        <div id="rec-step-1" style="padding:20px 22px;display:flex;flex-direction:column;gap:16px;max-height:72vh;overflow-y:auto">
+
           <!-- Client + Frequency -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
             <div class="field">
               <label>Client <span style="color:var(--red)">*</span></label>
               <select id="rec-client" style="width:100%" onchange="recClientChange()">
@@ -3112,73 +3161,46 @@ View Invoice: {{6}}</pre></details>
             <div class="field">
               <label>Frequency <span style="color:var(--red)">*</span></label>
               <select id="rec-freq" style="width:100%" onchange="recFreqChange()">
-                <option value="weekly">Weekly</option>
-                <option value="biweekly">Bi-Weekly (Every 2 weeks)</option>
-                <option value="monthly" selected>Monthly</option>
-                <option value="quarterly">Quarterly (Every 3 months)</option>
-                <option value="halfyearly">Half-Yearly (Every 6 months)</option>
-                <option value="yearly">Yearly</option>
+                <option value="weekly">📅 Weekly</option>
+                <option value="biweekly">📅 Bi-Weekly</option>
+                <option value="monthly" selected>📅 Monthly</option>
+                <option value="quarterly">📅 Quarterly</option>
+                <option value="halfyearly">📅 Half-Yearly</option>
+                <option value="yearly">📅 Yearly</option>
               </select>
             </div>
           </div>
 
-          <!-- Line Items -->
-          <div class="field">
-            <label>Line Items <span style="color:var(--red)">*</span></label>
-            <div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
-              <div style="display:grid;grid-template-columns:1fr 70px 100px 80px 30px;background:#EEF0F4;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">
-                <span style="padding:7px 10px">Description</span>
-                <span style="padding:7px 6px">Qty</span>
-                <span style="padding:7px 6px">Rate (₹)</span>
-                <span style="padding:7px 6px">GST %</span>
-                <span style="padding:7px 6px"></span>
-              </div>
-              <div id="rec-items-list"></div>
-            </div>
-            <button type="button" onclick="recAddItem()" style="margin-top:6px;padding:5px 12px;border:1.5px dashed var(--teal);border-radius:7px;background:transparent;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer"><i class="fas fa-plus"></i> Add Item</button>
-          </div>
-
-          <!-- Discount -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="field">
-              <label>Discount</label>
-              <div style="display:flex;gap:6px">
-                <select id="rec-disc-type" style="width:90px;flex-shrink:0" onchange="recCalcTotals()">
-                  <option value="pct">%</option>
-                  <option value="fixed">₹ Fixed</option>
-                </select>
-                <input type="number" id="rec-disc" value="0" min="0" step="0.01" style="flex:1" oninput="recCalcTotals()">
-              </div>
-            </div>
-            <div class="field">
-              <label>Totals</label>
-              <div style="font-size:12px;padding:9px 12px;background:var(--bg);border-radius:8px;border:1.5px solid var(--border);line-height:1.8">
-                <span style="color:var(--muted)">Subtotal:</span> <span id="rec-tot-sub">₹0.00</span><br>
-                <span style="color:var(--muted)">Discount:</span> <span id="rec-tot-disc">₹0.00</span><br>
-                <span style="color:var(--muted)">GST:</span> <span id="rec-tot-gst">₹0.00</span><br>
-                <strong>Grand Total: <span id="rec-tot-grand" style="color:var(--teal)">₹0.00</span></strong>
-              </div>
+          <!-- Copy from invoice row -->
+          <div id="rec-copy-row" style="display:none">
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--teal-bg);border:1.5px solid var(--teal-l);border-radius:9px">
+              <i class="fas fa-magic" style="color:var(--teal);font-size:13px"></i>
+              <span style="font-size:12px;color:var(--teal);font-weight:600;flex:1">Items auto-filled from latest invoice</span>
+              <select id="rec-copy-select" style="font-size:12px;padding:5px 8px;border:1px solid var(--teal-l);border-radius:6px;background:var(--card);color:var(--text);max-width:210px" onchange="recCopyFromInvoice(this.value)">
+              </select>
             </div>
           </div>
 
           <!-- Dates -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
             <div class="field">
               <label>Start Date <span style="color:var(--red)">*</span></label>
-              <input type="date" id="rec-start" style="width:100%">
+              <input type="date" id="rec-start" style="width:100%" oninput="recFreqChange()">
             </div>
             <div class="field">
-              <label>End Date <span style="font-size:11px;color:var(--muted)">(optional)</span></label>
-              <input type="date" id="rec-end" style="width:100%">
+              <label>End Date <span style="font-size:11px;color:var(--muted)">(optional — leave blank = forever)</span></label>
+              <input type="date" id="rec-end" style="width:100%" oninput="recFreqChange()">
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+
+          <!-- Due Days + Template -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
             <div class="field">
-              <label>Payment Due After (days)</label>
-              <input type="number" id="rec-due-days" value="15" min="1" max="90" style="width:100%">
+              <label>Payment Due After <span style="font-size:11px;color:var(--muted)">(days)</span></label>
+              <input type="number" id="rec-due-days" value="15" min="1" max="90" style="width:100%" oninput="recFreqChange()">
             </div>
             <div class="field">
-              <label>Template</label>
+              <label>Invoice Template</label>
               <select id="rec-template" style="width:100%">
                 <option value="2">Colorful Matte</option>
                 <option value="A">Clean Minimal</option>
@@ -3187,18 +3209,111 @@ View Invoice: {{6}}</pre></details>
               </select>
             </div>
           </div>
-          <div class="field">
-            <label>Notes <span style="font-size:11px;color:var(--muted)">(optional)</span></label>
-            <textarea id="rec-notes" rows="2" placeholder="e.g. Monthly retainer for web services" style="width:100%;resize:vertical"></textarea>
+
+          <!-- Preview info card -->
+          <div style="border-radius:10px;border:1px solid var(--border);background:var(--bg);overflow:hidden">
+            <div style="padding:10px 14px;background:var(--teal-bg);border-bottom:1px solid var(--teal-l);display:flex;align-items:center;gap:8px">
+              <i class="fas fa-calendar-check" style="color:var(--teal);font-size:13px"></i>
+              <span style="font-size:12px;font-weight:700;color:var(--teal)">Schedule Preview</span>
+            </div>
+            <div style="padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div>
+                <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">First Invoice</div>
+                <div style="font-size:13px;font-weight:700;color:var(--text)" id="rec-prev-first">—</div>
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Next After That</div>
+                <div style="font-size:13px;font-weight:700;color:var(--text)" id="rec-prev-next">—</div>
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Due Date</div>
+                <div style="font-size:13px;font-weight:700;color:var(--text)" id="rec-prev-due">—</div>
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Total Invoices</div>
+                <div style="font-size:13px;font-weight:700;color:var(--teal)" id="rec-prev-count">—</div>
+              </div>
+            </div>
           </div>
-          <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--teal-bg);border-radius:8px;border:1px solid var(--teal-l)">
-            <i class="fas fa-info-circle" style="color:var(--teal)"></i>
-            <span id="rec-preview-text" style="font-size:12px;color:var(--teal);font-weight:600">Next invoice will be generated on start date</span>
-          </div>
+
         </div>
-        <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end">
-          <button class="btn btn-outline" onclick="closeModal('modal-recurring')">Cancel</button>
-          <button class="btn btn-primary" onclick="saveRecurring()"><i class="fas fa-save"></i> Save Schedule</button>
+
+        <!-- ══ STEP 2: What to Bill ══ -->
+        <div id="rec-step-2" style="display:none;padding:20px 22px;display:none;flex-direction:column;gap:16px;max-height:72vh;overflow-y:auto">
+
+          <!-- Line items table -->
+          <div class="field">
+            <label>Line Items <span style="color:var(--red)">*</span></label>
+            <div style="border:1.5px solid var(--border);border-radius:9px;overflow:hidden">
+              <div style="display:grid;grid-template-columns:1fr 65px 110px 75px 32px;background:var(--bg);font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">
+                <span style="padding:8px 10px">Description</span>
+                <span style="padding:8px 6px;text-align:center">Qty</span>
+                <span style="padding:8px 6px;text-align:right">Rate (₹)</span>
+                <span style="padding:8px 6px;text-align:center">GST %</span>
+                <span></span>
+              </div>
+              <div id="rec-items-list"></div>
+            </div>
+            <button type="button" onclick="recAddItem()" style="margin-top:8px;padding:6px 14px;border:1.5px dashed var(--teal);border-radius:7px;background:transparent;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer">
+              <i class="fas fa-plus"></i> Add Item
+            </button>
+          </div>
+
+          <!-- Discount + Notes -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="field">
+              <label>Discount</label>
+              <div style="display:flex;gap:6px">
+                <select id="rec-disc-type" style="width:88px;flex-shrink:0" onchange="recCalcTotals()">
+                  <option value="pct">%</option>
+                  <option value="fixed">₹ Fixed</option>
+                </select>
+                <input type="number" id="rec-disc" value="0" min="0" step="0.01" style="flex:1" oninput="recCalcTotals()">
+              </div>
+            </div>
+            <div class="field">
+              <label>Notes <span style="font-size:11px;color:var(--muted)">(optional)</span></label>
+              <input type="text" id="rec-notes" placeholder="e.g. Monthly retainer" style="width:100%">
+            </div>
+          </div>
+
+          <!-- Totals card -->
+          <div style="border-radius:10px;border:1.5px solid var(--border);overflow:hidden">
+            <div style="padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">
+              Invoice Summary
+            </div>
+            <div style="padding:12px 16px;display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;justify-content:space-between;font-size:13px">
+                <span style="color:var(--muted)">Subtotal</span><span id="rec-tot-sub">₹0.00</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:13px">
+                <span style="color:var(--muted)">Discount</span><span id="rec-tot-disc" style="color:var(--red)">-₹0.00</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:13px">
+                <span style="color:var(--muted)">GST</span><span id="rec-tot-gst">₹0.00</span>
+              </div>
+              <div style="height:1px;background:var(--border);margin:4px 0"></div>
+              <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800">
+                <span>Per Invoice</span>
+                <span style="color:var(--teal)" id="rec-tot-grand">₹0.00</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)">
+                <span id="rec-tot-count-label">× — invoices</span>
+                <span style="font-weight:700;color:var(--text)" id="rec-tot-overall">—</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ── Footer ── -->
+        <div style="padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;background:var(--card)">
+          <button class="btn btn-outline" id="rec-btn-back" onclick="recGoStep(1)" style="display:none">← Back</button>
+          <button class="btn btn-outline" id="rec-btn-cancel" onclick="closeModal('modal-recurring')">Cancel</button>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-primary" id="rec-btn-next" onclick="recGoStep(2)">Next → Billing</button>
+            <button class="btn btn-primary" id="rec-btn-save" onclick="saveRecurring()" style="display:none"><i class="fas fa-save"></i> Save Schedule</button>
+          </div>
         </div>
       </div>
     </div>
@@ -7577,6 +7692,7 @@ function renderClients() {
       <div class="cc-footer" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
         ${!isInactive ? `<button class="btn btn-outline" style="flex:1;font-size:12px" onclick="createInvoiceForClient('${c.id}')"><i class="fas fa-plus"></i> Invoice</button>` : ''}
         ${!isInactive ? `<button class="btn btn-whatsapp" style="flex:1;font-size:12px" onclick="sendWAMessage('${c.wa}','${c.name}','','','')"><i class="fab fa-whatsapp"></i> Msg</button>` : ''}
+        ${outstandingAmt > 0 ? `<button class="btn btn-outline" style="flex:1;font-size:12px;color:var(--amber);border-color:var(--amber)" onclick="sendAccountStatement('${c.id}')" title="Send Account Statement"><i class="fas fa-file-alt"></i> Statement</button>` : ''}
         <button class="btn btn-outline" style="padding:9px 12px;font-size:12px" onclick="editClient('${c.id}')" title="Edit"><i class="fas fa-edit"></i></button>
         ${isInactive
           ? `<button class="btn" style="flex:1;font-size:12px;background:#E8F5E9;color:#2E7D32;border:1.5px solid #A5D6A7" onclick="toggleClientActive('${c.id}',true)" title="Re-activate client"><i class="fas fa-check-circle"></i> Activate</button>`
@@ -7586,6 +7702,125 @@ function renderClients() {
       </div>
     </div>`;
   }).join('');
+}
+
+// ── Account Statement — send via WA and/or show modal ────────────
+function sendAccountStatement(clientId) {
+  const c = STATE.clients.find(x => String(x.id) === String(clientId));
+  if (!c) return;
+
+  // Get all unpaid invoices for client sorted oldest first
+  const unpaid = STATE.invoices
+    .filter(i =>
+      String(i.client || i.client_id || i.clientId) === String(clientId) &&
+      ['Pending', 'Overdue', 'Partial'].includes(i.status)
+    )
+    .sort((a, b) => new Date(a.issued || a.created_at || 0) - new Date(b.issued || b.created_at || 0));
+
+  if (!unpaid.length) {
+    toast(`✅ ${c.name} has no outstanding dues`, 'success');
+    return;
+  }
+
+  const sc          = STATE.settings || {};
+  const today       = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+  const totalAmt    = unpaid.reduce((s, i) => s + parseFloat(i.amount || i.grand_total || 0), 0);
+  const overdueInvs = unpaid.filter(i => i.status === 'Overdue');
+
+  // ── Build statement lines ──
+  const lines = unpaid.map(i => {
+    const num    = i.num || i.invoice_number || 'Invoice';
+    const amt    = fmt_money(parseFloat(i.amount || i.grand_total || 0));
+    const due    = i.due || i.due_date || '—';
+    const status = i.status === 'Overdue' ? '🔴 OVERDUE' :
+                   i.status === 'Partial' ? '💛 PARTIAL' : '⏳ PENDING';
+    return `  • *${num}* — ${amt} | Due: ${due} | ${status}`;
+  }).join('\n');
+
+  const msg =
+`━━━━━━━━━━━━━━━━━━━━━━
+📋 *ACCOUNT STATEMENT*
+━━━━━━━━━━━━━━━━━━━━━━
+From: *${sc.company || 'Our Company'}*
+To: *${c.name}*
+Date: ${today}
+
+*Outstanding Invoices:*
+${lines}
+──────────────────────
+💰 *Total Outstanding: ${fmt_money(totalAmt)}*
+${overdueInvs.length > 0 ? `⚠️ ${overdueInvs.length} invoice${overdueInvs.length > 1 ? 's are' : ' is'} overdue — please clear immediately.
+` : ''}
+💳 *Pay via UPI:* ${sc.upi || '—'}
+🏦 ${sc.defaultBank || ''}
+
+Please arrange payment at the earliest.
+Thank you for your continued business. 🙏
+
+— *${sc.company || ''}*
+📞 ${sc.phone || ''} | ✉ ${sc.email || ''}`;
+
+  // ── Show preview modal before sending ──────────────────────────
+  Swal.fire({
+    title: `Statement — ${c.name}`,
+    html: `
+      <div style="text-align:left;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:13px;color:#666">${unpaid.length} unpaid invoice${unpaid.length > 1 ? 's' : ''}</span>
+          <span style="font-size:14px;font-weight:800;color:#C62828">${fmt_money(totalAmt)}</span>
+        </div>
+        <div style="border:1px solid #eee;border-radius:8px;overflow:hidden;margin-bottom:12px">
+          ${unpaid.map(i => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #f5f5f5">
+              <div>
+                <div style="font-size:12px;font-weight:700">${i.num || i.invoice_number || 'Invoice'}</div>
+                <div style="font-size:11px;color:#999">Due: ${i.due || i.due_date || '—'}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:13px;font-weight:700">${fmt_money(parseFloat(i.amount || i.grand_total || 0))}</div>
+                <div style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;display:inline-block;
+                  background:${i.status==='Overdue'?'#FFEBEE':i.status==='Partial'?'#FFF8E1':'#E3F2FD'};
+                  color:${i.status==='Overdue'?'#C62828':i.status==='Partial'?'#E65100':'#1565C0'}">${i.status}</div>
+              </div>
+            </div>`).join('')}
+        </div>
+        <textarea style="width:100%;height:160px;font-size:11px;font-family:monospace;border:1px solid #ddd;border-radius:6px;padding:8px;resize:none;box-sizing:border-box" id="swal-stmt-msg">${msg}</textarea>
+      </div>`,
+    showCancelButton: true,
+    showDenyButton:   true,
+    confirmButtonText: `<i class="fab fa-whatsapp"></i> Send via WA`,
+    denyButtonText:    `📋 Copy Text`,
+    cancelButtonText:  'Cancel',
+    confirmButtonColor: '#25D366',
+    denyButtonColor:    '#1976D2',
+    customClass: { popup: 'swal-compact' },
+  }).then(result => {
+    const finalMsg = document.getElementById('swal-stmt-msg')?.value || msg;
+    if (result.isConfirmed) {
+      // Send via WhatsApp
+      const phone = (c.wa || c.whatsapp || c.phone || '').replace(/\D/g, '');
+      if (!phone) { toast('⚠️ No WhatsApp number for ' + c.name, 'warning'); return; }
+      const stmtInv = { id: null, num: 'STMT', invoice_number: 'STMT', client: clientId,
+                        clientName: c.name, amount: totalAmt, grand_total: totalAmt, status: 'Statement' };
+      logWAMessage({ inv: stmtInv, client: c, type: 'invoice_created', msg: finalMsg, status: 'sending' });
+      sendWA(phone, finalMsg, 'invoice_created', stmtInv, c)
+        .then(res => {
+          logWAMessage({ inv: stmtInv, client: c, type: 'invoice_created', msg: finalMsg,
+            status: res ? 'sent_api' : 'sent_web' });
+          toast(res ? `✅ Statement sent to ${c.name}` : `📱 WhatsApp opened for ${c.name}`, 'success');
+        })
+        .catch(e => {
+          logWAMessage({ inv: stmtInv, client: c, type: 'invoice_created', msg: finalMsg,
+            status: 'failed', error: e.message });
+          toast('❌ Failed: ' + e.message, 'error');
+        });
+    } else if (result.isDenied) {
+      // Copy to clipboard
+      navigator.clipboard?.writeText(finalMsg)
+        .then(() => toast('📋 Statement copied to clipboard', 'success'))
+        .catch(() => toast('📋 Select and copy from the text area', 'info'));
+    }
+  });
 }
 
 function filterClients(val) {
@@ -8434,6 +8669,7 @@ window.saveWASettings = async function() {
     wa_tpl_remind:    val('wa-tpl-remind'),
     wa_tpl_overdue:   val('wa-tpl-overdue'),
     wa_tpl_followup:  val('wa-tpl-followup'),
+    wa_tpl_recurring: val('wa-tpl-recurring'),
     wa_tpl_festival:  val('wa-tpl-festival'),
     wa_auto_inv:      tog('twa1'),
     wa_auto_estimate: tog('twa7'),
@@ -8455,6 +8691,8 @@ window.saveWASettings = async function() {
     wa_tpl_lang_paid:      val('tpl-lang-paid')      || 'en_US',
     wa_tpl_name_followup:  val('tpl-name-followup'),
     wa_tpl_lang_followup:  val('tpl-lang-followup')  || 'en_US',
+    wa_tpl_name_recurring: val('tpl-name-recurring'),
+    wa_tpl_lang_recurring: val('tpl-lang-recurring')  || 'en_US',
     wa_tpl_name_partial:   val('tpl-name-partial'),
     wa_tpl_lang_partial:   val('tpl-lang-partial')   || 'en_US',
     wa_tpl_name_festival:  val('tpl-name-festival'),
@@ -8485,9 +8723,11 @@ window.saveWASettings = async function() {
     tpl_lang_overdue:  payload.wa_tpl_lang_overdue,
     tpl_name_paid:     payload.wa_tpl_name_paid,
     tpl_lang_paid:     payload.wa_tpl_lang_paid,
-    tpl_name_followup: payload.wa_tpl_name_followup,
-    tpl_lang_followup: payload.wa_tpl_lang_followup,
-    tpl_name_partial:  payload.wa_tpl_name_partial,
+    tpl_name_followup:  payload.wa_tpl_name_followup,
+    tpl_lang_followup:  payload.wa_tpl_lang_followup,
+    tpl_name_recurring: payload.wa_tpl_name_recurring,
+    tpl_lang_recurring: payload.wa_tpl_lang_recurring,
+    tpl_name_partial:   payload.wa_tpl_name_partial,
     tpl_lang_partial:  payload.wa_tpl_lang_partial,
     tpl_name_festival: payload.wa_tpl_name_festival,
     tpl_lang_festival: payload.wa_tpl_lang_festival,
@@ -8941,6 +9181,15 @@ function formatWAMsg(tpl, inv, client, settings) {
     .replace(/{days_overdue}/g, String(daysOverdue))
     .replace(/{item_list}/g,    items||'')
     .replace(/{status}/g,       inv.status||'')
+    .replace(/{outstanding_dues}/g, (() => {
+      // Injected by recurring flow — falls back to empty string for non-recurring sends
+      if (!inv._outstandingDues) return '';
+      return inv._outstandingDues;
+    })())
+    .replace(/{total_payable}/g, (() => {
+      if (!inv._totalPayable) return '';
+      return fmt_money(parseFloat(inv._totalPayable));
+    })())
     .replace(/{invoice_link}/g, portalLink)
     .replace(/{settlement_discount}/g, (() => {
       const invId = String(inv.id || inv._dbId || '');
@@ -9880,6 +10129,7 @@ async function loadAllData() {
         tpl_remind:    s.wa_tpl_remind   || '',
         tpl_overdue:   s.wa_tpl_overdue  || '',
         tpl_followup:  s.wa_tpl_followup || '',
+        tpl_recurring: s.wa_tpl_recurring || '',
         tpl_festival:  s.wa_tpl_festival || '',
         auto_inv:      s.wa_auto_inv      !== undefined ? s.wa_auto_inv      : '0',
         auto_estimate: s.wa_auto_estimate !== undefined ? s.wa_auto_estimate : '1',
@@ -9900,9 +10150,11 @@ async function loadAllData() {
         tpl_lang_overdue:  s.wa_tpl_lang_overdue  || 'en_US',
         tpl_name_paid:     s.wa_tpl_name_paid     || '',
         tpl_lang_paid:     s.wa_tpl_lang_paid     || 'en_US',
-        tpl_name_followup: s.wa_tpl_name_followup || '',
-        tpl_lang_followup: s.wa_tpl_lang_followup || 'en_US',
-        tpl_name_partial:  s.wa_tpl_name_partial  || '',
+        tpl_name_followup:  s.wa_tpl_name_followup  || '',
+        tpl_lang_followup:  s.wa_tpl_lang_followup  || 'en_US',
+        tpl_name_recurring: s.wa_tpl_name_recurring || '',
+        tpl_lang_recurring: s.wa_tpl_lang_recurring || 'en_US',
+        tpl_name_partial:   s.wa_tpl_name_partial   || '',
         tpl_lang_partial:  s.wa_tpl_lang_partial  || 'en_US',
         tpl_name_festival: s.wa_tpl_name_festival || '',
         tpl_lang_festival: s.wa_tpl_lang_festival || 'en_US',
@@ -10404,7 +10656,8 @@ function populateWAPage() {
   setV('wa-tpl-paid',     wa.tpl_paid     || getDefaultWATpl('paid'));
   setV('wa-tpl-remind',  wa.tpl_remind  || getDefaultWATpl('remind'));
   setV('wa-tpl-overdue', wa.tpl_overdue || getDefaultWATpl('overdue'));
-  setV('wa-tpl-followup',wa.tpl_followup|| getDefaultWATpl('followup'));
+  setV('wa-tpl-followup', wa.tpl_followup  || getDefaultWATpl('followup'));
+  setV('wa-tpl-recurring',wa.tpl_recurring || getDefaultWATpl('recurring'));
   setV('wa-tpl-partial', wa.tpl_partial || getDefaultWATpl('partial_receipt'));
   setV('wa-tpl-festival',wa.tpl_festival|| getDefaultWATpl('festival'));
 
@@ -10421,7 +10674,7 @@ function populateWAPage() {
   const mode  = wa.msg_mode || 'session';
   const radio = document.querySelector('input[name="wa-msg-mode"][value="' + mode + '"]');
   if (radio) { radio.checked = true; setWAMode(mode); }
-  const tpls  = ['invoice','estimate','reminder','overdue','paid','followup','partial','festival'];
+  const tpls  = ['invoice','estimate','reminder','overdue','paid','followup','recurring','partial','festival'];
   tpls.forEach(t => {
     const nEl = document.getElementById('tpl-name-' + t);
     const lEl = document.getElementById('tpl-lang-' + t);
@@ -10541,6 +10794,28 @@ Please clear this immediately to avoid any inconvenience.
 {invoice_link}
 
 — {company_name} | 📞 {company_phone}`,
+
+    recurring: `Hi {client_name}! 🔁
+
+*Recurring Invoice #{invoice_no}* from *{company_name}* is ready.
+
+📋 Service: {service}
+📅 Issue Date: {issue_date}
+⏳ Due Date: *{due_date}*
+💰 Amount: *{currency}{amount}*
+
+{item_list}
+
+💳 *Pay via UPI:* {upi}
+🏦 {bank_details}
+
+{outstanding_dues}
+
+🔗 *View & Download Invoice:*
+{invoice_link}
+
+Thank you for choosing {company_name}!
+📞 {company_phone} | ✉ {company_email}`,
 
     followup: `Hi {client_name},
 
@@ -13065,18 +13340,218 @@ async function recLoadAll() {
 }
 
 // ── Freq preview helper (no DB needed) ───────────────────────
-function recClientChange() { /* reserved for future autocomplete */ }
+function recClientChange() {
+  const clientId = document.getElementById('rec-client')?.value;
+  const copyRow  = document.getElementById('rec-copy-row');
+  const copySelect = document.getElementById('rec-copy-select');
+  if (!clientId) {
+    if (copyRow) copyRow.style.display = 'none';
+    return;
+  }
+
+  // Get all invoices for this client, newest first, exclude drafts/estimates
+  const clientInvs = STATE.invoices
+    .filter(i => String(i.client || i.client_id || i.clientId) === String(clientId)
+              && !['Draft','Estimate','Cancelled'].includes(i.status))
+    .sort((a, b) => new Date(b.issued || b.created_at || 0) - new Date(a.issued || a.created_at || 0));
+
+  if (!clientInvs.length) {
+    if (copyRow) copyRow.style.display = 'none';
+    return;
+  }
+
+  // Auto-fill from latest invoice immediately
+  recFillFromInvoice(clientInvs[0]);
+
+  // Build copy-from dropdown for all client invoices
+  if (copySelect) {
+    copySelect.innerHTML = clientInvs.map((inv, idx) => {
+      const num = inv.num || inv.invoice_number || 'Invoice';
+      const amt = fmt_money(parseFloat(inv.amount || inv.grand_total || 0));
+      const dt  = inv.issued ? inv.issued.slice(0, 10) : '';
+      return `<option value="${inv.id}" ${idx === 0 ? 'selected' : ''}>
+        ${num} — ${amt} ${dt ? '(' + dt + ')' : ''}
+      </option>`;
+    }).join('');
+  }
+  if (copyRow) copyRow.style.display = '';
+}
+
+// ── Fill modal items/discount/dueDays from a specific invoice ──
+function recFillFromInvoice(inv) {
+  if (!inv) return;
+
+  // Line items
+  const srcItems = Array.isArray(inv.items) && inv.items.length ? inv.items : [];
+  if (srcItems.length) {
+    recItems = srcItems.map(i => ({
+      id:   Date.now() + Math.random(),
+      desc: i.desc || i.description || '',
+      qty:  parseFloat(i.qty || i.quantity) || 1,
+      rate: parseFloat(i.rate) || 0,
+      gst:  i.gst !== undefined && i.gst !== '' ? parseFloat(i.gst)
+              : i.gstRate !== undefined ? parseFloat(i.gstRate) : 18,
+    }));
+  } else {
+    const desc = inv.service_type || inv.svc || inv.service || 'Service';
+    const rate = parseFloat(inv.subtotal || inv.amount || inv.grand_total) || 0;
+    recItems = [{ id: Date.now(), desc, qty: 1, rate, gst: 18 }];
+  }
+
+  // Discount
+  const rawDiscPct  = parseFloat(inv.disc || inv.discount_pct) || 0;
+  const rawDiscAmt  = parseFloat(inv.discount_amt) || 0;
+  const rawDiscType = inv.discount_type || ((rawDiscAmt > 0 && rawDiscPct === 0) ? 'fixed' : 'pct');
+  const discType    = rawDiscType === 'percent' ? 'pct' : rawDiscType;
+  const discVal     = discType === 'fixed' ? rawDiscAmt : rawDiscPct;
+  const rdtEl = document.getElementById('rec-disc-type');
+  const rdEl  = document.getElementById('rec-disc');
+  if (rdtEl) rdtEl.value = discType;
+  if (rdEl)  rdEl.value  = discVal || 0;
+
+  // Due days
+  if (inv.issued && inv.due) {
+    const diff = Math.round((new Date(inv.due) - new Date(inv.issued)) / 864e5);
+    if (diff > 0) {
+      const dueDaysEl = document.getElementById('rec-due-days');
+      if (dueDaysEl) dueDaysEl.value = diff;
+    }
+  }
+
+  // Template
+  const tplEl = document.getElementById('rec-template');
+  if (tplEl && (inv.template || inv.template_id)) {
+    tplEl.value = String(inv.template || inv.template_id);
+  }
+
+  // Notes
+  if (inv.notes) {
+    const notesEl = document.getElementById('rec-notes');
+    if (notesEl && !notesEl.value) notesEl.value = inv.notes;
+  }
+
+  recRenderItems();
+  recCalcTotals();
+}
+
+// ── Called when user picks a different invoice from dropdown ───
+function recCopyFromInvoice(invId) {
+  const inv = STATE.invoices.find(i => String(i.id) === String(invId));
+  if (inv) recFillFromInvoice(inv);
+}
 
 function recFreqChange() {
-  const freq  = document.getElementById('rec-freq')?.value || 'monthly';
-  const start = document.getElementById('rec-start')?.value;
-  const el    = document.getElementById('rec-preview-text');
-  if (!el) return;
+  const freq     = document.getElementById('rec-freq')?.value     || 'monthly';
+  const start    = document.getElementById('rec-start')?.value    || '';
+  const endDate  = document.getElementById('rec-end')?.value      || '';
+  const dueDays  = parseInt(document.getElementById('rec-due-days')?.value) || 15;
+
+  // ── Preview card (Step 1) ──────────────────────────────────────
+  const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
   if (start) {
     const next = recNextDate(start, freq);
-    el.textContent = `Next invoice: ${start} → then every ${recFreqLabel(freq).toLowerCase()} (next: ${next})`;
+
+    // Due date for first invoice
+    const dueD = new Date(start);
+    dueD.setDate(dueD.getDate() + dueDays);
+    setEl('rec-prev-first', start);
+    setEl('rec-prev-next',  next);
+    setEl('rec-prev-due',   dueD.toISOString().slice(0, 10) + ` (+${dueDays}d)`);
+
+    // Count total invoices
+    if (endDate && endDate >= start) {
+      let count = 0, cur = start;
+      while (cur <= endDate && count < 600) { count++; cur = recNextDate(cur, freq); }
+      setEl('rec-prev-count', count + ' invoices');
+      // Update step 2 totals label
+      const ovEl = document.getElementById('rec-tot-count-label');
+      if (ovEl) ovEl.textContent = `× ${count} invoices`;
+      recUpdateOverallTotal(count);
+    } else {
+      setEl('rec-prev-count', '∞ (no end date)');
+      const ovEl = document.getElementById('rec-tot-count-label');
+      if (ovEl) ovEl.textContent = '× ∞ (no end date)';
+      const ovTot = document.getElementById('rec-tot-overall');
+      if (ovTot) ovTot.textContent = '—';
+    }
   } else {
-    el.textContent = `Invoices will generate every ${recFreqLabel(freq).toLowerCase()} from the start date`;
+    setEl('rec-prev-first', '—');
+    setEl('rec-prev-next',  '—');
+    setEl('rec-prev-due',   '—');
+    setEl('rec-prev-count', '—');
+  }
+}
+
+function recUpdateOverallTotal(count) {
+  if (!count) return;
+  let sub = 0, gstTotal = 0;
+  recItems.forEach(item => {
+    const line = (item.qty || 1) * (item.rate || 0);
+    sub      += line;
+    gstTotal += line * (item.gst || 0) / 100;
+  });
+  const discType   = document.getElementById('rec-disc-type')?.value || 'pct';
+  const discVal    = parseFloat(document.getElementById('rec-disc')?.value) || 0;
+  const discAmt    = discType === 'fixed' ? Math.min(discVal, sub) : sub * discVal / 100;
+  const discFactor = sub > 0 ? (1 - discAmt / sub) : 1;
+  const grand      = sub - discAmt + (gstTotal * discFactor);
+  const overall    = grand * count;
+  const fmt = v => '₹' + v.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const ovTot = document.getElementById('rec-tot-overall');
+  if (ovTot) ovTot.textContent = overall > 0 ? fmt(overall) + ' total' : '—';
+}
+
+// ── Step navigation ───────────────────────────────────────────
+function recGoStep(step) {
+  const s1    = document.getElementById('rec-step-1');
+  const s2    = document.getElementById('rec-step-2');
+  const dot1  = document.getElementById('rec-step-dot-1');
+  const dot2  = document.getElementById('rec-step-dot-2');
+  const lbl   = document.getElementById('rec-step-label');
+  const btnBack   = document.getElementById('rec-btn-back');
+  const btnCancel = document.getElementById('rec-btn-cancel');
+  const btnNext   = document.getElementById('rec-btn-next');
+  const btnSave   = document.getElementById('rec-btn-save');
+
+  if (step === 2) {
+    // Validate step 1 before advancing
+    const clientId = document.getElementById('rec-client')?.value;
+    const start    = document.getElementById('rec-start')?.value;
+    if (!clientId) {
+      // Highlight client field
+      const cl = document.getElementById('rec-client');
+      if (cl) { cl.style.border = '1.5px solid var(--red)'; cl.focus(); setTimeout(() => cl.style.border = '', 2000); }
+      toast('⚠️ Please select a client', 'warning'); return;
+    }
+    if (!start) {
+      const sd = document.getElementById('rec-start');
+      if (sd) { sd.style.border = '1.5px solid var(--red)'; sd.focus(); setTimeout(() => sd.style.border = '', 2000); }
+      toast('⚠️ Please set a start date', 'warning'); return;
+    }
+    // Show step 2
+    s1.style.display = 'none';
+    s2.style.display = 'flex';
+    dot1.style.background = 'var(--teal)';
+    dot2.style.background = 'var(--teal)';
+    lbl.textContent = 'Step 2 of 2 — Billing';
+    btnBack.style.display   = '';
+    btnCancel.style.display = 'none';
+    btnNext.style.display   = 'none';
+    btnSave.style.display   = '';
+    recCalcTotals();
+    recFreqChange(); // update overall total
+  } else {
+    // Back to step 1
+    s1.style.display = 'flex';
+    s2.style.display = 'none';
+    dot1.style.background = 'var(--teal)';
+    dot2.style.background = 'var(--border)';
+    lbl.textContent = 'Step 1 of 2 — Schedule';
+    btnBack.style.display   = 'none';
+    btnCancel.style.display = '';
+    btnNext.style.display   = '';
+    btnSave.style.display   = 'none';
   }
 }
 
@@ -13103,7 +13578,9 @@ async function openRecurringModal(id) {
       }
     }
 
-    document.getElementById('rec-modal-title').textContent = 'Edit Recurring Schedule';
+    document.getElementById('rec-modal-title').textContent = `Edit Schedule — ${s.clientName || ''} (${recFreqLabel(s.freq || 'monthly')})`;
+    const _crEdit = document.getElementById('rec-copy-row');
+    if (_crEdit) _crEdit.style.display = 'none';
     document.getElementById('rec-edit-id').value           = s.id;
     document.getElementById('rec-client').value            = s.clientId  || '';
     document.getElementById('rec-freq').value              = s.freq      || 'monthly';
@@ -13140,12 +13617,17 @@ async function openRecurringModal(id) {
 
     const rdtEl2 = document.getElementById('rec-disc-type'); if (rdtEl2) rdtEl2.value = 'pct';
     const rdEl2  = document.getElementById('rec-disc');      if (rdEl2)  rdEl2.value  = 0;
+    // Hide copy row until client is selected
+    const _cr = document.getElementById('rec-copy-row');
+    if (_cr) _cr.style.display = 'none';
     recItems = [];
     recAddItem();
     recCalcTotals();
   }
 
   recFreqChange();
+  // Always open on step 1
+  recGoStep(1);
   openModal('modal-recurring');
 }
 
@@ -13205,9 +13687,16 @@ function recCalcTotals() {
   const fmt = v => '₹' + v.toLocaleString(_moneyLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   set('rec-tot-sub',   fmt(sub));
-  set('rec-tot-disc',  fmt(discAmt));
+  set('rec-tot-disc', '-' + fmt(discAmt));
   set('rec-tot-gst',   fmt(gstAfterDisc));
   set('rec-tot-grand', fmt(grand));
+  // Update overall total based on invoice count from preview
+  const countEl = document.getElementById('rec-prev-count');
+  if (countEl) {
+    const countStr = countEl.textContent;
+    const countNum = parseInt(countStr);
+    if (!isNaN(countNum)) recUpdateOverallTotal(countNum);
+  }
 }
 
 // ── Save (create or update) ───────────────────────────────────
@@ -13532,7 +14021,6 @@ async function runRecurringCheck() {
       // ── Auto-fire WA if auto_inv is ON ────────────────────────
       const _recWA = STATE.settings.wa || {};
       if (_recWA.auto_inv === '1') {
-        // Build a minimal invoice object for sendWAForInvoice
         const _recInvObj = {
           id:            _recInvResult?.id || _recInvResult?.data?.id || null,
           num:           invoiceNum,
@@ -13548,7 +14036,61 @@ async function runRecurringCheck() {
           currency:      '₹',
           service:       recInvItems.map(i => i.desc).join(', '),
         };
-        setTimeout(() => sendWAForInvoice(_recInvObj), 800);
+
+        // ── Option B: build {outstanding_dues} for template variable ──
+        const _prevUnpaid = STATE.invoices.filter(i =>
+          String(i.client || i.client_id || i.clientId) === String(s.clientId) &&
+          ['Pending', 'Overdue', 'Partial'].includes(i.status) &&
+          (i.num || i.invoice_number) !== invoiceNum
+        );
+        const _prevTotal    = _prevUnpaid.reduce((sum, i) => sum + parseFloat(i.amount || i.grand_total || 0), 0);
+        const _totalPayable = _prevTotal + recGrand;
+
+        // Build {outstanding_dues} replacement — resolves inside tpl_recurring template
+        _recInvObj._outstandingDues = _prevUnpaid.length > 0
+          ? `──────────────────\n⚠️ *Previous Outstanding Dues:*\n` +
+            _prevUnpaid.map(i =>
+              `  • ${i.num||i.invoice_number||'Invoice'} — ${fmt_money(parseFloat(i.amount||i.grand_total||0))} (${i.status})`
+            ).join('\n') +
+            `\n💰 *Total Payable (incl. this invoice): ${fmt_money(_totalPayable)}*\nPlease clear all dues at earliest. 🙏`
+          : '';
+        _recInvObj._totalPayable = _prevUnpaid.length > 0 ? _totalPayable : null;
+
+        setTimeout(() => {
+          const _c     = STATE.clients.find(x => String(x.id) === String(s.clientId)) || {};
+          const _email = _c.email || _c.mail || '';
+          const _phone = (_c.wa || _c.whatsapp || _c.phone || '').replace(/\D/g, '');
+          const wa     = STATE.settings.wa || {};
+
+          // ── WA send ──────────────────────────────────────────────
+          if (_phone) {
+            const tpl = wa.tpl_recurring || getDefaultWATpl('recurring');
+            const msg = formatWAMsg(tpl, _recInvObj, _c, STATE.settings);
+            logWAMessage({ inv: _recInvObj, client: _c, type: 'invoice_created', msg, status: 'sending' });
+            sendWA(_phone, msg, 'invoice_created', _recInvObj, _c)
+              .then(res => logWAMessage({ inv: _recInvObj, client: _c, type: 'invoice_created', msg,
+                status: res ? 'sent_api' : 'sent_web' }))
+              .catch(e  => logWAMessage({ inv: _recInvObj, client: _c, type: 'invoice_created', msg,
+                status: 'failed', error: e.message }));
+          }
+
+          // ── Email send (if email auto enabled) ───────────────────
+          const ec = STATE.settings.email_cfg || {};
+          if (_email && ec.email_auto_inv === '1' && (ec.smtp_host || ec.smtp_user)) {
+            const invId = _recInvResult?.id || _recInvResult?.data?.id || null;
+            if (invId) {
+              api('api/email.php?action=send', 'POST', {
+                action:     'send',
+                to:         _email,
+                to_name:    _c.name || s.clientName || '',
+                invoice_id: invId,
+                type:       'recurring',
+              }).then(r => {
+                if (!r?.success) console.warn('[Recurring Email] Failed:', r?.error);
+              }).catch(e => console.warn('[Recurring Email] Error:', e.message));
+            }
+          }
+        }, 800);
       }
 
       // ── Update schedule in DB (nextDate, generatedCount, lastGenerated) ──
@@ -13958,7 +14500,8 @@ function waInsertVar(varName) {
   // Find the active tab's textarea
   const key = window._waActiveTab || 'inv';
   const idMap = { inv:'wa-tpl-inv', estimate:'wa-tpl-estimate', paid:'wa-tpl-paid', partial:'wa-tpl-partial',
-                  remind:'wa-tpl-remind', overdue:'wa-tpl-overdue', followup:'wa-tpl-followup' };
+                  remind:'wa-tpl-remind', overdue:'wa-tpl-overdue', followup:'wa-tpl-followup',
+                  recurring:'wa-tpl-recurring' };
   const tId = idMap[key] || 'wa-manual-msg';
   // Also check if manual msg textarea is focused
   const focused = document.activeElement;
@@ -14012,7 +14555,8 @@ function waUpdatePreview(textareaId, wrapId) {
 async function waResetCurrentTab() {
   const key = window._waActiveTab || 'inv';
   const idMap = { inv:'wa-tpl-inv', estimate:'wa-tpl-estimate', paid:'wa-tpl-paid', partial:'wa-tpl-partial',
-                  remind:'wa-tpl-remind', overdue:'wa-tpl-overdue', followup:'wa-tpl-followup' };
+                  remind:'wa-tpl-remind', overdue:'wa-tpl-overdue', followup:'wa-tpl-followup',
+                  recurring:'wa-tpl-recurring' };
   const tplMap = { inv:'inv', estimate:'estimate', paid:'paid', partial:'partial_receipt',
                    remind:'remind', overdue:'overdue', followup:'followup' };
   const tId = idMap[key];

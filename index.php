@@ -14387,24 +14387,35 @@ setTimeout(async () => {
         continue;
       }
 
-      // ── auto_overdue: overdue, within maxOverdue limit ───────
-      if (overdueOn && daysOverdue > 0) {
+      // ── auto_overdue + auto_followup: overdue invoices ──────────
+      // Progression: first send = overdue alert, subsequent = follow-up
+      // auto_overdue fires for first send (ovCount === 0)
+      // auto_followup fires for subsequent sends (ovCount >= 1)
+      // Both respect maxOverdue cap and overdueFreq spacing
+      if (daysOverdue > 0 && (overdueOn || followOn)) {
         const ovCount = overdueCountByInv[invNum] || 0;
-        if (ovCount >= maxOv) continue; // exhausted
-        // Only send if not sent in the last overdueFreq days
-        if (daysSinceSent >= freqDays) {
-          await silentSend(inv, 'payment_overdue');
-        }
-        continue;
-      }
+        if (ovCount >= maxOv) continue; // exhausted — skip entirely
 
-      // ── auto_followup: overdue, after first overdue, repeat every freqDays ──
-      if (followOn && daysOverdue > 0) {
-        const ovCount = overdueCountByInv[invNum] || 0;
-        if (ovCount < 1) continue; // followup only after at least one overdue sent
-        if (ovCount >= maxOv) continue;
-        if (daysSinceSent >= freqDays) {
-          await silentSend(inv, 'invoice_followup');
+        const isFirstSend = ovCount === 0;
+        const isFollowup  = ovCount >= 1;
+
+        // First send: use overdue template (requires auto_overdue ON)
+        if (isFirstSend && overdueOn) {
+          if (daysSinceSent >= freqDays) {
+            await silentSend(inv, 'payment_overdue');
+          }
+          continue;
+        }
+
+        // Subsequent sends: use followup template if auto_followup ON,
+        // else fall back to overdue template if auto_overdue ON
+        if (isFollowup) {
+          if (followOn && daysSinceSent >= freqDays) {
+            await silentSend(inv, 'invoice_followup');
+          } else if (!followOn && overdueOn && daysSinceSent >= freqDays) {
+            await silentSend(inv, 'payment_overdue');
+          }
+          continue;
         }
       }
     }
