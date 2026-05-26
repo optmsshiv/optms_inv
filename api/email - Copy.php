@@ -70,7 +70,7 @@ try {
 // ── GET /api/email.php?action=templates ─────────────────────────
 function handleGetTemplates($db) {
     ensureEmailTables($db);
-    $rows = $db->query("SELECT * FROM email_templates ORDER BY FIELD(type,'invoice','estimate','receipt','reminder','overdue','followup','recurring')")->fetchAll();
+    $rows = $db->query("SELECT * FROM email_templates ORDER BY FIELD(type,'invoice','estimate','receipt','reminder','overdue','followup')")->fetchAll();
     $defaults = getDefaultTemplates();
     // Merge: return DB rows, fill missing types with defaults
     $byType = [];
@@ -92,7 +92,7 @@ function handleSaveTemplate($db, $input) {
     if (!$type || !$subject || !$body) {
         jsonResponse(['success'=>false,'error'=>'type, subject and body are required'], 422);
     }
-    $allowed = ['invoice','estimate','receipt','reminder','overdue','followup','recurring'];
+    $allowed = ['invoice','estimate','receipt','reminder','overdue','followup'];
     if (!in_array($type, $allowed)) {
         jsonResponse(['success'=>false,'error'=>'Invalid template type'], 422);
     }
@@ -224,13 +224,12 @@ function handleSend($db, $input) {
         'payment_overdue'  => 'overdue',
         'invoice_followup' => 'followup',
         'invoice_created'  => 'invoice',
-        'estimate_created'  => 'estimate',
-        'payment_received'  => 'receipt',
-        'recurring'         => 'recurring',
+        'estimate_created' => 'estimate',
+        'payment_received' => 'receipt',
         'partial_payment'  => 'receipt',
     ];
     $type = $typeMap[$type] ?? $type;
-    $allowed = ['invoice','estimate','receipt','reminder','overdue','followup','recurring','test'];
+    $allowed = ['invoice','estimate','receipt','reminder','overdue','followup','test'];
     if (!in_array($type, $allowed)) $type = 'invoice';
 
     if (!$to) jsonResponse(['success'=>false,'error'=>'Recipient email required'], 422);
@@ -418,9 +417,7 @@ function buildTemplateVars($db, int $invId, string $type): array {
         '{remaining_amount}' => '',
         '{settlement_discount}' => '',
         '{invoice_link}'   => '',
-        '{payment_method}'    => '',
-        '{outstanding_dues}'  => '',   // populated for recurring emails
-        '{total_payable}'     => '',   // populated for recurring emails
+        '{payment_method}' => '',
     ];
 
     if (!$invId) return $vars;
@@ -487,44 +484,6 @@ function buildTemplateVars($db, int $invId, string $type): array {
     $vars['{settlement_discount}']  = $settleDisc > 0 ? $sym . number_format($settleDisc, 2) : '';
     $vars['{invoice_link}']         = $portalLink;
 
-    // ── Recurring: build outstanding dues block ───────────────────
-    if ($type === 'recurring' && !empty($inv['client_id'] ?? $inv['client'] ?? null)) {
-        $clientId = $inv['client_id'] ?? $inv['client'];
-        try {
-            $stmt = $db->prepare(
-                "SELECT invoice_number, grand_total, amount, status, due_date, due
-                 FROM invoices
-                 WHERE (client_id=? OR client=?) AND status IN ('Pending','Overdue','Partial')
-                   AND id != ?
-                 ORDER BY due_date ASC, due ASC"
-            );
-            $stmt->execute([$clientId, $clientId, $invId]);
-            $prevUnpaid = $stmt->fetchAll();
-            if ($prevUnpaid) {
-                $prevTotal = 0;
-                $lines     = [];
-                foreach ($prevUnpaid as $p) {
-                    $pAmt   = (float)($p['grand_total'] ?? $p['amount'] ?? 0);
-                    $pNum   = $p['invoice_number'] ?? '';
-                    $pDue   = $p['due_date'] ?? $p['due'] ?? '—';
-                    $pSt    = $p['status'];
-                    $prevTotal += $pAmt;
-                    $lines[] = "  • #{$pNum} — " . $sym . number_format($pAmt, 2) . " | Due: {$pDue} | {$pSt}";
-                }
-                $totalPayable = $prevTotal + $grand;
-                $duesBlock =
-                    "Previous Outstanding Dues:
-" .
-                    implode("
-", $lines) . "
-" .
-                    "Total Payable (incl. this invoice): " . $sym . number_format($totalPayable, 2);
-                $vars['{outstanding_dues}'] = $duesBlock;
-                $vars['{total_payable}']    = $sym . number_format($totalPayable, 2);
-            }
-        } catch (\Exception $e) { /* non-fatal */ }
-    }
-
     return $vars;
 }
 
@@ -543,8 +502,7 @@ function buildEmailHTML(string $body, string $type = 'invoice', array $vars = []
         'reminder' => ['#E65100', '#F57C00', '🔔', 'Payment Reminder'],
         'overdue'  => ['#B71C1C', '#E53935', '⚠️', 'Invoice Overdue'],
         'followup' => ['#4A148C', '#7B1FA2', '📞', 'Follow-up'],
-        'test'      => ['#004D40', '#00897B', '🧪', 'SMTP Test'],
-        'recurring' => ['#1A237E', '#3949AB', '🔁', 'Recurring Invoice'],
+        'test'     => ['#004D40', '#00897B', '🧪', 'SMTP Test'],
     ];
     [$hdrBg, $accent, $emoji, $typeLabel] = $types[$type] ?? $types['invoice'];
 
@@ -613,19 +571,6 @@ function buildEmailHTML(string $body, string $type = 'invoice', array $vars = []
         }
     } else {
         if ($amount) $summaryRows .= "<tr><td style='padding:8px 0 0;color:#333;font-size:14px;font-weight:700'>" . ($isEstimate ? 'Total' : 'Amount Due') . "</td><td style='padding:8px 0 0;text-align:right;font-size:15px;font-weight:700;color:{$accent}'>{$amount}</td></tr>";
-    }
-
-    // ── Outstanding dues card (recurring only) ──────────────────
-    $outstandingDuesHtml = '';
-    if ($type === 'recurring' && !empty($vars['{outstanding_dues}'])) {
-        $duesLines    = nl2br(htmlspecialchars($vars['{outstanding_dues}'], ENT_QUOTES, 'UTF-8'));
-        $totalPayable = $vars['{total_payable}'] ?? '';
-        $outstandingDuesHtml =
-            "<div style='background:#FFF8E1;border-left:4px solid #F57F17;border-radius:0 8px 8px 0;padding:14px 18px;margin:14px 0;font-family:Arial,sans-serif'>" .
-            "<div style='font-size:12px;font-weight:700;color:#E65100;margin-bottom:6px'>&#9888; Previous Outstanding Dues</div>" .
-            "<div style='font-size:12px;color:#555;font-family:Courier New,monospace;line-height:1.8'>{$duesLines}</div>" .
-            ($totalPayable ? "<div style='margin-top:10px;padding-top:8px;border-top:1px solid #FFE082;font-size:13px;font-weight:700;color:#BF360C'>Total Payable (all invoices): {$totalPayable}</div>" : '') .
-            "</div>";
     }
 
     // CTA button label based on type
@@ -1000,19 +945,6 @@ This is a friendly reminder that Invoice #{invoice_no} is due on {due_date}. If 
 "Dear {client_name},
 
 Your Invoice #{invoice_no} is now {days_overdue} day(s) overdue. Immediate payment is requested to avoid any disruption to services.",
-        ],
-
-        // ── Recurring Invoice ───────────────────────────────────
-        'recurring' => [
-            'subject' => 'Recurring Invoice #{invoice_no} from {company_name} – {amount}',
-            'body'    =>
-"Dear {client_name},
-
-Your recurring invoice from {company_name} for the current billing cycle is ready.
-
-If you have any questions, please contact us at {company_email} or {company_phone}.
-
-{outstanding_dues}",
         ],
 
         // ── Follow-up ────────────────────────────────────────────

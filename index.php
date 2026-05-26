@@ -2287,6 +2287,7 @@ Thank you for choosing {company_name}!
                 <div class="field"><label>⚠️ Payment Overdue</label><div style="display:flex;gap:6px"><input id="tpl-name-overdue" placeholder="payment_overdue" style="flex:1"><input id="tpl-lang-overdue" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}days {{5}}upi {{6}}company {{7}}link</div></div>
                 <div class="field"><label>✅ Payment Received</label><div style="display:flex;gap:6px"><input id="tpl-name-paid" placeholder="payment_received" style="flex:1"><input id="tpl-lang-paid" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}disc {{5}}date {{6}}company {{7}}link</div></div>
                 <div class="field"><label>📋 Invoice Follow-up</label><div style="display:flex;gap:6px"><input id="tpl-name-followup" placeholder="invoice_followup" style="flex:1"><input id="tpl-lang-followup" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}days {{5}}upi {{6}}phone {{7}}link</div></div>
+                <div class="field"><label>🔁 Recurring Invoice</label><div style="display:flex;gap:6px"><input id="tpl-name-recurring" placeholder="recurring_invoice" style="flex:1"><input id="tpl-lang-recurring" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}amount {{4}}due {{5}}upi {{6}}link {{7}}outstanding</div></div>
                 <div class="field"><label>💚 Partial Payment</label><div style="display:flex;gap:6px"><input id="tpl-name-partial" placeholder="partial_payment" style="flex:1"><input id="tpl-lang-partial" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}inv# {{3}}paid {{4}}remaining {{5}}due {{6}}link</div></div>
                 <div class="field"><label>🎉 Festival Greeting</label><div style="display:flex;gap:6px"><input id="tpl-name-festival" placeholder="festival_greeting" style="flex:1"><input id="tpl-lang-festival" placeholder="en_US" style="width:70px;text-align:center"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">{{1}}name {{2}}company {{3}}phone</div></div>
               </div>
@@ -8690,6 +8691,8 @@ window.saveWASettings = async function() {
     wa_tpl_lang_paid:      val('tpl-lang-paid')      || 'en_US',
     wa_tpl_name_followup:  val('tpl-name-followup'),
     wa_tpl_lang_followup:  val('tpl-lang-followup')  || 'en_US',
+    wa_tpl_name_recurring: val('tpl-name-recurring'),
+    wa_tpl_lang_recurring: val('tpl-lang-recurring')  || 'en_US',
     wa_tpl_name_partial:   val('tpl-name-partial'),
     wa_tpl_lang_partial:   val('tpl-lang-partial')   || 'en_US',
     wa_tpl_name_festival:  val('tpl-name-festival'),
@@ -8720,9 +8723,11 @@ window.saveWASettings = async function() {
     tpl_lang_overdue:  payload.wa_tpl_lang_overdue,
     tpl_name_paid:     payload.wa_tpl_name_paid,
     tpl_lang_paid:     payload.wa_tpl_lang_paid,
-    tpl_name_followup: payload.wa_tpl_name_followup,
-    tpl_lang_followup: payload.wa_tpl_lang_followup,
-    tpl_name_partial:  payload.wa_tpl_name_partial,
+    tpl_name_followup:  payload.wa_tpl_name_followup,
+    tpl_lang_followup:  payload.wa_tpl_lang_followup,
+    tpl_name_recurring: payload.wa_tpl_name_recurring,
+    tpl_lang_recurring: payload.wa_tpl_lang_recurring,
+    tpl_name_partial:   payload.wa_tpl_name_partial,
     tpl_lang_partial:  payload.wa_tpl_lang_partial,
     tpl_name_festival: payload.wa_tpl_name_festival,
     tpl_lang_festival: payload.wa_tpl_lang_festival,
@@ -10145,9 +10150,11 @@ async function loadAllData() {
         tpl_lang_overdue:  s.wa_tpl_lang_overdue  || 'en_US',
         tpl_name_paid:     s.wa_tpl_name_paid     || '',
         tpl_lang_paid:     s.wa_tpl_lang_paid     || 'en_US',
-        tpl_name_followup: s.wa_tpl_name_followup || '',
-        tpl_lang_followup: s.wa_tpl_lang_followup || 'en_US',
-        tpl_name_partial:  s.wa_tpl_name_partial  || '',
+        tpl_name_followup:  s.wa_tpl_name_followup  || '',
+        tpl_lang_followup:  s.wa_tpl_lang_followup  || 'en_US',
+        tpl_name_recurring: s.wa_tpl_name_recurring || '',
+        tpl_lang_recurring: s.wa_tpl_lang_recurring || 'en_US',
+        tpl_name_partial:   s.wa_tpl_name_partial   || '',
         tpl_lang_partial:  s.wa_tpl_lang_partial  || 'en_US',
         tpl_name_festival: s.wa_tpl_name_festival || '',
         tpl_lang_festival: s.wa_tpl_lang_festival || 'en_US',
@@ -10649,7 +10656,8 @@ function populateWAPage() {
   setV('wa-tpl-paid',     wa.tpl_paid     || getDefaultWATpl('paid'));
   setV('wa-tpl-remind',  wa.tpl_remind  || getDefaultWATpl('remind'));
   setV('wa-tpl-overdue', wa.tpl_overdue || getDefaultWATpl('overdue'));
-  setV('wa-tpl-followup',wa.tpl_followup|| getDefaultWATpl('followup'));
+  setV('wa-tpl-followup', wa.tpl_followup  || getDefaultWATpl('followup'));
+  setV('wa-tpl-recurring',wa.tpl_recurring || getDefaultWATpl('recurring'));
   setV('wa-tpl-partial', wa.tpl_partial || getDefaultWATpl('partial_receipt'));
   setV('wa-tpl-festival',wa.tpl_festival|| getDefaultWATpl('festival'));
 
@@ -10666,7 +10674,7 @@ function populateWAPage() {
   const mode  = wa.msg_mode || 'session';
   const radio = document.querySelector('input[name="wa-msg-mode"][value="' + mode + '"]');
   if (radio) { radio.checked = true; setWAMode(mode); }
-  const tpls  = ['invoice','estimate','reminder','overdue','paid','followup','partial','festival'];
+  const tpls  = ['invoice','estimate','reminder','overdue','paid','followup','recurring','partial','festival'];
   tpls.forEach(t => {
     const nEl = document.getElementById('tpl-name-' + t);
     const lEl = document.getElementById('tpl-lang-' + t);
@@ -14050,17 +14058,38 @@ async function runRecurringCheck() {
 
         setTimeout(() => {
           const _c     = STATE.clients.find(x => String(x.id) === String(s.clientId)) || {};
+          const _email = _c.email || _c.mail || '';
           const _phone = (_c.wa || _c.whatsapp || _c.phone || '').replace(/\D/g, '');
-          if (!_phone) return; // no phone — skip silently
+          const wa     = STATE.settings.wa || {};
 
-          const wa  = STATE.settings.wa || {};
-          const tpl = wa.tpl_recurring || getDefaultWATpl('recurring');
-          const msg = formatWAMsg(tpl, _recInvObj, _c, STATE.settings);
+          // ── WA send ──────────────────────────────────────────────
+          if (_phone) {
+            const tpl = wa.tpl_recurring || getDefaultWATpl('recurring');
+            const msg = formatWAMsg(tpl, _recInvObj, _c, STATE.settings);
+            logWAMessage({ inv: _recInvObj, client: _c, type: 'invoice_created', msg, status: 'sending' });
+            sendWA(_phone, msg, 'invoice_created', _recInvObj, _c)
+              .then(res => logWAMessage({ inv: _recInvObj, client: _c, type: 'invoice_created', msg,
+                status: res ? 'sent_api' : 'sent_web' }))
+              .catch(e  => logWAMessage({ inv: _recInvObj, client: _c, type: 'invoice_created', msg,
+                status: 'failed', error: e.message }));
+          }
 
-          logWAMessage({ inv: _recInvObj, client: _c, type: 'invoice_created', msg, status: 'sending' });
-          sendWA(_phone, msg, 'invoice_created', _recInvObj, _c)
-            .then(res => logWAMessage({ inv: _recInvObj, client: _c, type: 'invoice_created', msg, status: res ? 'sent_api' : 'sent_web' }))
-            .catch(e  => logWAMessage({ inv: _recInvObj, client: _c, type: 'invoice_created', msg, status: 'failed', error: e.message }));
+          // ── Email send (if email auto enabled) ───────────────────
+          const ec = STATE.settings.email_cfg || {};
+          if (_email && ec.email_auto_inv === '1' && (ec.smtp_host || ec.smtp_user)) {
+            const invId = _recInvResult?.id || _recInvResult?.data?.id || null;
+            if (invId) {
+              api('api/email.php?action=send', 'POST', {
+                action:     'send',
+                to:         _email,
+                to_name:    _c.name || s.clientName || '',
+                invoice_id: invId,
+                type:       'recurring',
+              }).then(r => {
+                if (!r?.success) console.warn('[Recurring Email] Failed:', r?.error);
+              }).catch(e => console.warn('[Recurring Email] Error:', e.message));
+            }
+          }
         }, 800);
       }
 
