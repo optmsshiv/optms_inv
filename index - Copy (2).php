@@ -1192,7 +1192,6 @@ const SERVER = {
         <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
           <span id="dashOverdueAlert" style="display:none;padding:5px 12px;border-radius:20px;background:var(--red-bg);color:var(--red);font-size:12px;font-weight:700"></span>
           <span id="dashDueSoonAlert" style="display:none;padding:5px 12px;border-radius:20px;background:var(--amber-bg);color:var(--amber);font-size:12px;font-weight:700"></span>
-          <span id="dashDraftAlert" style="display:none;padding:5px 12px;border-radius:20px;background:#F5F5F5;color:#616161;font-size:12px;font-weight:700;cursor:pointer" onclick="showPage('invoices');setTimeout(()=>{const f=document.getElementById('inv-filter-status');if(f){f.value='Draft';applyFiltersAndRender();}},300)"></span>
         </div>
       </div>
       <!-- WhatsApp Automation Card -->
@@ -4069,19 +4068,7 @@ function updateDashStats() {
   if(e('s-revenue')) e('s-revenue').textContent = fmt_money(totalRevenue);
   if(e('s-pending')) e('s-pending').textContent = fmt_money(pend);
   if(e('s-overdue')) e('s-overdue').textContent = fmt_money(over);
-  // s-total = real invoices only (exclude Draft, Cancelled, Estimate)
-  const _realInvCount = STATE.invoices.filter(i => !['Draft','Cancelled','Estimate'].includes(i.status)).length;
-  const _draftCount   = STATE.invoices.filter(i => i.status === 'Draft').length;
-  if(e('s-total')) {
-    e('s-total').textContent = _realInvCount;
-    // Update label to show draft count inline if any
-    const _lbl = document.querySelector('#s-total ~ .stat-lbl, .stat-lbl');
-    const _trendEl = document.getElementById('s-total-trend');
-    if (_draftCount > 0 && _trendEl) {
-      _trendEl.innerHTML = `<i class='fas fa-arrow-up'></i> ${invThisM} this month `
-        + `<span style='color:#9E9E9E;font-weight:600;margin-left:4px'>(${_draftCount} draft${_draftCount>1?'s':''})</span>`;
-    }
-  }
+  if(e('s-total'))   e('s-total').textContent   = STATE.invoices.length;
   if(e('s-clients')) e('s-clients').textContent = STATE.clients.length;
 
   // ── Revenue card calculations ─────────────────────────────────
@@ -6572,35 +6559,7 @@ async function saveInvoice() {
       showPage('invoices', document.querySelector('.nav-item[data-page="invoices"]'));
     } else {
       const _res = await api('api/invoices.php', 'POST', payload);
-      if (payload.status === 'Draft') {
-        // Draft save — show actionable toast with "Send to Client" button
-        const _draftNum = d.num;
-        const _draftId  = null; // id resolved after reload
-        toast('📝 Saved as Draft — remember to send to client when ready', 'info');
-        // Show a Swal nudge after short delay so user can act
-        setTimeout(() => {
-          const _savedDraftInv = STATE.invoices.find(i => (i.num||i.invoice_number) === _draftNum);
-          if (!_savedDraftInv) return;
-          Swal.fire({
-            toast:             true,
-            position:          'bottom-end',
-            icon:              'info',
-            title:             `Draft ${_draftNum} not sent`,
-            html:              `<span style='font-size:13px'>Ready to send to client?</span>`,
-            showCancelButton:  true,
-            confirmButtonText: '📤 Make Pending',
-            cancelButtonText:  'Later',
-            confirmButtonColor:'#00897B',
-            timer:             8000,
-            timerProgressBar:  true,
-            customClass:       { popup: 'swal-compact' },
-          }).then(r => {
-            if (r.isConfirmed) changeInvoiceStatus(_savedDraftInv.id, 'Pending');
-          });
-        }, 1200);
-      } else {
-        toast('✅ Invoice ' + d.num + ' saved!', 'success');
-      }
+      toast('✅ Invoice ' + d.num + ' saved!', 'success');
       if (payload.status === 'Estimate') {
         logActivity('estimate_created', `Estimate created: ${d.num}`, payload.client_name || '');
       } else {
@@ -6615,7 +6574,7 @@ async function saveInvoice() {
     STATE.editingInvoiceId = null;
     renderInvoicesTable(); renderDashRecent(); renderDonutChart(); updateDashStats();
     const badge = document.getElementById('badge-invoices');
-    if (badge) badge.textContent = STATE.invoices.filter(i => !['Cancelled','Estimate'].includes(i.status)).length;
+    if (badge) badge.textContent = STATE.invoices.length;
     // Auto-generate portal link for new invoices (silent background)
     if (d.id || d.invoice_id) {
       const portalInvId = parseInt(d.id || d.invoice_id);
@@ -9974,31 +9933,11 @@ function renderDashTopClients() {
 }
 
 function renderDashAlerts() {
-  const over = STATE.invoices.filter(i => i.status === 'Overdue');
-  const soon = STATE.invoices.filter(i => {
-    if (i.status !== 'Pending' || !i.due) return false;
-    const d = (new Date(i.due) - new Date()) / 864e5;
-    return d >= 0 && d <= 3;
-  });
-  // Stale drafts — Draft invoices older than 3 days that haven't been sent
-  const threeDaysAgo = new Date(); threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-  const staleDrafts  = STATE.invoices.filter(i => {
-    if (i.status !== 'Draft') return false;
-    const issued = new Date(i.issued || i.created_at || 0);
-    return issued < threeDaysAgo;
-  });
-
-  const oa = document.getElementById('dashOverdueAlert');
-  const da = document.getElementById('dashDueSoonAlert');
-  const dr = document.getElementById('dashDraftAlert');
-
-  if (oa) { oa.style.display = over.length ? '' : 'none'; if (over.length) oa.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${over.length} Overdue`; }
-  if (da) { da.style.display = soon.length ? '' : 'none'; if (soon.length) da.innerHTML = `<i class="fas fa-clock"></i> ${soon.length} Due Soon`; }
-  if (dr) {
-    dr.style.display = staleDrafts.length ? '' : 'none';
-    if (staleDrafts.length) dr.innerHTML = `<i class="fas fa-file-alt"></i> ${staleDrafts.length} Unsent Draft${staleDrafts.length > 1 ? 's' : ''}`;
-    dr.title = staleDrafts.length ? `${staleDrafts.length} draft invoice${staleDrafts.length>1?'s have':' has'} not been sent for 3+ days — click to view` : '';
-  }
+  const over=STATE.invoices.filter(i=>i.status==='Overdue');
+  const soon=STATE.invoices.filter(i=>{if(i.status!=='Pending'||!i.due)return false;const d=(new Date(i.due)-new Date())/(864e5);return d>=0&&d<=3;});
+  const oa=document.getElementById('dashOverdueAlert'),da=document.getElementById('dashDueSoonAlert');
+  if(oa){oa.style.display=over.length?'':'none';if(over.length)oa.innerHTML=`<i class="fas fa-exclamation-circle"></i> ${over.length} Overdue`;}
+  if(da){da.style.display=soon.length?'':'none';if(soon.length)da.innerHTML=`<i class="fas fa-clock"></i> ${soon.length} Due Soon`;}
 }
 
 async function handleLogoUpload(input, targetId, previewId) {
