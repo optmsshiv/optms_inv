@@ -14491,7 +14491,7 @@ setTimeout(async () => {
   } catch(e) {
     console.warn('[AutoReminder] Scheduler error:', e.message);
   }
-}); // end auto-reminder scheduler
+}, 5000); // end auto-reminder scheduler
 
 // ── Auto-run recurring generation on page load ────────────────
 // Fires 6s after load — after STATE settles and recurring loads.
