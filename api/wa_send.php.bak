@@ -4,10 +4,8 @@
 //  Server-side proxy for WhatsApp Business API
 //  Supports both free-form text (session) and approved templates
 // ================================================================
-if (!defined('CRON_MODE')) {
-    require_once __DIR__ . '/../includes/auth.php';
-    requireLogin();
-}
+require_once __DIR__ . '/../includes/auth.php';
+requireLogin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonResponse(['error' => 'POST required'], 405);

@@ -35,7 +35,7 @@ foreach ($cfgRows as $r) $cfg[$r['key']] = $r['value'];
 // ── Automation flags ─────────────────────────────────────────────
 $autoRemind   = ($cfg['email_auto_remind']   ?? '1') === '1';
 $autoOverdue  = ($cfg['email_auto_overdue']  ?? '1') === '1';
-$autoFollowup  = ($cfg['email_auto_followup'] ?? '0') === '1';
+$autoFollowup  = ($cfg['email_auto_followup'] ?? '1') === '1';
 $autoRecurring = ($cfg['email_auto_inv']      ?? '0') === '1'; // Recurring uses invoice creation toggle
 
 // ── Timing rules: read from reminder_settings (single source of truth) ──
@@ -366,6 +366,40 @@ if ($autoRemind) {
         $log[] = ($ok ? '✅' : '❌') . " Reminder → {$inv['client_name']} ({$inv['c_email']}) — {$inv['invoice_number']}";
     }
     echo "[Reminder] " . count($invs) . " invoice(s) checked (due in {$remindDays} days)\n";
+}
+
+// ================================================================
+//  1b. ON DUE DATE REMINDER
+//      Fires when due_date = today AND on_due setting is enabled
+//      (respects reminder_settings.on_due, fallback to settings table)
+// ================================================================
+$onDue = ($remSettings['on_due'] ?? $cfg['on_due'] ?? '1') === '1';
+if ($autoRemind && $onDue) {
+    $stmt = $db->prepare("
+        SELECT i.*, c.email AS c_email, c.name AS client_name
+        FROM invoices i
+        LEFT JOIN clients c ON c.id = i.client_id
+        WHERE i.due_date = CURDATE()
+          AND i.status IN ('Pending', 'Partial')
+          AND c.email IS NOT NULL AND c.email != ''
+    ");
+    $stmt->execute();
+    $invs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $tpl  = getCronTemplate($db, 'reminder');
+    $sent = 0;
+    foreach ($invs as $inv) {
+        if (alreadySentToday($db, (int)$inv['id'], 'reminder')) continue;
+        $inv['invoice_link'] = cronGetPortalLink($db, (int)$inv['id'], $portalBase);
+        $data = array_merge($inv, $company);
+        $subj = cronReplaceVars($tpl['subject'], $data);
+        $body = cronReplaceVars($tpl['body'],    $data);
+        $html = cronBuildHTML($body, 'reminder');
+        $ok   = cronSendEmail($smtp, $inv['c_email'], $inv['client_name'] ?? 'Client', $subj, $html);
+        cronLogEmail($db, (int)$inv['id'], 'reminder', $inv['c_email'], $subj, $ok);
+        $log[] = ($ok ? '✅' : '❌') . " Due Today → {$inv['client_name']} ({$inv['c_email']}) — #{$inv['invoice_number']}";
+        $sent++;
+    }
+    echo "[On Due] {$sent} due-today reminder(s) sent out of " . count($invs) . " eligible invoice(s)\n";
 }
 
 // ================================================================
